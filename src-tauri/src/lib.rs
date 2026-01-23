@@ -1,3 +1,4 @@
+mod commands;
 mod database;
 mod error;
 mod logger;
@@ -5,12 +6,6 @@ mod models;
 mod parsers;
 
 pub use error::{ReaderError, Result};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,7 +15,12 @@ pub fn run() {
             database::init_db(handle)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            commands::import_epub,
+            commands::list_documents,
+            commands::get_document,
+            commands::delete_document,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
