@@ -16,14 +16,14 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create documents table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             author TEXT,
-            language TEXT DEFAULT 'en',
+            language TEXT,
             file_path TEXT NOT NULL UNIQUE,
             file_type TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         )",
         [],
     )?;
@@ -31,13 +31,12 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create sections table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS sections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doc_id INTEGER NOT NULL,
+            id TEXT PRIMARY KEY,
+            doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
             title TEXT NOT NULL,
-            order_index INTEGER NOT NULL DEFAULT 0,
-            href TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE
+            order_index INTEGER NOT NULL,
+            href TEXT NOT NULL,
+            UNIQUE(doc_id, order_index)
         )",
         [],
     )?;
@@ -45,15 +44,13 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create paragraphs table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS paragraphs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            doc_id INTEGER NOT NULL,
-            section_id INTEGER,
-            order_index INTEGER NOT NULL DEFAULT 0,
+            id TEXT PRIMARY KEY,
+            doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            section_id TEXT NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
+            order_index INTEGER NOT NULL,
             text TEXT NOT NULL,
-            location TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE,
-            FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE SET NULL
+            location TEXT NOT NULL,
+            UNIQUE(doc_id, section_id, order_index)
         )",
         [],
     )?;
@@ -61,13 +58,11 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create embeddings table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS embeddings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            paragraph_id INTEGER NOT NULL,
+            id TEXT PRIMARY KEY,
+            paragraph_id TEXT NOT NULL REFERENCES paragraphs(id) ON DELETE CASCADE,
             vector BLOB NOT NULL,
             dim INTEGER NOT NULL,
-            model TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (paragraph_id) REFERENCES paragraphs(id) ON DELETE CASCADE
+            created_at INTEGER NOT NULL
         )",
         [],
     )?;
@@ -75,12 +70,12 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create cache_summaries table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cache_summaries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            target_id INTEGER NOT NULL,
+            id TEXT PRIMARY KEY,
+            target_id TEXT NOT NULL,
             target_type TEXT NOT NULL,
             style TEXT NOT NULL,
             summary TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at INTEGER NOT NULL,
             UNIQUE(target_id, target_type, style)
         )",
         [],
@@ -89,18 +84,17 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
     // Create cache_translations table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cache_translations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            paragraph_id INTEGER NOT NULL,
+            id TEXT PRIMARY KEY,
+            paragraph_id TEXT NOT NULL REFERENCES paragraphs(id) ON DELETE CASCADE,
             target_lang TEXT NOT NULL,
             translation TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (paragraph_id) REFERENCES paragraphs(id) ON DELETE CASCADE,
+            created_at INTEGER NOT NULL,
             UNIQUE(paragraph_id, target_lang)
         )",
         [],
     )?;
 
-    // Create indexes for performance
+    // Create indexes for performance (only 3 indexes as per spec)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sections_doc_id ON sections(doc_id)",
         [],
@@ -113,11 +107,6 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_paragraphs_section_id ON paragraphs(section_id)",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_embeddings_paragraph_id ON embeddings(paragraph_id)",
         [],
     )?;
 

@@ -3,5 +3,5 @@ mod paragraph;
 mod section;
 
 pub use document::{Document, NewDocument};
-pub use paragraph::{Paragraph, NewParagraph};
-pub use section::{NewSection, Section};
+pub use paragraph::Paragraph;
+pub use section::Section;

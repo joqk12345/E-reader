@@ -24,4 +24,5 @@ epub = "0.2"
 pdf = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
 

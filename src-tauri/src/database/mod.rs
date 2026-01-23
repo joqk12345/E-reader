@@ -1,4 +1,7 @@
 mod schema;
+mod documents;
+mod sections;
+mod paragraphs;
 
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
@@ -6,6 +9,18 @@ use tauri::AppHandle;
 use tracing::{info, error};
 
 pub use schema::create_tables;
+
+// Document operations
+pub use documents::{insert as insert_document, list as list_documents, get as get_document, delete as delete_document};
+pub use documents::DocumentError;
+
+// Section operations
+pub use sections::{insert as insert_section, list_by_document as list_sections, get as get_section};
+pub use sections::SectionError;
+
+// Paragraph operations
+pub use paragraphs::{insert as insert_paragraph, list_by_section as list_paragraphs_by_section, list_by_document as list_paragraphs, get as get_paragraph};
+pub use paragraphs::ParagraphError;
 
 /// Gets the path to the SQLite database file
 ///
