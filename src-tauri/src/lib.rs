@@ -1,5 +1,7 @@
+mod database;
 mod error;
 mod logger;
+mod models;
 
 pub use error::{ReaderError, Result};
 
