@@ -18,6 +18,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::import_epub,
+            commands::import_pdf,
             commands::list_documents,
             commands::get_document,
             commands::delete_document,

@@ -1,6 +1,6 @@
 use crate::database;
 use crate::error::Result;
-use crate::parsers::EpubParser;
+use crate::parsers::{EpubParser, PdfParser};
 use tauri::AppHandle;
 
 #[derive(Clone, serde::Serialize)]
@@ -15,10 +15,26 @@ pub async fn import_epub(
     app_handle: AppHandle,
     file_path: String,
 ) -> Result<String> {
-    // Parse EPUB
     let parser = EpubParser::new(&file_path)?;
     let (metadata, chapters) = parser.parse_all()?;
+    import_document_internal(app_handle, metadata, chapters).await
+}
 
+#[tauri::command]
+pub async fn import_pdf(
+    app_handle: AppHandle,
+    file_path: String,
+) -> Result<String> {
+    let parser = PdfParser::new(&file_path)?;
+    let (metadata, chapters) = parser.parse_all()?;
+    import_document_internal(app_handle, metadata, chapters).await
+}
+
+async fn import_document_internal(
+    app_handle: AppHandle,
+    metadata: crate::models::NewDocument,
+    chapters: Vec<(String, i32, String, Vec<String>)>,
+) -> Result<String> {
     // Get database connection
     let conn = database::get_connection(&app_handle)?;
 
