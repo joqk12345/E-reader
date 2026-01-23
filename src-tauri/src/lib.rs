@@ -2,6 +2,7 @@ mod database;
 mod error;
 mod logger;
 mod models;
+mod parsers;
 
 pub use error::{ReaderError, Result};
 
