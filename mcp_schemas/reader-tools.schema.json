@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reader-tools.schema.json",
+  "title": "Reader MCP Tools",
+  "type": "object",
+  "definitions": {
+    "doc_id": { "type": "string", "minLength": 1 },
+    "section_id": { "type": "string", "minLength": 1 },
+    "paragraph_id": { "type": "string", "minLength": 1 },
+    "location": { "type": "string", "minLength": 1 },
+    "lang": { "type": "string", "enum": ["zh", "en"] },
+    "style": { "type": "string", "enum": ["brief", "detailed", "bullet"] },
+    "error": {
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "invalid_args",
+                "not_found",
+                "not_indexed",
+                "model_busy",
+                "model_failure",
+                "permission_denied",
+                "internal_error"
+              ]
+            },
+            "message": { "type": "string" },
+            "details": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "search_request": {
+      "type": "object",
+      "required": ["query"],
+      "properties": {
+        "query": { "type": "string", "minLength": 1 },
+        "top_k": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "scope": {
+          "type": "object",
+          "properties": {
+            "doc_id": { "$ref": "#/definitions/doc_id" },
+            "section_id": { "$ref": "#/definitions/section_id" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "search_response": {
+      "type": "object",
+      "required": ["results"],
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["paragraph_id", "snippet", "score", "location"],
+            "properties": {
+              "paragraph_id": { "$ref": "#/definitions/paragraph_id" },
+              "snippet": { "type": "string" },
+              "score": { "type": "number" },
+              "location": { "$ref": "#/definitions/location" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "get_section_request": {
+      "type": "object",
+      "required": ["doc_id", "section_id"],
+      "properties": {
+        "doc_id": { "$ref": "#/definitions/doc_id" },
+        "section_id": { "$ref": "#/definitions/section_id" }
+      },
+      "additionalProperties": false
+    },
+    "get_section_response": {
+      "type": "object",
+      "required": ["title", "paragraphs"],
+      "properties": {
+        "title": { "type": "string" },
+        "paragraphs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["paragraph_id", "text", "location"],
+            "properties": {
+              "paragraph_id": { "$ref": "#/definitions/paragraph_id" },
+              "text": { "type": "string" },
+              "location": { "$ref": "#/definitions/location" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "summarize_request": {
+      "type": "object",
+      "properties": {
+        "doc_id": { "$ref": "#/definitions/doc_id" },
+        "section_id": { "$ref": "#/definitions/section_id" },
+        "paragraph_id": { "$ref": "#/definitions/paragraph_id" },
+        "style": { "$ref": "#/definitions/style" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "anyOf": [
+            { "required": ["paragraph_id"] },
+            { "required": ["section_id"] },
+            { "required": ["doc_id"] }
+          ]
+        }
+      ]
+    },
+    "summarize_response": {
+      "type": "object",
+      "required": ["summary"],
+      "properties": {
+        "summary": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "translate_request": {
+      "type": "object",
+      "required": ["target_lang"],
+      "properties": {
+        "text": { "type": "string" },
+        "paragraph_id": { "$ref": "#/definitions/paragraph_id" },
+        "target_lang": { "$ref": "#/definitions/lang" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "anyOf": [
+            { "required": ["text"] },
+            { "required": ["paragraph_id"] }
+          ]
+        }
+      ]
+    },
+    "translate_response": {
+      "type": "object",
+      "required": ["translation"],
+      "properties": {
+        "translation": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "bilingual_view_request": {
+      "type": "object",
+      "required": ["paragraph_id"],
+      "properties": {
+        "paragraph_id": { "$ref": "#/definitions/paragraph_id" }
+      },
+      "additionalProperties": false
+    },
+    "bilingual_view_response": {
+      "type": "object",
+      "required": ["original", "translation"],
+      "properties": {
+        "original": { "type": "string" },
+        "translation": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "open_location_request": {
+      "type": "object",
+      "required": ["doc_id", "location"],
+      "properties": {
+        "doc_id": { "$ref": "#/definitions/doc_id" },
+        "location": { "$ref": "#/definitions/location" }
+      },
+      "additionalProperties": false
+    },
+    "open_location_response": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {
+        "ok": { "type": "boolean", "const": true }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "search_request": { "$ref": "#/definitions/search_request" },
+    "search_response": { "$ref": "#/definitions/search_response" },
+    "get_section_request": { "$ref": "#/definitions/get_section_request" },
+    "get_section_response": { "$ref": "#/definitions/get_section_response" },
+    "summarize_request": { "$ref": "#/definitions/summarize_request" },
+    "summarize_response": { "$ref": "#/definitions/summarize_response" },
+    "translate_request": { "$ref": "#/definitions/translate_request" },
+    "translate_response": { "$ref": "#/definitions/translate_response" },
+    "bilingual_view_request": { "$ref": "#/definitions/bilingual_view_request" },
+    "bilingual_view_response": { "$ref": "#/definitions/bilingual_view_response" },
+    "open_location_request": { "$ref": "#/definitions/open_location_request" },
+    "open_location_response": { "$ref": "#/definitions/open_location_response" },
+    "error": { "$ref": "#/definitions/error" }
+  },
+  "additionalProperties": false
+}
