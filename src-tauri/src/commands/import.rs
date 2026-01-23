@@ -22,17 +22,20 @@ pub async fn import_epub(
     // Get database connection
     let conn = database::get_connection(&app_handle)?;
 
+    // Start transaction for data integrity
+    let tx = conn.unchecked_transaction()?;
+
     // Insert document
-    let doc = database::insert_document(&conn, metadata)?;
+    let doc = database::insert_document(&tx, metadata)?;
 
     // Insert sections and paragraphs
     for (title, order_index, href, paragraphs) in chapters {
-        let section = database::insert_section(&conn, &doc.id, &title, order_index, &href)?;
+        let section = database::insert_section(&tx, &doc.id, &title, order_index, &href)?;
 
         for (para_order, para_text) in paragraphs.iter().enumerate() {
             let location = format!("{}#p{}", href, para_order);
             database::insert_paragraph(
-                &conn,
+                &tx,
                 &doc.id,
                 &section.id,
                 para_order as i32,
@@ -41,6 +44,9 @@ pub async fn import_epub(
             )?;
         }
     }
+
+    // Commit transaction to save all changes atomically
+    tx.commit()?;
 
     Ok(doc.id)
 }
