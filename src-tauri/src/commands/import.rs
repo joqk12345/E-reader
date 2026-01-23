@@ -3,6 +3,13 @@ use crate::error::Result;
 use crate::parsers::EpubParser;
 use tauri::AppHandle;
 
+#[derive(Clone, serde::Serialize)]
+pub struct ImportProgress {
+    pub current: usize,
+    pub total: usize,
+    pub message: String,
+}
+
 #[tauri::command]
 pub async fn import_epub(
     app_handle: AppHandle,
