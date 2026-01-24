@@ -5,6 +5,7 @@ mod error;
 mod logger;
 mod llm;
 mod models;
+mod mcp;
 mod parsers;
 mod search;
 
@@ -17,6 +18,7 @@ pub fn run() {
         .setup(|handle| {
             logger::init_logging();
             database::init_db(handle)?;
+            handle.manage(commands::McpState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -33,6 +35,7 @@ pub fn run() {
             commands::summarize,
             commands::get_config,
             commands::update_config,
+            commands::mcp_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
