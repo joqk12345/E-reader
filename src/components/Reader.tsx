@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
+import { ToolPanel } from './ToolPanel';
 
 export function Reader() {
   const { selectedDocumentId, loadSections, goBack } = useStore();
@@ -27,6 +28,7 @@ export function Reader() {
       <div className="flex-1 flex overflow-hidden">
         <TOCPanel />
         <ReaderContent />
+        <ToolPanel />
       </div>
     </div>
   );

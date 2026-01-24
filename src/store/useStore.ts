@@ -13,6 +13,9 @@ interface ReaderState {
   paragraphs: Paragraph[];
   currentParagraph: Paragraph | null;
 
+  // Bilingual mode state
+  bilingualMode: boolean;
+
   // Actions
   loadDocuments: () => Promise<void>;
   selectDocument: (id: string) => void;
@@ -25,6 +28,15 @@ interface ReaderState {
   loadParagraphs: (sectionId: string) => Promise<void>;
   selectSection: (sectionId: string) => void;
   goBack: () => void;
+
+  // AI actions
+  search: (query: string, topK?: number) => Promise<any[]>;
+  translate: (text: string, targetLang: 'zh' | 'en') => Promise<string>;
+  translateParagraph: (paragraphId: string, targetLang: 'zh' | 'en') => Promise<string>;
+  summarize: (targetId: string, type: 'document' | 'section' | 'paragraph', style?: 'brief' | 'detailed' | 'bullet') => Promise<string>;
+
+  // Bilingual mode actions
+  toggleBilingualMode: () => void;
 }
 
 export const useStore = create<ReaderState>((set, get) => ({
@@ -37,6 +49,9 @@ export const useStore = create<ReaderState>((set, get) => ({
   currentSectionId: null,
   paragraphs: [],
   currentParagraph: null,
+
+  // Bilingual mode state
+  bilingualMode: false,
 
   loadDocuments: async () => {
     set({ isLoading: true });
@@ -126,5 +141,66 @@ export const useStore = create<ReaderState>((set, get) => ({
 
   goBack: () => {
     set({ selectedDocumentId: null, currentSectionId: null, sections: [], paragraphs: [], currentParagraph: null });
+  },
+
+  // AI actions
+  search: async (query: string, topK: number = 10) => {
+    try {
+      const results = await invoke('search', {
+        options: { query, top_k: topK }
+      });
+      return results as any[];
+    } catch (error) {
+      console.error('Search failed:', error);
+      throw error;
+    }
+  },
+
+  translate: async (text: string, targetLang: 'zh' | 'en') => {
+    try {
+      const translation = await invoke<string>('translate', {
+        text,
+        paragraphId: undefined,
+        targetLang,
+      });
+      return translation;
+    } catch (error) {
+      console.error('Translate failed:', error);
+      throw error;
+    }
+  },
+
+  translateParagraph: async (paragraphId: string, targetLang: 'zh' | 'en') => {
+    try {
+      const translation = await invoke<string>('translate', {
+        text: undefined,
+        paragraphId,
+        targetLang,
+      });
+      return translation;
+    } catch (error) {
+      console.error('Translate paragraph failed:', error);
+      throw error;
+    }
+  },
+
+  summarize: async (targetId: string, type: 'document' | 'section' | 'paragraph', style: 'brief' | 'detailed' | 'bullet' = 'brief') => {
+    try {
+      const summary = await invoke<string>('summarize', {
+        docId: type === 'document' ? targetId : undefined,
+        sectionId: type === 'section' ? targetId : undefined,
+        paragraphId: type === 'paragraph' ? targetId : undefined,
+        style,
+      });
+      return summary;
+    } catch (error) {
+      console.error('Summarize failed:', error);
+      throw error;
+    }
+  },
+
+  // Bilingual mode actions
+  toggleBilingualMode: () => {
+    set((state) => ({ bilingualMode: !state.bilingualMode }));
   },
 }));
