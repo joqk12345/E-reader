@@ -27,6 +27,7 @@ pub fn run() {
             commands::delete_document,
             commands::get_document_sections,
             commands::get_section_paragraphs,
+            commands::index_document,
             commands::search,
         ])
         .run(tauri::generate_context!())

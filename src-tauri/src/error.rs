@@ -28,6 +28,9 @@ pub enum ReaderError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Embedding error: {0}")]
+    Embedding(String),
 }
 
 pub type Result<T> = std::result::Result<T, ReaderError>;

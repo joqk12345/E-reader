@@ -26,8 +26,21 @@ pub use paragraphs::ParagraphError;
 // Embedding operations
 pub use embeddings::{insert as insert_embedding, get as get_embedding, list_all_vectors, list_by_document};
 pub use embeddings::{vec_f32_to_bytes, bytes_to_vec_f32};
-pub use embeddings::EmbeddingError;
-pub use embeddings::Embedding;
+pub use embeddings::{EmbeddingError, Embedding};
+
+// Convert EmbeddingError to ReaderError
+impl From<EmbeddingError> for crate::ReaderError {
+    fn from(err: EmbeddingError) -> Self {
+        crate::ReaderError::Embedding(err.to_string())
+    }
+}
+
+// Convert ParagraphError to ReaderError
+impl From<ParagraphError> for crate::ReaderError {
+    fn from(err: ParagraphError) -> Self {
+        crate::ReaderError::Internal(err.to_string())
+    }
+}
 
 /// Gets the path to the SQLite database file
 ///
