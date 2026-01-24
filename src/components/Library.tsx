@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
+import { Settings } from './Settings';
 
 export const Library: React.FC = () => {
   const { documents, isLoading, loadDocuments, importEpub, importPdf, deleteDocument, selectDocument } = useStore();
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     loadDocuments();
@@ -48,20 +50,31 @@ export const Library: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Library</h1>
-          <button
-            onClick={handleImport}
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-          >
-            {isLoading ? 'Importing...' : 'Import Document'}
-          </button>
+    <>
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+
+      <div className="h-full flex flex-col bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">Library</h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSettings(true)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                ⚙️ Settings
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+              >
+                {isLoading ? 'Importing...' : 'Import Document'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
       {/* Documents Grid */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -87,5 +100,6 @@ export const Library: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
