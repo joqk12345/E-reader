@@ -2,6 +2,7 @@ mod schema;
 mod documents;
 mod sections;
 mod paragraphs;
+mod embeddings;
 
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
@@ -21,6 +22,12 @@ pub use sections::SectionError;
 // Paragraph operations
 pub use paragraphs::{insert as insert_paragraph, list_by_section as list_paragraphs_by_section, list_by_document as list_paragraphs, get as get_paragraph};
 pub use paragraphs::ParagraphError;
+
+// Embedding operations
+pub use embeddings::{insert as insert_embedding, get as get_embedding, list_all_vectors, list_by_document};
+pub use embeddings::{vec_f32_to_bytes, bytes_to_vec_f32};
+pub use embeddings::EmbeddingError;
+pub use embeddings::Embedding;
 
 /// Gets the path to the SQLite database file
 ///

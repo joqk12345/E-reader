@@ -6,6 +6,7 @@ mod logger;
 mod llm;
 mod models;
 mod parsers;
+mod search;
 
 pub use error::{ReaderError, Result};
 
@@ -26,6 +27,7 @@ pub fn run() {
             commands::delete_document,
             commands::get_document_sections,
             commands::get_section_paragraphs,
+            commands::search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
