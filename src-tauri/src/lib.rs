@@ -1,7 +1,9 @@
 mod commands;
+mod config;
 mod database;
 mod error;
 mod logger;
+mod llm;
 mod models;
 mod parsers;
 
