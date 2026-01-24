@@ -22,6 +22,8 @@ pub fn run() {
             commands::list_documents,
             commands::get_document,
             commands::delete_document,
+            commands::get_document_sections,
+            commands::get_section_paragraphs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

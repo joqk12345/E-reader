@@ -90,3 +90,23 @@ pub async fn delete_document(app_handle: AppHandle, id: String) -> Result<()> {
     database::delete_document(&conn, &id)?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_document_sections(
+    app_handle: AppHandle,
+    doc_id: String,
+) -> Result<Vec<crate::models::Section>> {
+    let conn = database::get_connection(&app_handle)?;
+    let sections = database::list_sections(&conn, &doc_id)?;
+    Ok(sections)
+}
+
+#[tauri::command]
+pub async fn get_section_paragraphs(
+    app_handle: AppHandle,
+    section_id: String,
+) -> Result<Vec<crate::models::Paragraph>> {
+    let conn = database::get_connection(&app_handle)?;
+    let paragraphs = database::list_paragraphs_by_section(&conn, &section_id)?;
+    Ok(paragraphs)
+}
