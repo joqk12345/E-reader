@@ -29,6 +29,8 @@ pub fn run() {
             commands::get_section_paragraphs,
             commands::index_document,
             commands::search,
+            commands::translate,
+            commands::summarize,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

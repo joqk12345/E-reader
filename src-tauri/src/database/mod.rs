@@ -3,6 +3,7 @@ mod documents;
 mod sections;
 mod paragraphs;
 mod embeddings;
+mod cache;
 
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
@@ -28,6 +29,10 @@ pub use embeddings::{insert as insert_embedding, get as get_embedding, list_all_
 pub use embeddings::{vec_f32_to_bytes, bytes_to_vec_f32};
 pub use embeddings::{EmbeddingError, Embedding};
 
+// Cache operations
+pub use cache::{save_translation, get_translation, save_summary, get_summary};
+pub use cache::{Translation, Summary, CacheError};
+
 // Convert EmbeddingError to ReaderError
 impl From<EmbeddingError> for crate::ReaderError {
     fn from(err: EmbeddingError) -> Self {
@@ -38,6 +43,13 @@ impl From<EmbeddingError> for crate::ReaderError {
 // Convert ParagraphError to ReaderError
 impl From<ParagraphError> for crate::ReaderError {
     fn from(err: ParagraphError) -> Self {
+        crate::ReaderError::Internal(err.to_string())
+    }
+}
+
+// Convert CacheError to ReaderError
+impl From<CacheError> for crate::ReaderError {
+    fn from(err: CacheError) -> Self {
         crate::ReaderError::Internal(err.to_string())
     }
 }
