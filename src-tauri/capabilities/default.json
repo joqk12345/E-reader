@@ -5,6 +5,9 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "core:path:allow-resolve-directory",
+    "core:path:allow-resolve",
+    "dialog:default",
+    "dialog:allow-open"
   ]
 }

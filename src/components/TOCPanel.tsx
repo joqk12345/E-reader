@@ -1,40 +1,125 @@
+import { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 
-export function TOCPanel() {
+type TOCPanelProps = {
+  collapsed: boolean;
+  width: number;
+  minWidth: number;
+  maxWidth: number;
+  onToggleCollapse: () => void;
+  onWidthChange: (width: number) => void;
+};
+
+export function TOCPanel({
+  collapsed,
+  width,
+  minWidth,
+  maxWidth,
+  onToggleCollapse,
+  onWidthChange,
+}: TOCPanelProps) {
   const { sections, currentSectionId, selectSection, loadParagraphs } = useStore();
+  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const handleSectionClick = async (sectionId: string) => {
     selectSection(sectionId);
     await loadParagraphs(sectionId);
   };
 
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!dragStateRef.current) return;
+      const delta = event.clientX - dragStateRef.current.startX;
+      const nextWidth = Math.min(
+        maxWidth,
+        Math.max(minWidth, dragStateRef.current.startWidth + delta)
+      );
+      onWidthChange(nextWidth);
+    };
+
+    const handlePointerUp = () => {
+      dragStateRef.current = null;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [maxWidth, minWidth, onWidthChange]);
+
   return (
-    <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Table of Contents</h2>
+    <aside
+      className="relative bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
+      style={{ width: collapsed ? 48 : width }}
+    >
+      <div className={`flex items-center justify-between border-b border-gray-200 ${collapsed ? 'p-2' : 'p-4'}`}>
+        {collapsed ? (
+          <span className="text-xs font-semibold text-gray-700">TOC</span>
+        ) : (
+          <h2 className="text-lg font-semibold text-gray-900">Table of Contents</h2>
+        )}
+        <button
+          onClick={onToggleCollapse}
+          className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg
+            viewBox="0 0 20 20"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {collapsed ? <path d="M8 4l6 6-6 6" /> : <path d="M12 4l-6 6 6 6" />}
+          </svg>
+        </button>
       </div>
-      <nav className="p-2">
+      <nav className={collapsed ? 'p-1' : 'p-2'}>
         {sections.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No sections available</p>
+          <p className={`text-sm text-gray-500 text-center ${collapsed ? 'py-2' : 'py-4'}`}>
+            No sections
+          </p>
         ) : (
           <ul className="space-y-1">
             {sections.map((section) => (
               <li key={section.id}>
                 <button
                   onClick={() => handleSectionClick(section.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  title={section.title}
+                  className={`w-full rounded-md text-sm transition-colors ${
+                    collapsed ? 'px-0 py-2 text-center' : 'px-3 py-2 text-left'
+                  } ${
                     currentSectionId === section.id
                       ? 'bg-blue-50 text-blue-700 font-medium'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {section.title}
+                  {collapsed ? section.title.slice(0, 1).toUpperCase() : section.title}
                 </button>
               </li>
             ))}
           </ul>
         )}
       </nav>
-    </div>
+      {!collapsed && (
+        <div
+          className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-gray-200"
+          onPointerDown={(event) => {
+            dragStateRef.current = { startX: event.clientX, startWidth: width };
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+          }}
+        />
+      )}
+    </aside>
   );
 }

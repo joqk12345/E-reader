@@ -1,15 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
 type SummaryStyle = 'brief' | 'detailed' | 'bullet';
 
 export const SummaryPanel: React.FC = () => {
-  const { selectedDocumentId, currentSectionId, currentParagraph } = useStore();
+  const { selectedDocumentId, currentSectionId, currentParagraph, summaryCache, setSummaryCache } = useStore();
   const [style, setStyle] = useState<SummaryStyle>('brief');
   const [summary, setSummary] = useState<string>('');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const getSummaryKey = () => {
+    if (currentParagraph) return `paragraph:${currentParagraph.id}:${style}`;
+    if (currentSectionId) return `section:${currentSectionId}:${style}`;
+    if (selectedDocumentId) return `document:${selectedDocumentId}:${style}`;
+    return '';
+  };
+
+  const stripThinking = (text: string) => {
+    if (!text) return text;
+    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  };
+
+  useEffect(() => {
+    const key = getSummaryKey();
+    setSummary(key ? summaryCache[key] || '' : '');
+  }, [style, currentParagraph, currentSectionId, selectedDocumentId, summaryCache]);
+
+  useEffect(() => {
+    const key = getSummaryKey();
+    if (!key || summaryCache[key]) return;
+
+    const loadCachedSummary = async () => {
+      try {
+        const cached = await invoke<string | null>('get_summary_cache', {
+          docId: currentParagraph ? undefined : selectedDocumentId,
+          sectionId: currentParagraph ? undefined : currentSectionId || undefined,
+          paragraphId: currentParagraph?.id || undefined,
+          style,
+        });
+        if (cached) {
+          const cleaned = stripThinking(cached);
+          setSummary(cleaned);
+          setSummaryCache(key, cleaned);
+        }
+      } catch (err) {
+        // Silent fail: cache miss or transient error should not block UI
+        console.warn('Failed to load cached summary:', err);
+      }
+    };
+
+    loadCachedSummary();
+  }, [
+    style,
+    currentParagraph,
+    currentSectionId,
+    selectedDocumentId,
+    summaryCache,
+    setSummaryCache,
+  ]);
+
+  const getFriendlyError = (err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes('502') ||
+      normalized.includes('bad gateway') ||
+      normalized.includes('connection refused') ||
+      normalized.includes('econnrefused') ||
+      normalized.includes('failed to send request')
+    ) {
+      return 'LM Studio 服务未开启或模型未加载。请先启动 LM Studio 并加载模型。';
+    }
+    return message || 'Summarization failed';
+  };
 
   const handleSummarize = async () => {
     if (!selectedDocumentId) {
@@ -20,16 +85,21 @@ export const SummaryPanel: React.FC = () => {
     setIsSummarizing(true);
     setError(null);
     try {
+      const cacheKey = getSummaryKey();
       const result = await invoke<string>('summarize', {
         docId: currentParagraph ? undefined : selectedDocumentId,
         sectionId: currentParagraph ? undefined : currentSectionId || undefined,
         paragraphId: currentParagraph?.id || undefined,
         style,
       });
-      setSummary(result);
+      const cleaned = stripThinking(result);
+      setSummary(cleaned);
+      if (cacheKey) {
+        setSummaryCache(cacheKey, cleaned);
+      }
     } catch (err) {
       console.error('Summarize failed:', err);
-      setError(err instanceof Error ? err.message : 'Summarization failed');
+      setError(getFriendlyError(err));
       setSummary('');
     } finally {
       setIsSummarizing(false);

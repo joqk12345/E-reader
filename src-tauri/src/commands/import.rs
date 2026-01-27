@@ -15,7 +15,7 @@ pub async fn import_epub(
     app_handle: AppHandle,
     file_path: String,
 ) -> Result<String> {
-    let parser = EpubParser::new(&file_path)?;
+    let mut parser = EpubParser::new(&file_path)?;
     let (metadata, chapters) = parser.parse_all()?;
     import_document_internal(app_handle, metadata, chapters).await
 }
@@ -44,8 +44,12 @@ async fn import_document_internal(
     // Insert document
     let doc = database::insert_document(&tx, metadata)?;
 
+    tracing::info!("Importing document {} with {} chapters", doc.id, chapters.len());
+
     // Insert sections and paragraphs
     for (title, order_index, href, paragraphs) in chapters {
+        tracing::info!("Processing chapter {}: {} ({} paragraphs)", title, href, paragraphs.len());
+
         let section = database::insert_section(&tx, &doc.id, &title, order_index, &href)?;
 
         for (para_order, para_text) in paragraphs.iter().enumerate() {
@@ -59,11 +63,14 @@ async fn import_document_internal(
                 &location,
             )?;
         }
+
+        tracing::info!("Inserted {} paragraphs for section {}", paragraphs.len(), section.id);
     }
 
     // Commit transaction to save all changes atomically
     tx.commit()?;
 
+    tracing::info!("Document import completed successfully");
     Ok(doc.id)
 }
 

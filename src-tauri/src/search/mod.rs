@@ -76,7 +76,7 @@ pub async fn semantic_search(
     let query_embedding = llm_client.generate_embedding(&options.query).await?;
 
     // Get all embeddings (optionally filtered by document)
-    let embeddings = if let Some(doc_id) = &options.doc_id {
+    let embeddings: Vec<(String, Vec<f32>)> = if let Some(doc_id) = &options.doc_id {
         embeddings::list_by_document(conn, doc_id)?
             .into_iter()
             .filter_map(|emb| {
@@ -119,7 +119,7 @@ pub async fn semantic_search(
     // Calculate cosine similarity for each embedding
     let mut similarities: Vec<(String, f32)> = embeddings
         .into_iter()
-        .map(|(paragraph_id, vector)| {
+        .map(|(paragraph_id, vector): (String, Vec<f32>)| {
             let score = cosine_similarity(&query_embedding, &vector).unwrap_or(0.0);
             (paragraph_id, score)
         })
@@ -132,7 +132,7 @@ pub async fn semantic_search(
     let top_paragraph_ids: Vec<String> = similarities
         .iter()
         .take(options.top_k)
-        .map(|(id, _)| id.clone())
+        .map(|(id, _): &(String, f32)| id.clone())
         .collect();
 
     // Build a query to get all paragraphs in one go
@@ -153,12 +153,6 @@ pub async fn semantic_search(
 
     let mut stmt = conn.prepare(&query)?;
 
-    let paragraph_map: HashMap<String, (String, String)> = top_paragraph_ids
-        .iter()
-        .enumerate()
-        .map(|(i, id)| (id.clone(), i))
-        .collect();
-
     let mut paragraphs_result = HashMap::new();
     let rows = stmt.query_map(
         top_paragraph_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect::<Vec<_>>().as_slice(),
@@ -178,7 +172,7 @@ pub async fn semantic_search(
     // Build the final results with scores and snippets
     let mut results = Vec::new();
     for (paragraph_id, score) in similarities.iter().take(options.top_k) {
-        if let Some((text, location)) = paragraphs_result.get(paragraph_id) {
+        if let Some((text, location)) = paragraphs_result.get::<str>(paragraph_id.as_str()) {
             // Create a snippet (first 200 characters)
             let snippet = if text.len() > 200 {
                 format!("{}...", &text[..200])

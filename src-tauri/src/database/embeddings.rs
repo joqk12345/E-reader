@@ -92,7 +92,8 @@ pub fn get(conn: &Connection, paragraph_id: &str) -> Result<Option<Embedding>, E
 
     let embeddings = stmt.query_map(params![paragraph_id], |row| {
         let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)?;
+        let vector = bytes_to_vec_f32(&bytes)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
         Ok(Embedding {
             id: row.get(0)?,
             paragraph_id: row.get(1)?,
@@ -117,7 +118,8 @@ pub fn list_all_vectors(conn: &Connection) -> Result<Vec<Embedding>, EmbeddingEr
 
     let embeddings = stmt.query_map([], |row| {
         let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)?;
+        let vector = bytes_to_vec_f32(&bytes)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
         Ok(Embedding {
             id: row.get(0)?,
             paragraph_id: row.get(1)?,
@@ -148,7 +150,8 @@ pub fn list_by_document(
 
     let embeddings = stmt.query_map(params![doc_id], |row| {
         let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)?;
+        let vector = bytes_to_vec_f32(&bytes)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
         Ok(Embedding {
             id: row.get(0)?,
             paragraph_id: row.get(1)?,

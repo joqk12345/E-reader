@@ -16,6 +16,9 @@ interface ReaderState {
   // Bilingual mode state
   bilingualMode: boolean;
 
+  // UI cache
+  summaryCache: Record<string, string>;
+
   // Actions
   loadDocuments: () => Promise<void>;
   selectDocument: (id: string) => void;
@@ -37,6 +40,9 @@ interface ReaderState {
 
   // Bilingual mode actions
   toggleBilingualMode: () => void;
+
+  // UI cache actions
+  setSummaryCache: (key: string, summary: string) => void;
 }
 
 export const useStore = create<ReaderState>((set, get) => ({
@@ -52,6 +58,9 @@ export const useStore = create<ReaderState>((set, get) => ({
 
   // Bilingual mode state
   bilingualMode: false,
+
+  // UI cache
+  summaryCache: {},
 
   loadDocuments: async () => {
     set({ isLoading: true });
@@ -127,6 +136,9 @@ export const useStore = create<ReaderState>((set, get) => ({
     set({ isLoading: true });
     try {
       const paragraphs = await invoke<Paragraph[]>('get_section_paragraphs', { sectionId });
+      if (paragraphs.length === 0) {
+        console.warn('No paragraphs found for section:', sectionId);
+      }
       set({ paragraphs, currentParagraph: paragraphs[0] || null, isLoading: false });
     } catch (error) {
       console.error('Failed to load paragraphs:', error);
@@ -202,5 +214,11 @@ export const useStore = create<ReaderState>((set, get) => ({
   // Bilingual mode actions
   toggleBilingualMode: () => {
     set((state) => ({ bilingualMode: !state.bilingualMode }));
+  },
+
+  setSummaryCache: (key: string, summary: string) => {
+    set((state) => ({
+      summaryCache: { ...state.summaryCache, [key]: summary },
+    }));
   },
 }));

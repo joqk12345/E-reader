@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result, params};
 use uuid::Uuid;
-use crate::models::paragraph::Paragraph;
+use crate::models::Paragraph;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

@@ -1,7 +1,7 @@
 import { useStore } from '../store/useStore';
 
 export function ReaderContent() {
-  const { paragraphs, isLoading } = useStore();
+  const { paragraphs, isLoading, currentSectionId } = useStore();
 
   if (isLoading) {
     return (
@@ -17,7 +17,11 @@ export function ReaderContent() {
   if (paragraphs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Select a section from the table of contents</p>
+        <p className="text-gray-500">
+          {currentSectionId
+            ? 'No content extracted for this section. The parser may have failed.'
+            : 'Select a section from the table of contents'}
+        </p>
       </div>
     );
   }

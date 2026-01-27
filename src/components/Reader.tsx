@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
@@ -7,6 +7,26 @@ import { BilingualView } from './BilingualView';
 
 export function Reader() {
   const { selectedDocumentId, loadSections, goBack, bilingualMode, toggleBilingualMode, currentParagraph } = useStore();
+  const [tocCollapsed, setTocCollapsed] = useState(false);
+  const [tocWidth, setTocWidth] = useState(256);
+  const minTocWidth = 200;
+  const maxTocWidth = 420;
+
+  const handleTocWidthChange = (width: number) => {
+    setTocWidth(width);
+  };
+
+  const tocPanelProps = useMemo(
+    () => ({
+      collapsed: tocCollapsed,
+      width: tocWidth,
+      minWidth: minTocWidth,
+      maxWidth: maxTocWidth,
+      onToggleCollapse: () => setTocCollapsed((prev) => !prev),
+      onWidthChange: handleTocWidthChange,
+    }),
+    [tocCollapsed, tocWidth]
+  );
 
   useEffect(() => {
     if (selectedDocumentId) {
@@ -41,7 +61,7 @@ export function Reader() {
         <div className="w-32"></div>
       </header>
       <div className="flex-1 flex overflow-hidden">
-        <TOCPanel />
+        <TOCPanel {...tocPanelProps} />
         {bilingualMode && currentParagraph ? (
           <BilingualView paragraphId={currentParagraph.id} originalText={currentParagraph.text} />
         ) : (

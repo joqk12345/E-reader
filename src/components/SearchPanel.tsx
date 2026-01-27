@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useStore } from '../store/useStore';
 
 interface SearchResult {
   paragraph_id: string;
@@ -9,11 +10,31 @@ interface SearchResult {
 }
 
 export const SearchPanel: React.FC = () => {
+  const { selectedDocumentId } = useStore();
   const [query, setQuery] = useState('');
   const [topK, setTopK] = useState(10);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isIndexing, setIsIndexing] = useState(false);
+
+  const getFriendlyError = (err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    const normalized = message.toLowerCase();
+    if (normalized.includes('no models loaded')) {
+      return 'LM Studio 未加载 embedding 模型。请先在 LM Studio 加载 embedding 模型，并在设置中填写对应的 Embedding Model 名称。';
+    }
+    if (
+      normalized.includes('502') ||
+      normalized.includes('bad gateway') ||
+      normalized.includes('connection refused') ||
+      normalized.includes('econnrefused') ||
+      normalized.includes('failed to send request')
+    ) {
+      return 'LM Studio 服务未开启或模型未加载。请先启动 LM Studio 并加载模型。';
+    }
+    return message || 'Search failed';
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -25,15 +46,30 @@ export const SearchPanel: React.FC = () => {
         options: {
           query,
           top_k: topK,
+          doc_id: selectedDocumentId || undefined,
         }
       });
       setResults(searchResults);
     } catch (err) {
       console.error('Search failed:', err);
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(getFriendlyError(err));
       setResults([]);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleIndexDocument = async () => {
+    if (!selectedDocumentId) return;
+    setIsIndexing(true);
+    setError(null);
+    try {
+      await invoke<number>('index_document', { docId: selectedDocumentId });
+    } catch (err) {
+      console.error('Index failed:', err);
+      setError(getFriendlyError(err));
+    } finally {
+      setIsIndexing(false);
     }
   };
 
@@ -73,6 +109,16 @@ export const SearchPanel: React.FC = () => {
             </select>
           </label>
 
+          {selectedDocumentId && (
+            <button
+              onClick={handleIndexDocument}
+              disabled={isIndexing}
+              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:bg-gray-200 transition-colors"
+            >
+              {isIndexing ? 'Indexing...' : 'Index Document'}
+            </button>
+          )}
+
           <button
             onClick={handleSearch}
             disabled={isSearching || !query.trim()}
@@ -97,7 +143,11 @@ export const SearchPanel: React.FC = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="text-sm">Enter a query to search</p>
+            <p className="text-sm">
+              {query.trim()
+                ? 'No results. If this is a new document, click "Index Document" first.'
+                : 'Enter a query to search'}
+            </p>
           </div>
         )}
 

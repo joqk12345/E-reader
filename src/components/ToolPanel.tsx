@@ -15,7 +15,7 @@ export const ToolPanel: React.FC = () => {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-white border-l border-gray-200">
+    <div className="h-full flex flex-col bg-white border-l border-gray-200 w-80 flex-shrink-0">
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
         {tabs.map((tab) => (

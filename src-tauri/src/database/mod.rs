@@ -1,13 +1,13 @@
 mod schema;
 mod documents;
 mod sections;
-mod paragraphs;
-mod embeddings;
+pub mod paragraphs;
+pub mod embeddings;
 mod cache;
 
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tracing::{info, error};
 
 pub use schema::create_tables;
@@ -54,6 +54,20 @@ impl From<CacheError> for crate::ReaderError {
     }
 }
 
+// Convert DocumentError to ReaderError
+impl From<DocumentError> for crate::ReaderError {
+    fn from(err: DocumentError) -> Self {
+        crate::ReaderError::Internal(err.to_string())
+    }
+}
+
+// Convert SectionError to ReaderError
+impl From<SectionError> for crate::ReaderError {
+    fn from(err: SectionError) -> Self {
+        crate::ReaderError::Internal(err.to_string())
+    }
+}
+
 /// Gets the path to the SQLite database file
 ///
 /// Returns the path to reader.db in the application's data directory
@@ -80,7 +94,10 @@ pub fn get_connection(handle: &AppHandle) -> Result<Connection> {
     let mut conn = Connection::open(db_path)?;
 
     // Enable WAL mode for better concurrency
-    conn.execute("PRAGMA journal_mode = WAL", [])?;
+    // Note: journal_mode returns a value, so we use query_row
+    let _journal_mode = conn.query_row("PRAGMA journal_mode = WAL", [], |row| {
+        row.get::<_, String>(0)
+    })?;
 
     // Set busy timeout to 5 seconds
     conn.busy_timeout(std::time::Duration::from_secs(5))?;

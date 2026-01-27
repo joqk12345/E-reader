@@ -34,7 +34,8 @@ export const Library: React.FC = () => {
       }
     } catch (error) {
       console.error('Import failed:', error);
-      alert('Failed to import document');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Failed to import document: ${errorMessage}`);
     }
   };
 

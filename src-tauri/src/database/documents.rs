@@ -1,7 +1,7 @@
 use rusqlite::{Connection, Result, params};
 use uuid::Uuid;
 use chrono::Utc;
-use crate::models::document::{Document, NewDocument};
+use crate::models::{Document, NewDocument};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

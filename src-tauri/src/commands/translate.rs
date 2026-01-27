@@ -1,7 +1,8 @@
 use crate::config::load_config;
-use crate::database::{get_connection, get_paragraph, save_translation, get_translation};
+use crate::database::{get_connection, get_paragraph, save_translation, get_translation, save_summary, get_summary};
 use crate::error::{Result, ReaderError};
-use crate::llm::{LmStudioClient, ChatMessage};
+use crate::llm::{LmStudioClient};
+use crate::llm::lmstudio::ChatMessage;
 use tauri::AppHandle;
 
 /// Translates text or a paragraph to a target language
@@ -255,4 +256,50 @@ pub async fn summarize(
     save_summary(&conn, &target_id, &target_type, &style, &summary)?;
 
     Ok(summary)
+}
+
+/// Returns a cached summary without calling the LLM.
+///
+/// Accepts exactly one of:
+/// - `doc_id`
+/// - `section_id`
+/// - `paragraph_id`
+#[tauri::command]
+pub async fn get_summary_cache(
+    app_handle: AppHandle,
+    doc_id: Option<String>,
+    section_id: Option<String>,
+    paragraph_id: Option<String>,
+    style: String,
+) -> Result<Option<String>> {
+    let provided_count = [doc_id.is_some(), section_id.is_some(), paragraph_id.is_some()]
+        .iter()
+        .filter(|&&x| x)
+        .count();
+
+    if provided_count != 1 {
+        return Err(ReaderError::InvalidArgument(
+            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string()
+        ));
+    }
+
+    if !matches!(style.as_str(), "brief" | "detailed" | "bullet") {
+        return Err(ReaderError::InvalidArgument(
+            format!("Style must be one of: brief, detailed, bullet. Got: {}", style)
+        ));
+    }
+
+    let (target_id, target_type): (String, String) = if let Some(pid) = paragraph_id {
+        (pid, "paragraph".to_string())
+    } else if let Some(sid) = section_id {
+        (sid, "section".to_string())
+    } else if let Some(did) = doc_id {
+        (did, "document".to_string())
+    } else {
+        unreachable!("We already validated that exactly one is provided")
+    };
+
+    let conn = get_connection(&app_handle)?;
+    let cached = get_summary(&conn, &target_id, &target_type, &style)?;
+    Ok(cached.map(|c| c.summary))
 }
