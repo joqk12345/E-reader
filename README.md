@@ -13,7 +13,7 @@
 - **Semantic Search**: AI-powered search across all indexed paragraphs
 - **PDF Support**: Full PDF parsing and reading capabilities
 
-### 🤖 AI-Powered Tools (Local-Only, Privacy-First)
+### 🤖 AI-Powered Tools (Flexible AI Provider Support)
 - **Summarization**: Organize and summarize content with configurable styles
   - Target scope: Full document / Current section / Current paragraph
   - Styles: Brief (1-2 sentences), Detailed (multi-paragraph), Bullet points
@@ -21,11 +21,17 @@
 - **Translation**: Translate content to Chinese or English
 - **Bilingual Mode**: Side-by-side original and translated text view
 - **MCP Integration**: Model Context Protocol host server for external AI assistants
+- **Multiple AI Providers**:
+  - **LM Studio**: Run AI completely locally for maximum privacy
+  - **OpenAI**: Use cloud-based AI for convenience without local models
+  - Easy switching between providers in settings
 
-### 🔒 Privacy & Offline
-- **Local-First**: All AI features run locally using LM Studio
-- **No Cloud Dependencies**: Your data never leaves your device
-- **Offline Capable**: Works without internet connection
+### 🔒 Privacy & Flexibility
+- **Local-First Option**: All AI features can run locally using LM Studio
+- **Cloud Option**: Use OpenAI API when local resources are limited
+- **Your Choice**: Switch between local and cloud AI anytime
+- **No Forced Cloud**: Data never leaves your device when using LM Studio
+- **Offline Capable**: Works without internet when using local AI
 
 ## 📸 Screenshots
 
@@ -87,12 +93,43 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 ### AI Features Setup
 
-To use AI features (summarization, translation, bilingual view):
+Reader supports two AI providers - choose based on your needs:
+
+#### Option 1: LM Studio (Local, Privacy-First)
+
+**Best for**: Maximum privacy, offline usage, no API costs
 
 1. **Install LM Studio**: Download from [lmstudio.ai](https://lmstudio.ai)
 2. **Start a Local Server**: In LM Studio, start a local inference server (default: `http://localhost:1234/v1`)
 3. **Load a Model**: Download and load a suitable model (recommended: Llama 3.1, Qwen 2.5, or similar)
-4. **Use AI Tools**: Open the Summary or Translate panels in Reader
+4. **Configure Reader**:
+   - Open Settings (⚙️)
+   - Select "LM Studio (Local)" as AI Provider
+   - Enter LM Studio URL: `http://localhost:1234/v1`
+   - Set model names for embeddings and chat
+5. **Use AI Tools**: Open the Summary or Translate panels in Reader
+
+#### Option 2: OpenAI (Cloud, Convenient)
+
+**Best for**: Better performance, no local hardware requirements, quick setup
+
+1. **Get an API Key**:
+   - Visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+   - Create an account or sign in
+   - Generate a new API key
+2. **Configure Reader**:
+   - Open Settings (⚙️)
+   - Select "OpenAI (Cloud)" as AI Provider
+   - Enter your API Key (starts with `sk-`)
+   - Optionally customize base URL for compatible APIs
+   - Set model names:
+     - Embeddings: `text-embedding-3-small` (recommended) or `text-embedding-ada-002`
+     - Chat: `gpt-4o`, `gpt-4-turbo`, or `gpt-3.5-turbo`
+3. **Save and Use**: All AI features will now use OpenAI
+
+#### Switching Between Providers
+
+You can switch between LM Studio and OpenAI anytime in Settings without losing data or configuration.
 
 ### Summarization
 
@@ -123,6 +160,62 @@ To use AI features (summarization, translation, bilingual view):
 - **Bilingual View**: Side-by-side display of original and translated text
 - **Languages**: Support for Chinese ↔ English
 - **Caching**: Translations are cached per paragraph for efficiency
+
+## 🤖 AI Provider Comparison
+
+| Feature | LM Studio (Local) | OpenAI (Cloud) |
+|---------|------------------|----------------|
+| **Privacy** | ✅ 100% local, data never leaves device | ⚠️ Data sent to OpenAI servers |
+| **Cost** | ✅ Free (after model download) | 💰 Pay-per-use API fees |
+| **Speed** | ⚠️ Depends on hardware | ✅ Fast, cloud-optimized |
+| **Quality** | ⚠️ Varies by model | ✅ State-of-the-art models |
+| **Offline** | ✅ Works without internet | ❌ Requires internet |
+| **Setup** | ⚠️ Requires model download | ✅ Quick API key setup |
+| **Hardware** | 💻 Needs capable computer | 🌐 Any device |
+| **Embedding Models** | text-embedding-ada-002 (compatible) | text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002 |
+| **Chat Models** | Llama 3.1, Qwen 2.5, Mistral, etc. | gpt-4o, gpt-4-turbo, gpt-3.5-turbo |
+
+### Recommended Use Cases
+
+**Choose LM Studio when you:**
+- Need maximum privacy and data security
+- Want to avoid API costs
+- Have a powerful computer
+- Prefer offline usage
+- Work with sensitive documents
+
+**Choose OpenAI when you:**
+- Want the best AI quality
+- Have limited hardware resources
+- Need faster processing
+- Don't mind paying for API usage
+- Want quick setup without downloading models
+
+### Configuration Examples
+
+**LM Studio Configuration:**
+```json
+{
+  "provider": "lmstudio",
+  "lm_studio_url": "http://localhost:1234/v1",
+  "embedding_model": "text-embedding-ada-002",
+  "chat_model": "local-model"
+}
+```
+
+**OpenAI Configuration:**
+```json
+{
+  "provider": "openai",
+  "lm_studio_url": "http://localhost:1234/v1",
+  "embedding_model": "text-embedding-3-small",
+  "chat_model": "gpt-4o",
+  "openai_api_key": "sk-your-api-key-here",
+  "openai_base_url": "https://api.openai.com/v1"
+}
+```
+
+> 💡 **Tip**: You can switch between providers anytime in Settings. Your embeddings and cached translations/summaries remain intact!
 
 ## 🔧 Development
 
