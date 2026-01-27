@@ -1,8 +1,7 @@
 use crate::config::load_config;
 use crate::database::{get_connection, get_paragraph, save_translation, get_translation, save_summary, get_summary};
 use crate::error::{Result, ReaderError};
-use crate::llm::{LmStudioClient};
-use crate::llm::lmstudio::ChatMessage;
+use crate::llm::{create_client, ChatMessage};
 use tauri::AppHandle;
 
 /// Translates text or a paragraph to a target language
@@ -36,15 +35,9 @@ pub async fn translate(
         _ => {}
     }
 
-    // Load configuration
+    // Load configuration and create LLM client
     let config = load_config()?;
-
-    // Create LLM client
-    let llm_client = LmStudioClient::new(
-        config.lm_studio_url,
-        config.embedding_model,
-        config.chat_model,
-    )?;
+    let llm_client = create_client(&config)?;
 
     // Get text to translate
     let text_to_translate = if let Some(pid) = &paragraph_id {
@@ -231,15 +224,9 @@ pub async fn summarize(
         },
     ];
 
-    // Load configuration
+    // Load configuration and create LLM client
     let config = load_config()?;
-
-    // Create LLM client
-    let llm_client = LmStudioClient::new(
-        config.lm_studio_url,
-        config.embedding_model,
-        config.chat_model,
-    )?;
+    let llm_client = create_client(&config)?;
 
     // Call LLM with appropriate max_tokens based on style
     let max_tokens = match style.as_str() {

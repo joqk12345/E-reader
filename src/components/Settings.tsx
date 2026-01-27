@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
+type AiProvider = 'lmstudio' | 'openai';
+
 interface Config {
+  provider: AiProvider;
   lm_studio_url: string;
   embedding_model: string;
   chat_model: string;
+  openai_api_key?: string;
+  openai_base_url?: string;
 }
 
 interface SettingsProps {
@@ -13,9 +18,12 @@ interface SettingsProps {
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [config, setConfig] = useState<Config>({
+    provider: 'lmstudio',
     lm_studio_url: '',
     embedding_model: '',
     chat_model: '',
+    openai_api_key: '',
+    openai_base_url: 'https://api.openai.com/v1',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -99,23 +107,88 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             </div>
           )}
 
-          {/* LM Studio URL */}
+          {/* AI Provider Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              LM Studio URL
+              AI Provider
             </label>
-            <input
-              type="text"
-              value={config.lm_studio_url}
-              onChange={handleChange('lm_studio_url')}
-              placeholder="http://localhost:1234/v1"
+            <select
+              value={config.provider}
+              onChange={(e) => setConfig((prev) => ({ ...prev, provider: e.target.value as AiProvider }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="lmstudio">LM Studio (Local)</option>
+              <option value="openai">OpenAI (Cloud)</option>
+            </select>
             <p className="mt-1 text-xs text-gray-500">
-              The API endpoint for LM Studio (e.g., http://localhost:1234/v1)
+              {config.provider === 'lmstudio'
+                ? 'Use local LM Studio for offline, privacy-focused AI features'
+                : 'Use OpenAI API for cloud-based AI features (requires API key)'}
             </p>
           </div>
 
+          {/* LM Studio Configuration */}
+          {config.provider === 'lmstudio' && (
+            <>
+              {/* LM Studio URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  LM Studio URL
+                </label>
+                <input
+                  type="text"
+                  value={config.lm_studio_url}
+                  onChange={handleChange('lm_studio_url')}
+                  placeholder="http://localhost:1234/v1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  The API endpoint for LM Studio (e.g., http://localhost:1234/v1)
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* OpenAI Configuration */}
+          {config.provider === 'openai' && (
+            <>
+              {/* OpenAI API Key */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  OpenAI API Key
+                </label>
+                <input
+                  type="password"
+                  value={config.openai_api_key || ''}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, openai_api_key: e.target.value }))}
+                  placeholder="sk-..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Your OpenAI API key (get one from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com</a>)
+                </p>
+              </div>
+
+              {/* OpenAI Base URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  OpenAI Base URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={config.openai_base_url || ''}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, openai_base_url: e.target.value }))}
+                  placeholder="https://api.openai.com/v1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Custom base URL (for OpenAI proxies or compatible services)
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Common Model Settings (for both providers) */}
           {/* Embedding Model */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,6 +203,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             />
             <p className="mt-1 text-xs text-gray-500">
               Model name for generating embeddings (semantic search)
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {config.provider === 'openai'
+                ? 'OpenAI: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002'
+                : 'LM Studio: text-embedding-ada-002 (or compatible model)'}
             </p>
           </div>
 
@@ -147,6 +225,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             />
             <p className="mt-1 text-xs text-gray-500">
               Model name for chat, translation, and summarization
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {config.provider === 'openai'
+                ? 'OpenAI: gpt-4o, gpt-4-turbo, gpt-3.5-turbo, etc.'
+                : 'LM Studio: Any local model loaded (e.g., Llama 3.1, Qwen 2.5)'}
             </p>
           </div>
         </div>

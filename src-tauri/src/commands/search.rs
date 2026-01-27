@@ -1,12 +1,11 @@
 use crate::config::load_config;
 use crate::database::{get_connection, embeddings};
 use crate::error::Result;
-use crate::llm::LmStudioClient;
+use crate::llm::create_client;
 use crate::search::{SearchOptions, SearchResult, cosine_similarity};
-use crate::database::paragraphs;
 use tauri::AppHandle;
-use rusqlite::Connection;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Output type for search results
 #[derive(Clone, serde::Serialize)]
@@ -40,15 +39,9 @@ pub async fn search(
     app_handle: AppHandle,
     options: SearchOptions,
 ) -> Result<Vec<SearchResultOutput>> {
-    // Load configuration
+    // Load configuration and create LLM client
     let config = load_config()?;
-
-    // Create LLM client
-    let llm_client = LmStudioClient::new(
-        config.lm_studio_url,
-        config.embedding_model,
-        config.chat_model,
-    )?;
+    let llm_client = create_client(&config)?;
 
     // Get database connection and collect all embeddings (synchronous part)
     let all_embeddings: Vec<(String, Vec<f32>)>;

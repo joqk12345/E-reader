@@ -1,6 +1,6 @@
 use crate::database::{embeddings, paragraphs, get_connection};
 use crate::error::{ReaderError, Result};
-use crate::llm::LmStudioClient;
+use crate::llm::AiClient;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -69,7 +69,7 @@ fn default_top_k() -> usize {
 /// 3. Returns the top_k most similar paragraphs with their scores
 pub async fn semantic_search(
     conn: &Connection,
-    llm_client: &LmStudioClient,
+    llm_client: &dyn AiClient,
     options: SearchOptions,
 ) -> Result<Vec<SearchResult>> {
     // Generate embedding for the query

@@ -2,7 +2,7 @@ use crate::config::load_config;
 use crate::database::get_connection;
 use crate::database::{get_embedding, insert_embedding, list_paragraphs};
 use crate::error::Result;
-use crate::llm::LmStudioClient;
+use crate::llm::create_client;
 use tauri::AppHandle;
 use tracing::{info, error, warn};
 
@@ -23,15 +23,9 @@ use tracing::{info, error, warn};
 pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usize> {
     info!("Starting document indexing for doc_id: {}", doc_id);
 
-    // Load configuration
+    // Load configuration and create LLM client
     let config = load_config()?;
-
-    // Create LLM client
-    let llm_client = LmStudioClient::new(
-        config.lm_studio_url,
-        config.embedding_model,
-        config.chat_model,
-    )?;
+    let llm_client = create_client(&config)?;
 
     // Get database connection
     let conn = get_connection(&app_handle)?;

@@ -40,23 +40,30 @@ struct ChatChoice {
     message: ChatMessage,
 }
 
-pub struct LmStudioClient {
+pub struct OpenAiClient {
     client: Client,
     base_url: String,
+    api_key: String,
     embedding_model: String,
     chat_model: String,
 }
 
-impl LmStudioClient {
-    pub fn new(base_url: String, embedding_model: String, chat_model: String) -> Result<Self> {
+impl OpenAiClient {
+    pub fn new(
+        base_url: String,
+        api_key: String,
+        embedding_model: String,
+        chat_model: String,
+    ) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(120))
             .build()
             .map_err(|e| ReaderError::Internal(format!("Failed to create HTTP client: {}", e)))?;
 
-        Ok(LmStudioClient {
+        Ok(OpenAiClient {
             client,
             base_url,
+            api_key,
             embedding_model,
             chat_model,
         })
@@ -64,7 +71,7 @@ impl LmStudioClient {
 }
 
 #[async_trait]
-impl AiClient for LmStudioClient {
+impl AiClient for OpenAiClient {
     async fn generate_embedding(&self, text: &str) -> Result<Vec<f32>> {
         let url = format!("{}/embeddings", self.base_url);
 
@@ -76,6 +83,7 @@ impl AiClient for LmStudioClient {
         let response = self
             .client
             .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&request)
             .send()
             .await
@@ -123,6 +131,7 @@ impl AiClient for LmStudioClient {
         let response = self
             .client
             .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&request)
             .send()
             .await

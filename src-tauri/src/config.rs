@@ -3,19 +3,38 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AiProvider {
+    LmStudio,
+    OpenAi,
+}
+
+impl Default for AiProvider {
+    fn default() -> Self {
+        AiProvider::LmStudio
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    pub provider: AiProvider,
     pub lm_studio_url: String,
     pub embedding_model: String,
     pub chat_model: String,
+    pub openai_api_key: Option<String>,
+    pub openai_base_url: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
+            provider: AiProvider::LmStudio,
             lm_studio_url: "http://localhost:1234/v1".to_string(),
             embedding_model: "text-embedding-ada-002".to_string(),
             chat_model: "local-model".to_string(),
+            openai_api_key: None,
+            openai_base_url: Some("https://api.openai.com/v1".to_string()),
         }
     }
 }
