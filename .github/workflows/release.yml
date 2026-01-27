@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            bin: reader
+            name: linux-x86_64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            bin: reader
+            name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            bin: reader
+            name: macos-aarch64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: reader.exe
+            name: windows-x86_64
+
+    runs-on: ${{ matrix.platform.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform.os == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run tauri build -- --target ${{ matrix.platform.target }}
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Prepare release artifacts
+        shell: bash
+        run: |
+          # Set up output directory
+          mkdir -p release
+
+          # Platform-specific artifact handling
+          if [[ "${{ matrix.platform.os }}" == "ubuntu-20.04" ]]; then
+            # Linux: bundle/deb/*.deb and bundle/appimage/*.AppImage
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.deb" -exec cp {} release/ \;
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.AppImage" -exec cp {} release/ \;
+          elif [[ "${{ matrix.platform.os }}" == "macos-latest" ]]; then
+            # macOS: bundle/dmg/*.dmg
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg -name "*.dmg" -exec cp {} release/ \;
+          elif [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
+            # Windows: bundle/msi/*.msi and bundle/nsis/*.exe
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.msi" -exec cp {} release/ \;
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle/bundle -name "*.exe" -exec cp {} release/ \;
+          fi
+
+          # List artifacts for debugging
+          ls -lh release/
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          draft: true
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
