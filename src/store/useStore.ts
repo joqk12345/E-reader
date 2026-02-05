@@ -15,11 +15,13 @@ interface ReaderState {
 
   // Bilingual mode state
   bilingualMode: boolean;
+  translationDirection: 'en-zh' | 'zh-en';
 
   // UI cache
   summaryCache: Record<string, string>;
 
   // Actions
+  loadConfig: () => Promise<void>;
   loadDocuments: () => Promise<void>;
   selectDocument: (id: string) => void;
   importEpub: (filePath: string) => Promise<string>;
@@ -40,6 +42,7 @@ interface ReaderState {
 
   // Bilingual mode actions
   toggleBilingualMode: () => void;
+  setTranslationDirection: (direction: 'en-zh' | 'zh-en') => void;
 
   // UI cache actions
   setSummaryCache: (key: string, summary: string) => void;
@@ -58,6 +61,17 @@ export const useStore = create<ReaderState>((set, get) => ({
 
   // Bilingual mode state
   bilingualMode: false,
+  translationDirection: 'en-zh',
+
+  // Load config
+  loadConfig: async () => {
+    try {
+      const config = await invoke<{ translation_direction: 'en-zh' | 'zh-en' }>('get_config');
+      set({ translationDirection: config.translation_direction });
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    }
+  },
 
   // UI cache
   summaryCache: {},
@@ -172,7 +186,6 @@ export const useStore = create<ReaderState>((set, get) => ({
     try {
       const translation = await invoke<string>('translate', {
         text,
-        paragraphId: undefined,
         targetLang,
       });
       return translation;
@@ -185,7 +198,6 @@ export const useStore = create<ReaderState>((set, get) => ({
   translateParagraph: async (paragraphId: string, targetLang: 'zh' | 'en') => {
     try {
       const translation = await invoke<string>('translate', {
-        text: undefined,
         paragraphId,
         targetLang,
       });
@@ -214,6 +226,9 @@ export const useStore = create<ReaderState>((set, get) => ({
   // Bilingual mode actions
   toggleBilingualMode: () => {
     set((state) => ({ bilingualMode: !state.bilingualMode }));
+  },
+  setTranslationDirection: (direction: 'en-zh' | 'zh-en') => {
+    set({ translationDirection: direction });
   },
 
   setSummaryCache: (key: string, summary: string) => {

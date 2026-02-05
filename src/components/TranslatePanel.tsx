@@ -1,16 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
 type TargetLang = 'zh' | 'en';
 
 export const TranslatePanel: React.FC = () => {
-  const { currentParagraph } = useStore();
-  const [targetLang, setTargetLang] = useState<TargetLang>('en');
+  const { currentParagraph, translationDirection } = useStore();
+  const defaultTargetLang: TargetLang = useMemo(
+    () => (translationDirection === 'en-zh' ? 'zh' : 'en'),
+    [translationDirection]
+  );
+  const [targetLang, setTargetLang] = useState<TargetLang>(defaultTargetLang);
+  const [autoDetect, setAutoDetect] = useState(true);
   const [text, setText] = useState('');
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!text.trim() && !translation) {
+      setTargetLang(defaultTargetLang);
+    }
+  }, [defaultTargetLang, text, translation]);
+
+  const detectTargetLang = (input: string): TargetLang | null => {
+    if (/[\u4e00-\u9fff]/.test(input)) return 'en';
+    if (/[a-zA-Z]/.test(input)) return 'zh';
+    return null;
+  };
 
   const handleTranslate = async () => {
     const hasText = text.trim();
@@ -24,10 +41,13 @@ export const TranslatePanel: React.FC = () => {
     setIsTranslating(true);
     setError(null);
     try {
+      const effectiveTarget = autoDetect && hasText
+        ? (detectTargetLang(hasText) ?? targetLang)
+        : targetLang;
       const result = await invoke<string>('translate', {
         text: hasText ? text : undefined,
         paragraphId: hasParagraph && !hasText ? currentParagraph.id : undefined,
-        targetLang,
+        targetLang: effectiveTarget,
       });
       setTranslation(result);
     } catch (err) {
@@ -73,6 +93,15 @@ export const TranslatePanel: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={autoDetect}
+              onChange={(e) => setAutoDetect(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Auto-detect target language
+          </label>
           <button
             onClick={useCurrentParagraph}
             disabled={!currentParagraph}

@@ -21,6 +21,15 @@ pub struct Translation {
     pub created_at: i64,
 }
 
+/// Represents a cached text translation
+pub struct TextTranslation {
+    pub id: String,
+    pub text_hash: String,
+    pub target_lang: String,
+    pub translation: String,
+    pub created_at: i64,
+}
+
 /// Represents a cached summary
 pub struct Summary {
     pub id: String,
@@ -77,6 +86,61 @@ pub fn get_translation(
         Ok(Translation {
             id: row.get(0)?,
             paragraph_id: row.get(1)?,
+            target_lang: row.get(2)?,
+            translation: row.get(3)?,
+            created_at: row.get(4)?,
+        })
+    })?.collect::<Result<Vec<_>, _>>()?;
+
+    Ok(translations.into_iter().next())
+}
+
+/// Saves a text translation to the cache
+///
+/// Generates a UUID v4 for the translation ID and stores the translation
+/// with the text_hash and target_lang. Enforces uniqueness on (text_hash, target_lang).
+pub fn save_text_translation(
+    conn: &Connection,
+    text_hash: &str,
+    target_lang: &str,
+    translation: &str,
+) -> Result<TextTranslation, CacheError> {
+    let id = Uuid::new_v4().to_string();
+    let created_at = chrono::Utc::now().timestamp();
+
+    conn.execute(
+        "INSERT OR REPLACE INTO cache_text_translations (id, text_hash, target_lang, translation, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![&id, text_hash, target_lang, translation, created_at],
+    )?;
+
+    Ok(TextTranslation {
+        id,
+        text_hash: text_hash.to_string(),
+        target_lang: target_lang.to_string(),
+        translation: translation.to_string(),
+        created_at,
+    })
+}
+
+/// Gets a text translation from the cache
+///
+/// Returns None if the translation doesn't exist.
+pub fn get_text_translation(
+    conn: &Connection,
+    text_hash: &str,
+    target_lang: &str,
+) -> Result<Option<TextTranslation>, CacheError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, text_hash, target_lang, translation, created_at
+         FROM cache_text_translations
+         WHERE text_hash = ?1 AND target_lang = ?2"
+    )?;
+
+    let translations = stmt.query_map(params![text_hash, target_lang], |row| {
+        Ok(TextTranslation {
+            id: row.get(0)?,
+            text_hash: row.get(1)?,
             target_lang: row.get(2)?,
             translation: row.get(3)?,
             created_at: row.get(4)?,

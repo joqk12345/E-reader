@@ -20,6 +20,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 anyhow = "1.0"
 thiserror = "1.0"
 tracing = "0.1"
+sha2 = "0.10"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 epub = "2.1"
 pdf = "0.8"
@@ -29,4 +30,3 @@ uuid = { version = "1.8", features = ["v4", "serde"] }
 regex = "1.10"
 dirs = "5.0"
 async-trait = "0.1"
-

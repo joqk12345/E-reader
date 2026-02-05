@@ -1,7 +1,17 @@
 use crate::config::load_config;
-use crate::database::{get_connection, get_paragraph, save_translation, get_translation, save_summary, get_summary};
+use crate::database::{
+    get_connection,
+    get_paragraph,
+    save_translation,
+    get_translation,
+    save_text_translation,
+    get_text_translation,
+    save_summary,
+    get_summary,
+};
 use crate::error::{Result, ReaderError};
 use crate::llm::{create_client, ChatMessage};
+use sha2::{Digest, Sha256};
 use tauri::AppHandle;
 
 /// Translates text or a paragraph to a target language
@@ -20,6 +30,12 @@ pub async fn translate(
     paragraph_id: Option<String>,
     target_lang: String,
 ) -> Result<String> {
+    fn hash_text(value: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(value.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
     // Validate that exactly one of text or paragraph_id is provided
     match (&text, &paragraph_id) {
         (None, None) => {
@@ -52,15 +68,27 @@ pub async fn translate(
             .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", pid)))?;
         paragraph.text
     } else {
-        // Use provided text directly
-        text.clone().unwrap()
+        // Use provided text directly with text-hash cache
+        let raw_text = text.clone().unwrap();
+        let text_hash = hash_text(&raw_text);
+        let conn = get_connection(&app_handle)?;
+        if let Some(cached) = get_text_translation(&conn, &text_hash, &target_lang)? {
+            return Ok(cached.translation);
+        }
+        raw_text
     };
 
     // Build translation prompt
+    let target_lang_name = match target_lang.as_str() {
+        "zh" => "Chinese",
+        "en" => "English",
+        _ => &target_lang,
+    };
+
     let system_prompt = format!(
         "You are a professional translator. Translate the following text to {}. \
         Provide only the translation without any additional commentary or explanation.",
-        target_lang
+        target_lang_name
     );
 
     let messages = vec![
@@ -81,6 +109,10 @@ pub async fn translate(
     if let Some(pid) = &paragraph_id {
         let conn = get_connection(&app_handle)?;
         save_translation(&conn, pid, &target_lang, &translation)?;
+    } else if let Some(raw_text) = &text {
+        let conn = get_connection(&app_handle)?;
+        let text_hash = hash_text(raw_text);
+        save_text_translation(&conn, &text_hash, &target_lang, &translation)?;
     }
 
     Ok(translation)

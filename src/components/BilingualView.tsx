@@ -21,7 +21,6 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
     setError(null);
     try {
       const result = await invoke<string>('translate', {
-        text: undefined,
         paragraphId,
         targetLang,
       });

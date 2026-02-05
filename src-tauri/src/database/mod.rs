@@ -30,7 +30,7 @@ pub use embeddings::{vec_f32_to_bytes, bytes_to_vec_f32};
 pub use embeddings::{EmbeddingError, Embedding};
 
 // Cache operations
-pub use cache::{save_translation, get_translation, save_summary, get_summary};
+pub use cache::{save_translation, get_translation, save_text_translation, get_text_translation, save_summary, get_summary};
 pub use cache::{Translation, Summary, CacheError};
 
 // Convert EmbeddingError to ReaderError

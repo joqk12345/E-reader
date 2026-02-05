@@ -81,7 +81,7 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create cache_translations table
+    // Create cache_translations table (by paragraph_id)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS cache_translations (
             id TEXT PRIMARY KEY,
@@ -90,6 +90,19 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
             translation TEXT NOT NULL,
             created_at INTEGER NOT NULL,
             UNIQUE(paragraph_id, target_lang)
+        )",
+        [],
+    )?;
+
+    // Create cache_text_translations table (by text hash)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cache_text_translations (
+            id TEXT PRIMARY KEY,
+            text_hash TEXT NOT NULL,
+            target_lang TEXT NOT NULL,
+            translation TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            UNIQUE(text_hash, target_lang)
         )",
         [],
     )?;
