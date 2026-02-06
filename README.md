@@ -23,9 +23,13 @@
 - **Translation**: Translate content to Chinese or English
 - **Bilingual Mode**: Side-by-side original and translated text view
 - **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
-  - Supports multiple TTS engines
+  - **Edge TTS Engine**: Uses Microsoft Edge's TTS service for high-quality voices
+  - **Installation**: Requires Python and edge-tts package
+    ```bash
+    python3 -m pip install --user --break-system-packages edge-tts
+    ```
   - Adjustable playback speed
-  - Voice selection
+  - Voice selection (multiple languages and accents)
   - Text highlighting while reading
 - **MCP Integration**: Model Context Protocol host server for external AI assistants
 - **Multiple AI Providers**:
