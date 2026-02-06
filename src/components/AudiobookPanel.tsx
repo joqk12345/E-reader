@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
+import { detectLang, splitIntoSentences, type TargetLang } from '../utils/sentences';
 
 type TtsProvider = 'auto' | 'edge' | 'cosyvoice';
 type ReadTarget = 'source' | 'translation';
-type TargetLang = 'zh' | 'en';
 
 type TtsAudioResponse = {
   audio: number[];
@@ -12,23 +12,8 @@ type TtsAudioResponse = {
   provider: string;
 };
 
-const splitIntoSentences = (text: string): string[] => {
-  const cleaned = text.replace(/\s+/g, ' ').trim();
-  if (!cleaned) return [];
-  const list = cleaned
-    .split(/(?<=[.!?。！？])\s+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return list.length > 0 ? list : [cleaned];
-};
-
-const detectLang = (text: string): TargetLang => {
-  if (/[\u4e00-\u9fff]/.test(text)) return 'zh';
-  return 'en';
-};
-
 export const AudiobookPanel: React.FC = () => {
-  const { paragraphs, translationMode } = useStore();
+  const { paragraphs, translationMode, setCurrentReadingSentenceKey } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [readTarget, setReadTarget] = useState<ReadTarget>('source');
   const [rate, setRate] = useState(1);
@@ -42,11 +27,17 @@ export const AudiobookPanel: React.FC = () => {
   const stopRequestedRef = useRef(false);
   const playingRef = useRef(false);
   const pausedRef = useRef(false);
+  const playbackModeRef = useRef<'audio' | 'speech' | null>(null);
 
   const sentences = useMemo(() => {
-    const list: string[] = [];
+    const list: Array<{ key: string; sourceText: string }> = [];
     for (const paragraph of paragraphs) {
-      list.push(...splitIntoSentences(paragraph.text));
+      splitIntoSentences(paragraph.text).forEach((sentence, index) => {
+        list.push({
+          key: `${paragraph.id}_${index}`,
+          sourceText: sentence,
+        });
+      });
     }
     return list;
   }, [paragraphs]);
@@ -57,11 +48,16 @@ export const AudiobookPanel: React.FC = () => {
     setIsPaused(false);
     setIsPlaying(false);
     setCurrentSentence('');
+    setCurrentReadingSentenceKey(null);
     playingRef.current = false;
+    playbackModeRef.current = null;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.src = '';
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
   };
 
@@ -98,6 +94,7 @@ export const AudiobookPanel: React.FC = () => {
 
     player.src = objectUrl;
     player.playbackRate = 1;
+    playbackModeRef.current = 'audio';
     await player.play();
 
     await new Promise<void>((resolve, reject) => {
@@ -105,6 +102,42 @@ export const AudiobookPanel: React.FC = () => {
       player.onerror = () => reject(new Error('Audio playback failed'));
     }).finally(() => {
       URL.revokeObjectURL(objectUrl);
+    });
+  };
+
+  const pickSpeechVoice = (lang: TargetLang): SpeechSynthesisVoice | undefined => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return undefined;
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return undefined;
+    const prefix = lang === 'zh' ? 'zh' : 'en';
+    return (
+      voices.find((v) => v.lang.toLowerCase().startsWith(prefix) && v.localService) ||
+      voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ||
+      voices[0]
+    );
+  };
+
+  const playSpeech = async (text: string, lang: TargetLang, speechRate: number): Promise<void> => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      throw new Error('SpeechSynthesis is not available in this environment');
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voice = pickSpeechVoice(lang);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
+      }
+      utterance.rate = Math.min(Math.max(speechRate, 0.8), 1.6);
+
+      utterance.onend = () => resolve();
+      utterance.onerror = (event) => reject(new Error(`Speech playback failed: ${event.error}`));
+
+      playbackModeRef.current = 'speech';
+      window.speechSynthesis.speak(utterance);
     });
   };
 
@@ -119,9 +152,11 @@ export const AudiobookPanel: React.FC = () => {
     setError(null);
 
     try {
-      for (const sourceSentence of sentences) {
+      for (const sentenceItem of sentences) {
         if (stopRequestedRef.current) break;
+        const sourceSentence = sentenceItem.sourceText;
         setCurrentSentence(sourceSentence);
+        setCurrentReadingSentenceKey(sentenceItem.key);
 
         while (pausedRef.current && !stopRequestedRef.current) {
           await new Promise((r) => setTimeout(r, 120));
@@ -129,17 +164,29 @@ export const AudiobookPanel: React.FC = () => {
         if (stopRequestedRef.current) break;
 
         const resolved = await resolveSentenceForReading(sourceSentence);
-        const tts = await invoke<TtsAudioResponse>('tts_synthesize', {
-          request: {
-            text: resolved.text,
-            language: resolved.lang,
-            provider: ttsProvider,
-            rate,
-          },
-        });
+        try {
+          const tts = await invoke<TtsAudioResponse>('tts_synthesize', {
+            request: {
+              text: resolved.text,
+              language: resolved.lang,
+              provider: ttsProvider,
+              rate,
+            },
+          });
 
-        setCurrentProvider(tts.provider);
-        await playAudio(tts.audio, tts.mime_type);
+          setCurrentProvider(tts.provider);
+          await playAudio(tts.audio, tts.mime_type);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          const shouldFallbackToSpeech =
+            ttsProvider !== 'cosyvoice' &&
+            (message.includes('No module named edge_tts') || message.includes('Failed to execute python3 edge-tts'));
+          if (!shouldFallbackToSpeech) {
+            throw err;
+          }
+          setCurrentProvider('system-webspeech');
+          await playSpeech(resolved.text, resolved.lang, rate);
+        }
       }
     } catch (err) {
       console.error('Audiobook playback failed:', err);
@@ -151,7 +198,23 @@ export const AudiobookPanel: React.FC = () => {
   };
 
   const togglePause = async () => {
-    if (!audioRef.current || !isPlaying) return;
+    if (!isPlaying) return;
+
+    if (playbackModeRef.current === 'speech') {
+      if (!('speechSynthesis' in window)) return;
+      if (!isPaused) {
+        window.speechSynthesis.pause();
+        pausedRef.current = true;
+        setIsPaused(true);
+        return;
+      }
+      pausedRef.current = false;
+      setIsPaused(false);
+      window.speechSynthesis.resume();
+      return;
+    }
+
+    if (!audioRef.current) return;
     if (!isPaused) {
       audioRef.current.pause();
       pausedRef.current = true;
