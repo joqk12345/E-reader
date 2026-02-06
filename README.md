@@ -8,10 +8,12 @@
 ## ✨ Features
 
 ### 📖 Core Reading Experience
-- **Library Management**: Import and organize EPUB documents
+- **Library Management**: Import and organize EPUB, PDF, and Markdown documents
 - **Advanced Reader**: Table of Contents navigation, section/paragraph-based reading
 - **Semantic Search**: AI-powered search across all indexed paragraphs
 - **PDF Support**: Full PDF parsing and reading capabilities
+- **Markdown Support**: Import and read Markdown files with syntax highlighting
+- **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
 
 ### 🤖 AI-Powered Tools (Flexible AI Provider Support)
 - **Summarization**: Organize and summarize content with configurable styles
@@ -20,6 +22,11 @@
   - Smart caching to avoid redundant generations
 - **Translation**: Translate content to Chinese or English
 - **Bilingual Mode**: Side-by-side original and translated text view
+- **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
+  - Supports multiple TTS engines
+  - Adjustable playback speed
+  - Voice selection
+  - Text highlighting while reading
 - **MCP Integration**: Model Context Protocol host server for external AI assistants
 - **Multiple AI Providers**:
   - **LM Studio**: Run AI completely locally for maximum privacy
@@ -89,14 +96,24 @@ The built application will be in `src-tauri/target/release/bundle/`.
 ### Importing Documents
 
 1. Click the **Import** button in the library
-2. Select EPUB or PDF files from your computer
+2. Select EPUB, PDF, or Markdown files from your computer
 3. Documents are automatically indexed for semantic search
+
+**Supported Formats:**
+- **EPUB**: Standard e-book format
+- **PDF**: Portable Document Format
+- **Markdown**: Lightweight markup language (`.md`, `.markdown`)
 
 ### Reading & Navigation
 
 - **Table of Contents**: Use the TOC panel to navigate between chapters/sections
 - **Search**: Use the Search panel to find content semantically (not just keyword matching)
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
+- **Text-to-Speech**: Use the Audiobook panel to listen to content
+  - Click the **Audiobook** tab in the right sidebar
+  - Select your preferred voice and playback speed
+  - Click **Play** to start listening
+  - Text is highlighted as it's being read
 
 ### AI Features Setup
 
