@@ -4,7 +4,7 @@ export interface Document {
   author?: string;
   language?: string;
   file_path: string;
-  file_type: 'epub' | 'pdf';
+  file_type: 'epub' | 'pdf' | 'markdown';
   created_at: number;
   updated_at: number;
 }

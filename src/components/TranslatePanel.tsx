@@ -5,10 +5,10 @@ import { useStore } from '../store/useStore';
 type TargetLang = 'zh' | 'en';
 
 export const TranslatePanel: React.FC = () => {
-  const { currentParagraph, translationDirection } = useStore();
+  const { currentParagraph, translationMode } = useStore();
   const defaultTargetLang: TargetLang = useMemo(
-    () => (translationDirection === 'en-zh' ? 'zh' : 'en'),
-    [translationDirection]
+    () => (translationMode === 'zh-en' ? 'en' : 'zh'),
+    [translationMode]
   );
   const [targetLang, setTargetLang] = useState<TargetLang>(defaultTargetLang);
   const [autoDetect, setAutoDetect] = useState(true);

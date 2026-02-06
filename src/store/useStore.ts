@@ -2,6 +2,28 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { Document, Section, Paragraph } from '../types';
 
+export type TranslationMode = 'off' | 'en-zh' | 'zh-en';
+
+type AppConfig = {
+  provider: 'lmstudio' | 'openai';
+  lm_studio_url: string;
+  embedding_model: string;
+  chat_model: string;
+  openai_api_key?: string;
+  openai_base_url?: string;
+  translation_mode?: TranslationMode;
+  translation_direction?: 'en-zh' | 'zh-en';
+  reader_background_color?: string;
+  reader_font_size?: number;
+};
+
+const normalizeTranslationMode = (mode?: string): TranslationMode => {
+  if (mode === 'en-zh' || mode === 'zh-en' || mode === 'off') {
+    return mode;
+  }
+  return 'off';
+};
+
 interface ReaderState {
   documents: Document[];
   selectedDocumentId: string | null;
@@ -13,9 +35,10 @@ interface ReaderState {
   paragraphs: Paragraph[];
   currentParagraph: Paragraph | null;
 
-  // Bilingual mode state
-  bilingualMode: boolean;
-  translationDirection: 'en-zh' | 'zh-en';
+  // Translation mode state
+  translationMode: TranslationMode;
+  readerBackgroundColor: string;
+  readerFontSize: number;
 
   // UI cache
   summaryCache: Record<string, string>;
@@ -26,6 +49,7 @@ interface ReaderState {
   selectDocument: (id: string) => void;
   importEpub: (filePath: string) => Promise<string>;
   importPdf: (filePath: string) => Promise<string>;
+  importMarkdown: (filePath: string) => Promise<string>;
   deleteDocument: (id: string) => Promise<void>;
 
   // Reader actions
@@ -40,9 +64,14 @@ interface ReaderState {
   translateParagraph: (paragraphId: string, targetLang: 'zh' | 'en') => Promise<string>;
   summarize: (targetId: string, type: 'document' | 'section' | 'paragraph', style?: 'brief' | 'detailed' | 'bullet') => Promise<string>;
 
-  // Bilingual mode actions
-  toggleBilingualMode: () => void;
-  setTranslationDirection: (direction: 'en-zh' | 'zh-en') => void;
+  // Translation mode actions
+  cycleTranslationMode: () => Promise<void>;
+  setTranslationMode: (mode: TranslationMode) => void;
+  persistTranslationMode: (mode: TranslationMode) => Promise<void>;
+  setReaderBackgroundColor: (color: string) => void;
+  persistReaderBackgroundColor: (color: string) => Promise<void>;
+  setReaderFontSize: (size: number) => void;
+  persistReaderFontSize: (size: number) => Promise<void>;
 
   // UI cache actions
   setSummaryCache: (key: string, summary: string) => void;
@@ -59,15 +88,20 @@ export const useStore = create<ReaderState>((set, get) => ({
   paragraphs: [],
   currentParagraph: null,
 
-  // Bilingual mode state
-  bilingualMode: false,
-  translationDirection: 'en-zh',
+  // Translation mode state
+  translationMode: 'off',
+  readerBackgroundColor: '#F4F8EE',
+  readerFontSize: 18,
 
   // Load config
   loadConfig: async () => {
     try {
-      const config = await invoke<{ translation_direction: 'en-zh' | 'zh-en' }>('get_config');
-      set({ translationDirection: config.translation_direction });
+      const config = await invoke<AppConfig>('get_config');
+      set({
+        translationMode: normalizeTranslationMode(config.translation_mode || config.translation_direction),
+        readerBackgroundColor: config.reader_background_color || '#F4F8EE',
+        readerFontSize: config.reader_font_size || 18,
+      });
     } catch (error) {
       console.error('Failed to load config:', error);
     }
@@ -115,6 +149,20 @@ export const useStore = create<ReaderState>((set, get) => ({
       return docId;
     } catch (error) {
       console.error('Failed to import PDF:', error);
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  importMarkdown: async (filePath: string) => {
+    set({ isLoading: true });
+    try {
+      const docId = await invoke<string>('import_markdown', { filePath });
+      await get().loadDocuments();
+      set({ isLoading: false });
+      return docId;
+    } catch (error) {
+      console.error('Failed to import Markdown:', error);
       set({ isLoading: false });
       throw error;
     }
@@ -223,12 +271,74 @@ export const useStore = create<ReaderState>((set, get) => ({
     }
   },
 
-  // Bilingual mode actions
-  toggleBilingualMode: () => {
-    set((state) => ({ bilingualMode: !state.bilingualMode }));
+  // Translation mode actions
+  cycleTranslationMode: async () => {
+    const current = get().translationMode;
+    const next: TranslationMode = current === 'off' ? 'en-zh' : current === 'en-zh' ? 'zh-en' : 'off';
+    await get().persistTranslationMode(next);
   },
-  setTranslationDirection: (direction: 'en-zh' | 'zh-en') => {
-    set({ translationDirection: direction });
+  setTranslationMode: (mode: TranslationMode) => {
+    set({ translationMode: mode });
+  },
+  persistTranslationMode: async (mode: TranslationMode) => {
+    const previousMode = get().translationMode;
+    set({ translationMode: mode });
+
+    try {
+      const config = await invoke<AppConfig>('get_config');
+      await invoke('update_config', {
+        config: {
+          ...config,
+          translation_mode: mode,
+        },
+      });
+    } catch (error) {
+      set({ translationMode: previousMode });
+      console.error('Failed to persist translation mode:', error);
+      throw error;
+    }
+  },
+  setReaderBackgroundColor: (color: string) => {
+    set({ readerBackgroundColor: color });
+  },
+  persistReaderBackgroundColor: async (color: string) => {
+    const previousColor = get().readerBackgroundColor;
+    set({ readerBackgroundColor: color });
+
+    try {
+      const config = await invoke<AppConfig>('get_config');
+      await invoke('update_config', {
+        config: {
+          ...config,
+          reader_background_color: color,
+        },
+      });
+    } catch (error) {
+      set({ readerBackgroundColor: previousColor });
+      console.error('Failed to persist reader background color:', error);
+      throw error;
+    }
+  },
+  setReaderFontSize: (size: number) => {
+    set({ readerFontSize: size });
+  },
+  persistReaderFontSize: async (size: number) => {
+    const previousSize = get().readerFontSize;
+    set({ readerFontSize: size });
+
+    try {
+      const config = await invoke<AppConfig>('get_config');
+      await invoke('update_config', {
+        config: {
+          ...config,
+          reader_font_size: size,
+        },
+      });
+    } catch (error) {
+      set({ readerFontSize: previousSize });
+      console.error('Failed to persist reader font size:', error);
+      throw error;
+    }
   },
 
   setSummaryCache: (key: string, summary: string) => {
