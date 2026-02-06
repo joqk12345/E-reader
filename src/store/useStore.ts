@@ -39,6 +39,7 @@ interface ReaderState {
   translationMode: TranslationMode;
   readerBackgroundColor: string;
   readerFontSize: number;
+  currentReadingSentenceKey: string | null;
 
   // UI cache
   summaryCache: Record<string, string>;
@@ -72,6 +73,7 @@ interface ReaderState {
   persistReaderBackgroundColor: (color: string) => Promise<void>;
   setReaderFontSize: (size: number) => void;
   persistReaderFontSize: (size: number) => Promise<void>;
+  setCurrentReadingSentenceKey: (key: string | null) => void;
 
   // UI cache actions
   setSummaryCache: (key: string, summary: string) => void;
@@ -92,6 +94,7 @@ export const useStore = create<ReaderState>((set, get) => ({
   translationMode: 'off',
   readerBackgroundColor: '#F4F8EE',
   readerFontSize: 18,
+  currentReadingSentenceKey: null,
 
   // Load config
   loadConfig: async () => {
@@ -339,6 +342,9 @@ export const useStore = create<ReaderState>((set, get) => ({
       console.error('Failed to persist reader font size:', error);
       throw error;
     }
+  },
+  setCurrentReadingSentenceKey: (key: string | null) => {
+    set({ currentReadingSentenceKey: key });
   },
 
   setSummaryCache: (key: string, summary: string) => {

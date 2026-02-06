@@ -1,43 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { invoke } from '@tauri-apps/api/core';
+import { splitIntoSentences } from '../utils/sentences';
 
 export function ReaderContent() {
-  const { paragraphs, isLoading, currentSectionId, translationMode, readerBackgroundColor, readerFontSize } = useStore();
+  const {
+    paragraphs,
+    isLoading,
+    currentSectionId,
+    translationMode,
+    readerBackgroundColor,
+    readerFontSize,
+    currentReadingSentenceKey,
+  } = useStore();
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [loadingSentences, setLoadingSentences] = useState<Set<string>>(new Set());
   const autoTranslate = true;
-
-  // 简单的句子分割函数（支持英文和中文）
-  const splitIntoSentences = (text: string): string[] => {
-    const sentences: string[] = [];
-
-    // 处理英文句子分割
-    if (/[a-zA-Z]/.test(text)) {
-      // 匹配英文句子：以大写字母开头，包含字母、数字、标点，以句号、感叹号或问号结尾
-      const regex = /[A-Z][^\.!?]*[\.!?]+/g;
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        sentences.push(match[0].trim());
-      }
-    }
-
-    // 处理中文句子分割（如果没有英文内容）
-    if (sentences.length === 0 && /[\u4e00-\u9fff]/.test(text)) {
-      const regex = /[^。！？]*[。！？]/g;
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        sentences.push(match[0].trim());
-      }
-    }
-
-    // 兜底方案：如果没有找到任何句子，直接返回整个文本
-    if (sentences.length === 0) {
-      sentences.push(text.trim());
-    }
-
-    return sentences;
-  };
 
   // 翻译单个句子
   const translateSentence = async (paragraphId: string, sentence: string, index: number) => {
@@ -163,10 +141,11 @@ export function ReaderContent() {
               <div key={paragraph.id} className="mb-4">
                 {sentences.map((sentence, index) => {
                   const key = `${paragraph.id}_${index}`;
+                  const isReading = currentReadingSentenceKey === key;
                   return (
                     <div key={index} className="mb-2">
                       <p
-                        className="text-gray-800"
+                        className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
                         style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
                       >
                         {sentence}
