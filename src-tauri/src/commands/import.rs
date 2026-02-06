@@ -1,6 +1,6 @@
 use crate::database;
 use crate::error::Result;
-use crate::parsers::{EpubParser, PdfParser};
+use crate::parsers::{EpubParser, MarkdownParser, PdfParser};
 use tauri::AppHandle;
 
 #[derive(Clone, serde::Serialize)]
@@ -26,6 +26,16 @@ pub async fn import_pdf(
     file_path: String,
 ) -> Result<String> {
     let parser = PdfParser::new(&file_path)?;
+    let (metadata, chapters) = parser.parse_all()?;
+    import_document_internal(app_handle, metadata, chapters).await
+}
+
+#[tauri::command]
+pub async fn import_markdown(
+    app_handle: AppHandle,
+    file_path: String,
+) -> Result<String> {
+    let parser = MarkdownParser::new(&file_path)?;
     let (metadata, chapters) = parser.parse_all()?;
     import_document_internal(app_handle, metadata, chapters).await
 }

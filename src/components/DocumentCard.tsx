@@ -9,7 +9,9 @@ interface DocumentCardProps {
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, onDelete }) => {
   const getFileTypeIcon = () => {
-    return document.file_type === 'epub' ? '📚' : '📄';
+    if (document.file_type === 'epub') return '📚';
+    if (document.file_type === 'markdown') return '📝';
+    return '📄';
   };
 
   const formatDate = (timestamp: number) => {

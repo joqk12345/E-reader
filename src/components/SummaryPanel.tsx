@@ -24,9 +24,14 @@ export const SummaryPanel: React.FC = () => {
   };
 
   useEffect(() => {
+    // 当页面切换时，重置显示的摘要内容
+    setSummary('');
+  }, [currentParagraph, currentSectionId, selectedDocumentId]);
+
+  useEffect(() => {
     const key = getSummaryKey();
     setSummary(key ? summaryCache[key] || '' : '');
-  }, [style, currentParagraph, currentSectionId, selectedDocumentId, summaryCache]);
+  }, [style, summaryCache, currentParagraph, currentSectionId, selectedDocumentId]);
 
   useEffect(() => {
     const key = getSummaryKey();
