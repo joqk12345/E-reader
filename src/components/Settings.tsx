@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useStore } from '../store/useStore';
 
 type AiProvider = 'lmstudio' | 'openai';
 
@@ -10,6 +11,7 @@ interface Config {
   chat_model: string;
   openai_api_key?: string;
   openai_base_url?: string;
+  translation_direction: 'en-zh' | 'zh-en';
 }
 
 interface SettingsProps {
@@ -17,6 +19,7 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
+  const { setTranslationDirection } = useStore();
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
     lm_studio_url: '',
@@ -24,6 +27,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     chat_model: '',
     openai_api_key: '',
     openai_base_url: 'https://api.openai.com/v1',
+    translation_direction: 'en-zh',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +55,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     setMessage(null);
     try {
       await invoke('update_config', { config });
+      setTranslationDirection(config.translation_direction);
       setMessage({ type: 'success', text: 'Configuration saved successfully!' });
       setTimeout(() => onClose(), 1500);
     } catch (error) {
@@ -155,7 +160,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               {/* OpenAI API Key */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  OpenAI API Key
+                  API Key
                 </label>
                 <input
                   type="password"
@@ -165,14 +170,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Your OpenAI API key (get one from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com</a>)
+                  Your API key for OpenAI or compatible services
                 </p>
               </div>
 
               {/* OpenAI Base URL */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  OpenAI Base URL (Optional)
+                  API Endpoint
                 </label>
                 <input
                   type="text"
@@ -182,7 +187,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Custom base URL (for OpenAI proxies or compatible services)
+                  API endpoint URL (for OpenAI, Azure OpenAI, or other OpenAI-compatible services)
                 </p>
               </div>
             </>
@@ -208,6 +213,24 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               {config.provider === 'openai'
                 ? 'OpenAI: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002'
                 : 'LM Studio: text-embedding-ada-002 (or compatible model)'}
+            </p>
+          </div>
+
+          {/* Translation Direction */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Translation Direction
+            </label>
+            <select
+              value={config.translation_direction}
+              onChange={(e) => setConfig((prev) => ({ ...prev, translation_direction: e.target.value as 'en-zh' | 'zh-en' }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="en-zh">English to Chinese (英译中)</option>
+              <option value="zh-en">Chinese to English (中译英)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Set the default translation direction for bilingual mode
             </p>
           </div>
 

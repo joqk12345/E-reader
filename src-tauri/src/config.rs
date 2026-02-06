@@ -24,6 +24,7 @@ pub struct Config {
     pub chat_model: String,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
+    pub translation_direction: String,
 }
 
 impl Default for Config {
@@ -35,6 +36,7 @@ impl Default for Config {
             chat_model: "local-model".to_string(),
             openai_api_key: None,
             openai_base_url: Some("https://api.openai.com/v1".to_string()),
+            translation_direction: "en-zh".to_string(),
         }
     }
 }

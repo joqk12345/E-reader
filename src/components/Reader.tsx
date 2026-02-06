@@ -3,10 +3,9 @@ import { useStore } from '../store/useStore';
 import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
 import { ToolPanel } from './ToolPanel';
-import { BilingualView } from './BilingualView';
 
 export function Reader() {
-  const { selectedDocumentId, loadSections, goBack, bilingualMode, toggleBilingualMode, currentParagraph } = useStore();
+  const { selectedDocumentId, loadSections, goBack, bilingualMode, toggleBilingualMode } = useStore();
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [tocWidth, setTocWidth] = useState(256);
   const minTocWidth = 200;
@@ -44,29 +43,23 @@ export function Reader() {
           >
             ← Back to Library
           </button>
-          {currentParagraph && (
-            <button
-              onClick={toggleBilingualMode}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                bilingualMode
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {bilingualMode ? '🌐 Bilingual On' : '🌐 Bilingual Off'}
-            </button>
-          )}
+          <button
+            onClick={toggleBilingualMode}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              bilingualMode
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {bilingualMode ? '🌐 Bilingual On' : '🌐 Bilingual Off'}
+          </button>
         </div>
         <h1 className="text-xl font-semibold text-gray-900">Reader</h1>
         <div className="w-32"></div>
       </header>
       <div className="flex-1 flex overflow-hidden">
         <TOCPanel {...tocPanelProps} />
-        {bilingualMode && currentParagraph ? (
-          <BilingualView paragraphId={currentParagraph.id} originalText={currentParagraph.text} />
-        ) : (
-          <ReaderContent />
-        )}
+        <ReaderContent />
         <ToolPanel />
       </div>
     </div>

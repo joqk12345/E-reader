@@ -114,18 +114,17 @@ Reader supports two AI providers - choose based on your needs:
 **Best for**: Better performance, no local hardware requirements, quick setup
 
 1. **Get an API Key**:
-   - Visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-   - Create an account or sign in
-   - Generate a new API key
+   - For OpenAI: Visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys) to get your API key
+   - For other OpenAI-compatible services: Obtain API key from your provider
 2. **Configure Reader**:
    - Open Settings (⚙️)
    - Select "OpenAI (Cloud)" as AI Provider
-   - Enter your API Key (starts with `sk-`)
-   - Optionally customize base URL for compatible APIs
+   - Enter your API Key (usually starts with `sk-`)
+   - Customize API Endpoint (optional): For OpenAI-compatible services like Azure OpenAI or third-party APIs
    - Set model names:
-     - Embeddings: `text-embedding-3-small` (recommended) or `text-embedding-ada-002`
-     - Chat: `gpt-4o`, `gpt-4-turbo`, or `gpt-3.5-turbo`
-3. **Save and Use**: All AI features will now use OpenAI
+     - Embeddings: `text-embedding-3-small` (OpenAI recommended), or compatible model name from your provider
+     - Chat: `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo`, or compatible chat model from your provider
+3. **Save and Use**: All AI features will now use the configured OpenAI-compatible service
 
 #### Switching Between Providers
 
