@@ -54,18 +54,65 @@ impl EpubParser {
         let mut chapters = Vec::new();
         let mut order = 0;
 
-        for item in &self.doc.toc {
-            let href = item.content.to_string_lossy().to_string();
-            let title = if !item.label.is_empty() {
-                item.label.clone()
-            } else {
-                "Untitled".to_string()
-            };
-            chapters.push((title, order, href));
-            order += 1;
+        // First, check if TOC from doc.toc has all necessary items
+        // If TOC is too small (like < 15 items), use spine instead
+        if self.doc.toc.len() < 15 {
+            tracing::info!("TOC is too small ({} items), using spine for complete chapters", self.doc.toc.len());
+
+            for spine_item in &self.doc.spine {
+                if let Some(resource) = self.doc.resources.get(&spine_item.idref) {
+                    let href = resource.path.to_str().unwrap_or("").to_string();
+                    let title = Self::extract_title_from_idref(&spine_item.idref);
+                    chapters.push((title, order, href));
+                    order += 1;
+                }
+            }
+        } else {
+            // Use normal TOC if it has reasonable number of items
+            for item in &self.doc.toc {
+                let href = item.content.to_string_lossy().to_string();
+                let title = if !item.label.is_empty() {
+                    item.label.clone()
+                } else {
+                    "Untitled".to_string()
+                };
+                chapters.push((title, order, href));
+                order += 1;
+            }
         }
 
         Ok(chapters)
+    }
+
+    fn extract_title_from_idref(idref: &str) -> String {
+        // Convert idref like "Chapter01" or "Interlude03" to readable title
+        let mut title = String::new();
+        let mut chars = idref.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if c.is_uppercase() && !title.is_empty() {
+                title.push(' ');
+            }
+            title.push(c);
+
+            // Handle numbers
+            if c.is_alphabetic() && chars.peek().map_or(false, |&next| next.is_numeric()) {
+                while let Some(next_c) = chars.peek() {
+                    if next_c.is_numeric() {
+                        title.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Make sure we have a readable title
+        if title.is_empty() || title == "id" || title == "ref" {
+            "Untitled".to_string()
+        } else {
+            title
+        }
     }
 
     fn normalize_href(href: &str) -> String {
