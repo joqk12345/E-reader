@@ -1,3 +1,38 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [0.3.0] - 2026-02-07
+
+### Added
+- Offline-first local embedding pipeline with `@xenova/transformers` (`Xenova/all-MiniLM-L6-v2`, 384 dims) and SQLite storage.
+- New embedding worker/services (`src/workers/embeddingWorker.ts`, `src/services/localEmbedding.ts`, `src/services/embeddingIndex.ts`).
+- New backend embedding commands (`src-tauri/src/commands/embedding.rs`) for batch upsert, vector search, status, profile cleanup, model download, and local model path validation.
+- Settings support for:
+  - `embedding_local_model_path`
+  - `embedding_download_base_url`
+  - `edge_tts_proxy`
+- Manual model download fallback documentation in `README.md`.
+
+### Changed
+- Markdown rendering moved to proper GFM rendering (`react-markdown` + `remark-gfm`) with full-document reading flow.
+- Search now supports reliable click-to-jump and in-content highlight.
+- Auto indexing strategy updated to full-document indexing on document load/open, with `Rebuild Index` as manual fallback.
+- Local model loading logic now supports local path mapping (e.g. `/Users/mac/Models/Xenova_all-MiniLM-L6-v2`) correctly.
+- Model download flow hardened with mirror fallback and HTML interception detection.
+- TTS flow improved for Edge/CosyVoice reliability and better fallback behavior.
+
+### Fixed
+- Translation requests now have a 30s backend timeout to avoid endless `Translating...`.
+- Edge TTS argument handling for markdown-like text and special symbol cleanup before playback.
+- Better local model availability errors and pre-validation before indexing/search.
+
+### Docs
+- Updated `README.md` with recent updates, embedding setup details, and manual model download command.
+- Updated `RELEASE.md` version bump instructions.
+
+---
+
 # Today's Work Summary - OpenAI Integration 🎉
 
 ## 📅 Date: 2025-01-27

@@ -18,7 +18,9 @@ use tauri::{
 use std::sync::{Arc, Mutex};
 use commands::{
     import_epub, import_pdf, import_markdown, list_documents, get_document, delete_document,
-    get_document_sections, get_section_paragraphs, index_document, search,
+    get_document_sections, get_section_paragraphs, index_document, search, get_paragraph_context,
+    get_document_paragraphs, upsert_embeddings_batch, search_by_embedding, get_embedding_profile_status, clear_embeddings_by_profile,
+    download_embedding_model_files, validate_local_embedding_model_path,
     translate, summarize, get_summary_cache, tts_synthesize, list_tts_voices, get_config, update_config, mcp_request,
 };
 
@@ -353,6 +355,14 @@ pub fn run() {
             get_section_paragraphs,
             index_document,
             search,
+            get_paragraph_context,
+            get_document_paragraphs,
+            upsert_embeddings_batch,
+            search_by_embedding,
+            get_embedding_profile_status,
+            clear_embeddings_by_profile,
+            download_embedding_model_files,
+            validate_local_embedding_model_path,
             translate,
             summarize,
             get_summary_cache,

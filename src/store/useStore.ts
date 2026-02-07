@@ -7,7 +7,13 @@ export type TranslationMode = 'off' | 'en-zh' | 'zh-en';
 type AppConfig = {
   provider: 'lmstudio' | 'openai';
   lm_studio_url: string;
+  embedding_provider?: 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
   embedding_model: string;
+  embedding_dimension?: number;
+  embedding_auto_reindex?: boolean;
+  embedding_ollama_url?: string;
+  embedding_ollama_model?: string;
+  embedding_local_model_path?: string;
   chat_model: string;
   openai_api_key?: string;
   openai_base_url?: string;
@@ -27,6 +33,7 @@ const normalizeTranslationMode = (mode?: string): TranslationMode => {
 interface ReaderState {
   documents: Document[];
   selectedDocumentId: string | null;
+  currentDocumentType: 'epub' | 'pdf' | 'markdown' | null;
   isLoading: boolean;
 
   // Reader state
@@ -40,6 +47,9 @@ interface ReaderState {
   readerBackgroundColor: string;
   readerFontSize: number;
   currentReadingSentenceKey: string | null;
+  focusedParagraphId: string | null;
+  searchHighlightQuery: string;
+  searchMatchedParagraphIds: string[];
 
   // UI cache
   summaryCache: Record<string, string>;
@@ -56,6 +66,7 @@ interface ReaderState {
   // Reader actions
   loadSections: (docId: string) => Promise<void>;
   loadParagraphs: (sectionId: string) => Promise<void>;
+  loadDocumentParagraphs: (docId: string) => Promise<void>;
   selectSection: (sectionId: string) => void;
   goBack: () => void;
 
@@ -74,6 +85,9 @@ interface ReaderState {
   setReaderFontSize: (size: number) => void;
   persistReaderFontSize: (size: number) => Promise<void>;
   setCurrentReadingSentenceKey: (key: string | null) => void;
+  setFocusedParagraphId: (paragraphId: string | null) => void;
+  setSearchHighlight: (query: string, paragraphIds: string[]) => void;
+  clearSearchHighlight: () => void;
 
   // UI cache actions
   setSummaryCache: (key: string, summary: string) => void;
@@ -82,6 +96,7 @@ interface ReaderState {
 export const useStore = create<ReaderState>((set, get) => ({
   documents: [],
   selectedDocumentId: null,
+  currentDocumentType: null,
   isLoading: false,
 
   // Reader state
@@ -95,6 +110,9 @@ export const useStore = create<ReaderState>((set, get) => ({
   readerBackgroundColor: '#F4F8EE',
   readerFontSize: 18,
   currentReadingSentenceKey: null,
+  focusedParagraphId: null,
+  searchHighlightQuery: '',
+  searchMatchedParagraphIds: [],
 
   // Load config
   loadConfig: async () => {
@@ -126,7 +144,11 @@ export const useStore = create<ReaderState>((set, get) => ({
   },
 
   selectDocument: (id: string) => {
-    set({ selectedDocumentId: id });
+    const doc = get().documents.find((item) => item.id === id);
+    set({
+      selectedDocumentId: id,
+      currentDocumentType: doc?.file_type || null,
+    });
   },
 
   importEpub: async (filePath: string) => {
@@ -212,12 +234,34 @@ export const useStore = create<ReaderState>((set, get) => ({
     }
   },
 
+  loadDocumentParagraphs: async (docId: string) => {
+    set({ isLoading: true });
+    try {
+      const paragraphs = await invoke<Paragraph[]>('get_document_paragraphs', { docId });
+      set({ paragraphs, currentParagraph: paragraphs[0] || null, isLoading: false });
+    } catch (error) {
+      console.error('Failed to load document paragraphs:', error);
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
   selectSection: (sectionId: string) => {
     set({ currentSectionId: sectionId });
   },
 
   goBack: () => {
-    set({ selectedDocumentId: null, currentSectionId: null, sections: [], paragraphs: [], currentParagraph: null });
+    set({
+      selectedDocumentId: null,
+      currentDocumentType: null,
+      currentSectionId: null,
+      sections: [],
+      paragraphs: [],
+      currentParagraph: null,
+      focusedParagraphId: null,
+      searchHighlightQuery: '',
+      searchMatchedParagraphIds: [],
+    });
   },
 
   // AI actions
@@ -345,6 +389,21 @@ export const useStore = create<ReaderState>((set, get) => ({
   },
   setCurrentReadingSentenceKey: (key: string | null) => {
     set({ currentReadingSentenceKey: key });
+  },
+  setFocusedParagraphId: (paragraphId: string | null) => {
+    set({ focusedParagraphId: paragraphId });
+  },
+  setSearchHighlight: (query: string, paragraphIds: string[]) => {
+    set({
+      searchHighlightQuery: query,
+      searchMatchedParagraphIds: paragraphIds,
+    });
+  },
+  clearSearchHighlight: () => {
+    set({
+      searchHighlightQuery: '',
+      searchMatchedParagraphIds: [],
+    });
   },
 
   setSummaryCache: (key: string, summary: string) => {

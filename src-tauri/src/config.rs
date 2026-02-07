@@ -20,7 +20,22 @@ impl Default for AiProvider {
 pub struct Config {
     pub provider: AiProvider,
     pub lm_studio_url: String,
+    #[serde(default = "default_embedding_provider")]
+    pub embedding_provider: String,
+    #[serde(default = "default_embedding_model")]
     pub embedding_model: String,
+    #[serde(default = "default_embedding_dimension")]
+    pub embedding_dimension: u32,
+    #[serde(default = "default_embedding_auto_reindex")]
+    pub embedding_auto_reindex: bool,
+    #[serde(default)]
+    pub embedding_ollama_url: Option<String>,
+    #[serde(default)]
+    pub embedding_ollama_model: Option<String>,
+    #[serde(default)]
+    pub embedding_local_model_path: Option<String>,
+    #[serde(default)]
+    pub embedding_download_base_url: Option<String>,
     pub chat_model: String,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
@@ -28,6 +43,8 @@ pub struct Config {
     pub tts_provider: String,
     #[serde(default = "default_edge_tts_voice")]
     pub edge_tts_voice: String,
+    #[serde(default)]
+    pub edge_tts_proxy: Option<String>,
     #[serde(default)]
     pub cosyvoice_base_url: Option<String>,
     #[serde(default)]
@@ -42,6 +59,40 @@ pub struct Config {
 
 fn default_reader_background_color() -> String {
     "#F4F8EE".to_string()
+}
+
+fn default_embedding_provider() -> String {
+    "local_transformers".to_string()
+}
+
+fn default_embedding_model() -> String {
+    "Xenova/all-MiniLM-L6-v2".to_string()
+}
+
+fn default_embedding_dimension() -> u32 {
+    384
+}
+
+fn default_embedding_auto_reindex() -> bool {
+    true
+}
+
+fn normalize_local_embedding_model(model: &str) -> String {
+    let trimmed = model.trim();
+    if trimmed.is_empty() {
+        return default_embedding_model();
+    }
+    let lower = trimmed.to_lowercase();
+    if lower == "all-minilm-l6-v2" {
+        return default_embedding_model();
+    }
+    if lower == "text-embedding-ada-002"
+        || lower == "text-embedding-3-small"
+        || lower == "text-embedding-3-large"
+    {
+        return default_embedding_model();
+    }
+    trimmed.to_string()
 }
 
 fn default_translation_mode() -> String {
@@ -65,12 +116,20 @@ impl Default for Config {
         Config {
             provider: AiProvider::LmStudio,
             lm_studio_url: "http://localhost:1234/v1".to_string(),
-            embedding_model: "text-embedding-ada-002".to_string(),
+            embedding_provider: default_embedding_provider(),
+            embedding_model: default_embedding_model(),
+            embedding_dimension: default_embedding_dimension(),
+            embedding_auto_reindex: default_embedding_auto_reindex(),
+            embedding_ollama_url: None,
+            embedding_ollama_model: None,
+            embedding_local_model_path: None,
+            embedding_download_base_url: None,
             chat_model: "local-model".to_string(),
             openai_api_key: None,
             openai_base_url: Some("https://api.openai.com/v1".to_string()),
             tts_provider: default_tts_provider(),
             edge_tts_voice: default_edge_tts_voice(),
+            edge_tts_proxy: None,
             cosyvoice_base_url: None,
             cosyvoice_api_key: None,
             translation_mode: default_translation_mode(),
@@ -101,8 +160,35 @@ pub fn load_config() -> Result<Config> {
     }
 
     let content = fs::read_to_string(&config_path)?;
-    let config: Config = serde_json::from_str(&content)
+    let value: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| ReaderError::Internal(format!("Failed to parse config: {}", e)))?;
+    let mut config: Config = serde_json::from_value(value.clone())
+        .map_err(|e| ReaderError::Internal(format!("Failed to parse config: {}", e)))?;
+
+    // Normalize embedding profile for local transformers.
+    let normalized_model = if config.embedding_provider == "local_transformers" {
+        normalize_local_embedding_model(&config.embedding_model)
+    } else {
+        config.embedding_model.clone()
+    };
+    let mut changed = false;
+    if normalized_model != config.embedding_model {
+        config.embedding_model = normalized_model;
+        changed = true;
+    }
+    if config.embedding_dimension == 0 {
+        config.embedding_dimension = default_embedding_dimension();
+        changed = true;
+    }
+
+    // Backward compatibility: persist new embedding fields if missing in old config files.
+    let needs_backfill = value
+        .as_object()
+        .map(|obj| !obj.contains_key("embedding_provider"))
+        .unwrap_or(false);
+    if needs_backfill || changed {
+        save_config(&config)?;
+    }
 
     Ok(config)
 }

@@ -18,11 +18,26 @@ export function TOCPanel({
   onToggleCollapse,
   onWidthChange,
 }: TOCPanelProps) {
-  const { sections, currentSectionId, selectSection, loadParagraphs } = useStore();
+  const {
+    sections,
+    currentSectionId,
+    currentDocumentType,
+    paragraphs,
+    selectSection,
+    loadParagraphs,
+    setFocusedParagraphId,
+  } = useStore();
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const handleSectionClick = async (sectionId: string) => {
     selectSection(sectionId);
+    if (currentDocumentType === 'markdown') {
+      const firstParagraph = paragraphs.find((p) => p.section_id === sectionId);
+      if (firstParagraph) {
+        setFocusedParagraphId(firstParagraph.id);
+      }
+      return;
+    }
     await loadParagraphs(sectionId);
   };
 

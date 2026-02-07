@@ -4,8 +4,8 @@ use crate::error::Result;
 use crate::llm::create_client;
 use crate::search::{SearchOptions, SearchResult, cosine_similarity};
 use tauri::AppHandle;
+use rusqlite::params;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// Output type for search results
 #[derive(Clone, serde::Serialize)]
@@ -14,6 +14,13 @@ pub struct SearchResultOutput {
     pub snippet: String,
     pub score: f32,
     pub location: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+pub struct ParagraphContextOutput {
+    pub paragraph_id: String,
+    pub doc_id: String,
+    pub section_id: String,
 }
 
 impl From<SearchResult> for SearchResultOutput {
@@ -39,9 +46,26 @@ pub async fn search(
     app_handle: AppHandle,
     options: SearchOptions,
 ) -> Result<Vec<SearchResultOutput>> {
+    let query = options.query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    let top_k = options.top_k.max(1);
+
     // Load configuration and create LLM client
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
+    if config.embedding_provider == "local_transformers" {
+        let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+        return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
+    }
+    let llm_client = match create_client(&config) {
+        Ok(client) => client,
+        Err(err) => {
+            tracing::warn!("Semantic search unavailable, falling back to keyword search: {}", err);
+            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
+        }
+    };
 
     // Get database connection and collect all embeddings (synchronous part)
     let all_embeddings: Vec<(String, Vec<f32>)>;
@@ -77,13 +101,21 @@ pub async fn search(
 
         // Return early if no embeddings
         if all_embeddings.is_empty() {
-            return Ok(Vec::new());
+            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
 
     }
 
     // Generate query embedding (async part - no connection held here)
-    let query_embedding = llm_client.generate_embedding(&options.query).await?;
+    let query_embedding = match llm_client.generate_embedding(query).await {
+        Ok(embedding) => embedding,
+        Err(err) => {
+            tracing::warn!("Embedding generation failed, falling back to keyword search: {}", err);
+            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
+        }
+    };
 
     // Calculate similarities (synchronous part)
     let mut similarities: Vec<(String, f32)> = all_embeddings
@@ -118,7 +150,7 @@ pub async fn search(
 
         let target_paragraph_ids = similarities
             .iter()
-            .take(options.top_k)
+            .take(top_k)
             .map(|(id, _)| id.clone())
             .collect::<Vec<_>>();
 
@@ -164,7 +196,7 @@ pub async fn search(
 
     // Build final results
     let mut results = Vec::new();
-    for (paragraph_id, score) in similarities.iter().take(options.top_k) {
+    for (paragraph_id, score) in similarities.iter().take(top_k) {
         if let Some((text, location)) = paragraphs_result.get(paragraph_id.as_str()) {
             let snippet = if text.len() > 200 {
                 format!("{}...", &text[..200])
@@ -185,4 +217,104 @@ pub async fn search(
     let output = results.into_iter().map(SearchResultOutput::from).collect();
 
     Ok(output)
+}
+
+#[tauri::command]
+pub fn get_paragraph_context(
+    app_handle: AppHandle,
+    paragraph_id: String,
+) -> Result<Option<ParagraphContextOutput>> {
+    let conn = get_connection(&app_handle)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, doc_id, section_id
+         FROM paragraphs
+         WHERE id = ?1
+         LIMIT 1",
+    )?;
+
+    let mut rows = stmt.query(params![paragraph_id])?;
+    if let Some(row) = rows.next()? {
+        return Ok(Some(ParagraphContextOutput {
+            paragraph_id: row.get(0)?,
+            doc_id: row.get(1)?,
+            section_id: row.get(2)?,
+        }));
+    }
+
+    Ok(None)
+}
+
+fn keyword_search(
+    app_handle: &AppHandle,
+    query: &str,
+    doc_id: Option<&str>,
+    top_k: usize,
+) -> Result<Vec<SearchResult>> {
+    let conn = get_connection(app_handle)?;
+    let lowered = query.to_lowercase();
+    let like_query = format!("%{}%", lowered);
+
+    let mut results = Vec::new();
+
+    if let Some(doc_id) = doc_id {
+        let mut stmt = conn.prepare(
+            "SELECT id, text, location
+             FROM paragraphs
+             WHERE doc_id = ?1 AND lower(text) LIKE ?2
+             LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(params![doc_id, like_query, top_k as i64], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (paragraph_id, text, location) = row?;
+            let snippet = if text.len() > 200 {
+                format!("{}...", &text[..200])
+            } else {
+                text.clone()
+            };
+            let occurrences = text.to_lowercase().matches(&lowered).count().max(1) as f32;
+            results.push(SearchResult {
+                paragraph_id,
+                snippet,
+                score: occurrences.min(10.0) / 10.0,
+                location,
+            });
+        }
+    } else {
+        let mut stmt = conn.prepare(
+            "SELECT id, text, location
+             FROM paragraphs
+             WHERE lower(text) LIKE ?1
+             LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![like_query, top_k as i64], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?;
+        for row in rows {
+            let (paragraph_id, text, location) = row?;
+            let snippet = if text.len() > 200 {
+                format!("{}...", &text[..200])
+            } else {
+                text.clone()
+            };
+            let occurrences = text.to_lowercase().matches(&lowered).count().max(1) as f32;
+            results.push(SearchResult {
+                paragraph_id,
+                snippet,
+                score: occurrences.min(10.0) / 10.0,
+                location,
+            });
+        }
+    }
+
+    Ok(results)
 }

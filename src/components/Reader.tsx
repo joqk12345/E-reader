@@ -7,7 +7,9 @@ import { ToolPanel } from './ToolPanel';
 export function Reader() {
   const {
     selectedDocumentId,
+    currentDocumentType,
     loadSections,
+    loadDocumentParagraphs,
     goBack,
     translationMode,
     cycleTranslationMode,
@@ -51,9 +53,12 @@ export function Reader() {
 
   useEffect(() => {
     if (selectedDocumentId) {
-      loadSections(selectedDocumentId);
+      void loadSections(selectedDocumentId);
+      if (currentDocumentType === 'markdown') {
+        void loadDocumentParagraphs(selectedDocumentId);
+      }
     }
-  }, [selectedDocumentId, loadSections]);
+  }, [selectedDocumentId, currentDocumentType, loadSections, loadDocumentParagraphs]);
 
   return (
     <div className="h-screen flex flex-col bg-white">
