@@ -80,7 +80,7 @@ jobs:
           elif [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
             # Windows: bundle/msi/*.msi and bundle/nsis/*.exe
             find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.msi" -exec cp {} release/ \;
-            find src-tauri/target/${{ matrix.platform.target }}/release/bundle/bundle -name "*.exe" -exec cp {} release/ \;
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.exe" -exec cp {} release/ \;
           fi
 
           # List artifacts for debugging
