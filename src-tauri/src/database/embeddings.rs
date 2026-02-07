@@ -1,6 +1,6 @@
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
+use rusqlite::{params, Connection, Result};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum EmbeddingError {
@@ -147,24 +147,26 @@ pub fn get(conn: &Connection, paragraph_id: &str) -> Result<Option<Embedding>, E
     let mut stmt = conn.prepare(
         "SELECT id, paragraph_id, vector, dim, provider, model, created_at, updated_at
          FROM embeddings
-         WHERE paragraph_id = ?1"
+         WHERE paragraph_id = ?1",
     )?;
 
-    let embeddings = stmt.query_map(params![paragraph_id], |row| {
-        let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-        Ok(Embedding {
-            id: row.get(0)?,
-            paragraph_id: row.get(1)?,
-            vector,
-            dim: row.get(3)?,
-            provider: row.get(4)?,
-            model: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let embeddings = stmt
+        .query_map(params![paragraph_id], |row| {
+            let bytes: Vec<u8> = row.get(2)?;
+            let vector = bytes_to_vec_f32(&bytes)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+            Ok(Embedding {
+                id: row.get(0)?,
+                paragraph_id: row.get(1)?,
+                vector,
+                dim: row.get(3)?,
+                provider: row.get(4)?,
+                model: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(embeddings.into_iter().next())
 }
@@ -176,24 +178,26 @@ pub fn list_all_vectors(conn: &Connection) -> Result<Vec<Embedding>, EmbeddingEr
     let mut stmt = conn.prepare(
         "SELECT id, paragraph_id, vector, dim, provider, model, created_at, updated_at
          FROM embeddings
-         ORDER BY created_at DESC"
+         ORDER BY created_at DESC",
     )?;
 
-    let embeddings = stmt.query_map([], |row| {
-        let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-        Ok(Embedding {
-            id: row.get(0)?,
-            paragraph_id: row.get(1)?,
-            vector,
-            dim: row.get(3)?,
-            provider: row.get(4)?,
-            model: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let embeddings = stmt
+        .query_map([], |row| {
+            let bytes: Vec<u8> = row.get(2)?;
+            let vector = bytes_to_vec_f32(&bytes)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+            Ok(Embedding {
+                id: row.get(0)?,
+                paragraph_id: row.get(1)?,
+                vector,
+                dim: row.get(3)?,
+                provider: row.get(4)?,
+                model: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(embeddings)
 }
@@ -202,10 +206,7 @@ pub fn list_all_vectors(conn: &Connection) -> Result<Vec<Embedding>, EmbeddingEr
 ///
 /// Returns embeddings for paragraphs belonging to the specified document,
 /// ordered by created_at in descending order (newest first).
-pub fn list_by_document(
-    conn: &Connection,
-    doc_id: &str,
-) -> Result<Vec<Embedding>, EmbeddingError> {
+pub fn list_by_document(conn: &Connection, doc_id: &str) -> Result<Vec<Embedding>, EmbeddingError> {
     let mut stmt = conn.prepare(
         "SELECT e.id, e.paragraph_id, e.vector, e.dim, e.provider, e.model, e.created_at, e.updated_at
          FROM embeddings e
@@ -214,21 +215,23 @@ pub fn list_by_document(
          ORDER BY e.created_at DESC"
     )?;
 
-    let embeddings = stmt.query_map(params![doc_id], |row| {
-        let bytes: Vec<u8> = row.get(2)?;
-        let vector = bytes_to_vec_f32(&bytes)
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-        Ok(Embedding {
-            id: row.get(0)?,
-            paragraph_id: row.get(1)?,
-            vector,
-            dim: row.get(3)?,
-            provider: row.get(4)?,
-            model: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let embeddings = stmt
+        .query_map(params![doc_id], |row| {
+            let bytes: Vec<u8> = row.get(2)?;
+            let vector = bytes_to_vec_f32(&bytes)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+            Ok(Embedding {
+                id: row.get(0)?,
+                paragraph_id: row.get(1)?,
+                vector,
+                dim: row.get(3)?,
+                provider: row.get(4)?,
+                model: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(embeddings)
 }

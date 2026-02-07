@@ -44,6 +44,7 @@ interface LocalModelValidationResponse {
 }
 
 type SearchMode = 'semantic-local' | 'keyword-fallback';
+const SEARCH_TIMEOUT_MS = 20_000;
 
 export const SearchPanel: React.FC = () => {
   const isZh = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase().startsWith('zh');
@@ -58,6 +59,7 @@ export const SearchPanel: React.FC = () => {
       ? '本地 embedding 模型下载返回了 HTML（通常是代理拦截）。请在 Settings 中设置 Embedding Download Base URL（如 https://hf-mirror.com）后重试。'
       : 'Local embedding model download returned HTML (usually proxy interception). Set Embedding Download Base URL (e.g. https://hf-mirror.com) in Settings and retry.',
     searchFailed: isZh ? '搜索失败' : 'Search failed',
+    searchTimeout: isZh ? '搜索超时，请重试或缩短关键词范围。' : 'Search timed out. Please retry or narrow your query.',
     modeSemantic: isZh ? '语义检索（本地）' : 'Semantic (Local)',
     modeKeyword: isZh ? '关键词回退' : 'Keyword Fallback',
     statusUnavailable: isZh ? '状态不可用' : 'Status unavailable',
@@ -117,9 +119,28 @@ export const SearchPanel: React.FC = () => {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    let timer: number | null = null;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timer = window.setTimeout(() => {
+        reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)} seconds`));
+      }, timeoutMs);
+    });
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    }
+  };
+
   const getFriendlyError = (err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     const normalized = message.toLowerCase();
+    if (normalized.includes('timed out')) {
+      return t.searchTimeout;
+    }
     if (normalized.includes('no models loaded')) {
       return t.noModelsLoaded;
     }
@@ -191,13 +212,17 @@ export const SearchPanel: React.FC = () => {
 
   const runKeywordFallbackSearch = async () => {
     setSearchMode('keyword-fallback');
-    const fallbackResults = await invoke<SearchResult[]>('search', {
-      options: {
-        query,
-        top_k: topK,
-        doc_id: selectedDocumentId || undefined,
-      },
-    });
+    const fallbackResults = await withTimeout(
+      invoke<SearchResult[]>('search', {
+        options: {
+          query,
+          top_k: topK,
+          doc_id: selectedDocumentId || undefined,
+        },
+      }),
+      SEARCH_TIMEOUT_MS,
+      'Keyword search'
+    );
     setResults(fallbackResults);
     setSearchHighlight(
       query.trim(),
@@ -217,14 +242,23 @@ export const SearchPanel: React.FC = () => {
       if (provider === 'local_transformers') {
         await validateLocalModelPath(config.embedding_local_model_path);
         const profile = await getCurrentProfile();
-        const vector = await embedQuery(query, profile, config.embedding_local_model_path);
-        const semanticResults = await invoke<SearchResult[]>('search_by_embedding', {
-          request: {
-            query_vector: vector,
-            top_k: topK,
-            doc_id: selectedDocumentId || undefined,
-          },
-        });
+        const vector = await withTimeout(
+          embedQuery(query, profile, config.embedding_local_model_path),
+          SEARCH_TIMEOUT_MS,
+          'Embedding query'
+        );
+        const semanticResults = await withTimeout(
+          invoke<SearchResult[]>('search_by_embedding', {
+            request: {
+              query_vector: vector,
+              top_k: topK,
+              doc_id: selectedDocumentId || undefined,
+              query_text: query,
+            },
+          }),
+          SEARCH_TIMEOUT_MS,
+          'Semantic search'
+        );
         setSearchMode('semantic-local');
         setResults(semanticResults);
         setSearchHighlight(

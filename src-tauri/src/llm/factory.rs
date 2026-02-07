@@ -1,6 +1,6 @@
-use crate::config::{Config, AiProvider};
+use crate::config::{AiProvider, Config};
 use crate::error::Result;
-use crate::llm::{LmStudioClient, OpenAiClient, AiClient};
+use crate::llm::{AiClient, LmStudioClient, OpenAiClient};
 use std::sync::Arc;
 
 pub fn create_client(config: &Config) -> Result<Arc<dyn AiClient>> {
@@ -14,11 +14,12 @@ pub fn create_client(config: &Config) -> Result<Arc<dyn AiClient>> {
             Ok(Arc::new(client))
         }
         AiProvider::OpenAi => {
-            let api_key = config.openai_api_key
-                .as_ref()
-                .ok_or_else(|| crate::ReaderError::Internal("OpenAI API key is not configured".to_string()))?;
+            let api_key = config.openai_api_key.as_ref().ok_or_else(|| {
+                crate::ReaderError::Internal("OpenAI API key is not configured".to_string())
+            })?;
 
-            let base_url = config.openai_base_url
+            let base_url = config
+                .openai_base_url
                 .as_ref()
                 .cloned()
                 .unwrap_or_else(|| "https://api.openai.com/v1".to_string());

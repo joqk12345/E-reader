@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
@@ -7,6 +7,10 @@ import { Settings } from './Settings';
 export const Library: React.FC = () => {
   const { documents, isLoading, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
   const [showSettings, setShowSettings] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'pdf' | 'markdown'>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
+  const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
     loadDocuments();
@@ -52,6 +56,28 @@ export const Library: React.FC = () => {
     }
   };
 
+  const displayedDocuments = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    const filtered = documents.filter((doc) => {
+      if (typeFilter !== 'all' && doc.file_type !== typeFilter) return false;
+      if (!q) return true;
+      const title = doc.title.toLowerCase();
+      const author = (doc.author || '').toLowerCase();
+      const filePath = doc.file_path.toLowerCase();
+      return title.includes(q) || author.includes(q) || filePath.includes(q);
+    });
+
+    const sorted = [...filtered];
+    if (sortBy === 'recent') {
+      sorted.sort((a, b) => b.updated_at - a.updated_at);
+    } else if (sortBy === 'title') {
+      sorted.sort((a, b) => a.title.localeCompare(b.title));
+    } else {
+      sorted.sort((a, b) => a.file_type.localeCompare(b.file_type) || a.title.localeCompare(b.title));
+    }
+    return sorted;
+  }, [documents, searchText, sortBy, typeFilter]);
+
   return (
     <>
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
@@ -77,6 +103,52 @@ export const Library: React.FC = () => {
               </button>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Filter by title, author, or path..."
+              className="w-72 max-w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+              {(['grid', 'list', 'compact'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2.5 py-1.5 text-xs capitalize ${
+                    viewMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+              {(['all', 'epub', 'pdf', 'markdown'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className={`px-2.5 py-1.5 text-xs uppercase ${
+                    typeFilter === type ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'type')}
+              className="ml-auto px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="recent">Sort: Recent</option>
+              <option value="title">Sort: Title</option>
+              <option value="type">Sort: Type</option>
+            </select>
+          </div>
         </div>
 
       {/* Documents Grid */}
@@ -89,12 +161,30 @@ export const Library: React.FC = () => {
             <p className="text-lg">No documents yet</p>
             <p className="text-sm mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
           </div>
-        ) : (
+        ) : displayedDocuments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <p className="text-base">No documents match current filters</p>
+            <p className="text-sm mt-2">Try clearing search text or switching type filter</p>
+          </div>
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {documents.map((doc) => (
+            {displayedDocuments.map((doc) => (
               <DocumentCard
                 key={doc.id}
                 document={doc}
+                variant="grid"
+                onClick={() => selectDocument(doc.id)}
+                onDelete={() => handleDelete(doc.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={viewMode === 'list' ? 'space-y-3' : 'space-y-2'}>
+            {displayedDocuments.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                variant={viewMode}
                 onClick={() => selectDocument(doc.id)}
                 onDelete={() => handleDelete(doc.id)}
               />

@@ -132,14 +132,17 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className={activeTab === 'audiobook' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto'}>
             {activeTab === 'search' && <SearchPanel />}
             {activeTab === 'summary' && <SummaryPanel />}
             {activeTab === 'translate' && <TranslatePanel />}
-            {activeTab === 'audiobook' && <AudiobookPanel />}
           </div>
         </>
       )}
+
+      <div className={collapsed || activeTab !== 'audiobook' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto'}>
+        <AudiobookPanel />
+      </div>
 
       {!collapsed && (
         <div

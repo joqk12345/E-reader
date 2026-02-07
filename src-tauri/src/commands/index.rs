@@ -4,7 +4,7 @@ use crate::database::{get_embedding, insert_embedding, list_paragraphs};
 use crate::error::Result;
 use crate::llm::create_client;
 use tauri::AppHandle;
-use tracing::{info, error, warn};
+use tracing::{error, info, warn};
 
 /// Indexes a document by generating embeddings for all its paragraphs
 ///
@@ -33,13 +33,16 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
     let conn = get_connection(&app_handle)?;
 
     // List all paragraphs for the document
-    let paragraphs = list_paragraphs(&conn, &doc_id)
-        .map_err(|e| {
-            error!("Failed to list paragraphs for document {}: {}", doc_id, e);
-            e
-        })?;
+    let paragraphs = list_paragraphs(&conn, &doc_id).map_err(|e| {
+        error!("Failed to list paragraphs for document {}: {}", doc_id, e);
+        e
+    })?;
 
-    info!("Found {} paragraphs for document {}", paragraphs.len(), doc_id);
+    info!(
+        "Found {} paragraphs for document {}",
+        paragraphs.len(),
+        doc_id
+    );
 
     let mut indexed_count = 0;
 
@@ -71,24 +74,36 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
                                 info!("Successfully indexed paragraph {}", paragraph.id);
                             }
                             Err(e) => {
-                                error!("Failed to insert embedding for paragraph {}: {}", paragraph.id, e);
+                                error!(
+                                    "Failed to insert embedding for paragraph {}: {}",
+                                    paragraph.id, e
+                                );
                                 return Err(e.into());
                             }
                         }
                     }
                     Err(e) => {
-                        error!("Failed to generate embedding for paragraph {}: {}", paragraph.id, e);
+                        error!(
+                            "Failed to generate embedding for paragraph {}: {}",
+                            paragraph.id, e
+                        );
                         return Err(e);
                     }
                 }
             }
             Err(e) => {
-                error!("Failed to check embedding existence for paragraph {}: {}", paragraph.id, e);
+                error!(
+                    "Failed to check embedding existence for paragraph {}: {}",
+                    paragraph.id, e
+                );
                 return Err(e.into());
             }
         }
     }
 
-    info!("Document indexing complete: {} paragraphs newly indexed", indexed_count);
+    info!(
+        "Document indexing complete: {} paragraphs newly indexed",
+        indexed_count
+    );
     Ok(indexed_count)
 }
