@@ -56,7 +56,9 @@ pub async fn list_tts_voices() -> Result<Vec<TtsVoice>> {
 #[tauri::command]
 pub async fn tts_synthesize(request: TtsRequest) -> Result<TtsAudio> {
     if request.text.trim().is_empty() {
-        return Err(ReaderError::InvalidArgument("TTS text cannot be empty".to_string()));
+        return Err(ReaderError::InvalidArgument(
+            "TTS text cannot be empty".to_string(),
+        ));
     }
 
     let config = load_config()?;
@@ -131,7 +133,13 @@ fn edge_proxy(config: &crate::config::Config) -> Option<String> {
         }
     }
 
-    for key in ["EDGE_TTS_PROXY", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"] {
+    for key in [
+        "EDGE_TTS_PROXY",
+        "HTTPS_PROXY",
+        "https_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+    ] {
         if let Ok(value) = std::env::var(key) {
             let trimmed = value.trim();
             if !trimmed.is_empty() {
@@ -145,10 +153,7 @@ fn edge_proxy(config: &crate::config::Config) -> Option<String> {
 
 fn normalize_edge_error(stderr: &str) -> String {
     if stderr.contains("No module named edge_tts") {
-        return format!(
-            "{} (Install with: python3 -m pip install edge-tts)",
-            stderr
-        );
+        return format!("{} (Install with: python3 -m pip install edge-tts)", stderr);
     }
     if stderr.contains("ClientConnectorDNSError")
         || stderr.contains("Cannot connect to host speech.platform.bing.com")
@@ -159,9 +164,7 @@ fn normalize_edge_error(stderr: &str) -> String {
     if stderr.contains("ClientProxyConnectionError") {
         return "Edge TTS proxy connection failed. Verify Edge TTS Proxy in Settings.".to_string();
     }
-    if stderr.contains("NoAudioReceived")
-        || stderr.contains("No audio was received")
-    {
+    if stderr.contains("NoAudioReceived") || stderr.contains("No audio was received") {
         return "Edge TTS returned no audio. This usually means the sentence has no speakable text or the selected voice is incompatible. The app has retried with a default voice; if it still fails, check text content and proxy/network.".to_string();
     }
     if stderr.contains("401")
@@ -244,27 +247,39 @@ async fn synthesize_edge(
         .map_err(|e| ReaderError::ModelApi(format!("Edge TTS temp text write failed: {}", e)))?;
 
     let proxy = edge_proxy(config);
-    let audio = match run_edge_tts(&input_path, &output_path, &voice, &rate_string, proxy.as_deref()).await {
+    let audio = match run_edge_tts(
+        &input_path,
+        &output_path,
+        &voice,
+        &rate_string,
+        proxy.as_deref(),
+    )
+    .await
+    {
         Ok(audio) => audio,
         Err(err) => {
-            if err.contains("NoAudioReceived")
-                || err.contains("No audio was received")
-            {
+            if err.contains("NoAudioReceived") || err.contains("No audio was received") {
                 let fallback_voice = edge_language_default_voice(language);
                 if fallback_voice != voice {
-                    run_edge_tts(&input_path, &output_path, &fallback_voice, &rate_string, proxy.as_deref())
-                        .await
-                        .map_err(|fallback_err| {
-                            let normalized = normalize_edge_error(&fallback_err);
-                            ReaderError::ModelApi(format!(
-                                "Edge TTS process failed: {}",
-                                if normalized.is_empty() {
-                                    "unknown error".to_string()
-                                } else {
-                                    normalized
-                                }
-                            ))
-                        })?
+                    run_edge_tts(
+                        &input_path,
+                        &output_path,
+                        &fallback_voice,
+                        &rate_string,
+                        proxy.as_deref(),
+                    )
+                    .await
+                    .map_err(|fallback_err| {
+                        let normalized = normalize_edge_error(&fallback_err);
+                        ReaderError::ModelApi(format!(
+                            "Edge TTS process failed: {}",
+                            if normalized.is_empty() {
+                                "unknown error".to_string()
+                            } else {
+                                normalized
+                            }
+                        ))
+                    })?
                 } else {
                     let normalized = normalize_edge_error(&err);
                     return Err(ReaderError::ModelApi(format!(
@@ -312,10 +327,9 @@ async fn synthesize_cosyvoice(
     language: &str,
     rate: f32,
 ) -> Result<TtsAudio> {
-    let base_url = config
-        .cosyvoice_base_url
-        .as_ref()
-        .ok_or_else(|| ReaderError::InvalidArgument("CosyVoice base URL is not configured".to_string()))?;
+    let base_url = config.cosyvoice_base_url.as_ref().ok_or_else(|| {
+        ReaderError::InvalidArgument("CosyVoice base URL is not configured".to_string())
+    })?;
     let url = format!("{}/tts", base_url.trim_end_matches('/'));
     let voice = request
         .voice

@@ -12,6 +12,21 @@ type TtsAudioResponse = {
   provider: string;
 };
 
+type AudiobookControlAction = 'play' | 'toggle-pause' | 'stop';
+
+type AudiobookControlEventDetail = {
+  action: AudiobookControlAction;
+};
+
+type AudiobookStateEventDetail = {
+  isPlaying: boolean;
+  isPaused: boolean;
+  currentSentence: string;
+  currentProvider: string;
+  error: string | null;
+  queueSize: number;
+};
+
 export const AudiobookPanel: React.FC = () => {
   const { paragraphs, translationMode, setCurrentReadingSentenceKey } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
@@ -72,6 +87,19 @@ export const AudiobookPanel: React.FC = () => {
     return () => stopPlayback();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const detail: AudiobookStateEventDetail = {
+      isPlaying,
+      isPaused,
+      currentSentence,
+      currentProvider,
+      error,
+      queueSize: sentences.length,
+    };
+    window.dispatchEvent(new CustomEvent<AudiobookStateEventDetail>('reader:audiobook-state', { detail }));
+  }, [isPlaying, isPaused, currentSentence, currentProvider, error, sentences.length]);
+
   const resolveTargetLang = (sourceText: string): TargetLang => {
     if (translationMode === 'en-zh') return 'zh';
     if (translationMode === 'zh-en') return 'en';
@@ -125,8 +153,16 @@ export const AudiobookPanel: React.FC = () => {
 
     await new Promise<void>((resolve, reject) => {
       player.onended = () => resolve();
-      player.onerror = () => reject(new Error('Audio playback failed'));
+      player.onerror = () => {
+        if (stopRequestedRef.current) {
+          resolve();
+          return;
+        }
+        reject(new Error('Audio playback failed'));
+      };
     }).finally(() => {
+      player.onended = null;
+      player.onerror = null;
       URL.revokeObjectURL(objectUrl);
     });
   };
@@ -160,7 +196,13 @@ export const AudiobookPanel: React.FC = () => {
       utterance.rate = Math.min(Math.max(speechRate, 0.8), 1.6);
 
       utterance.onend = () => resolve();
-      utterance.onerror = (event) => reject(new Error(`Speech playback failed: ${event.error}`));
+      utterance.onerror = (event) => {
+        if (stopRequestedRef.current || event.error === 'canceled' || event.error === 'interrupted') {
+          resolve();
+          return;
+        }
+        reject(new Error(`Speech playback failed: ${event.error}`));
+      };
 
       playbackModeRef.current = 'speech';
       window.speechSynthesis.speak(utterance);
@@ -218,6 +260,9 @@ export const AudiobookPanel: React.FC = () => {
         }
       }
     } catch (err) {
+      if (stopRequestedRef.current) {
+        return;
+      }
       console.error('Audiobook playback failed:', err);
       const message = err instanceof Error ? err.message : String(err);
       setError(`Audiobook playback failed: ${message}`);
@@ -254,6 +299,30 @@ export const AudiobookPanel: React.FC = () => {
     setIsPaused(false);
     await audioRef.current.play();
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onControl = (event: Event) => {
+      const customEvent = event as CustomEvent<AudiobookControlEventDetail>;
+      if (!customEvent.detail) return;
+
+      if (customEvent.detail.action === 'play') {
+        void startPlayback();
+        return;
+      }
+      if (customEvent.detail.action === 'toggle-pause') {
+        void togglePause();
+        return;
+      }
+      if (customEvent.detail.action === 'stop') {
+        stopPlayback();
+      }
+    };
+
+    window.addEventListener('reader:audiobook-control', onControl as EventListener);
+    return () => window.removeEventListener('reader:audiobook-control', onControl as EventListener);
+  }, [startPlayback, togglePause]);
 
   return (
     <div className="flex flex-col h-full p-4 overflow-y-auto">

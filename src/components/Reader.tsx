@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
 import { ToolPanel } from './ToolPanel';
+import { FloatingAudiobookControl } from './FloatingAudiobookControl';
 
 export function Reader() {
   const {
@@ -93,6 +94,7 @@ export function Reader() {
         <ReaderContent />
         <ToolPanel {...toolPanelProps} />
       </div>
+      <FloatingAudiobookControl />
     </div>
   );
 }

@@ -10,20 +10,20 @@ This project uses GitHub Actions for automated building and releasing.
 
 1. **Update the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`:**
    ```bash
-   # Update version from 0.2.0 to 0.3.0, for example
+   # Update version from 0.3.0 to 0.3.1, for example
    ```
 
 2. **Commit your changes:**
    ```bash
    git add .
-   git commit -m "chore: bump version to 0.3.0"
+   git commit -m "chore: bump version to 0.3.1"
    git push origin main
    ```
 
 3. **Create and push a version tag:**
    ```bash
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.3.1
+   git push origin v0.3.1
    ```
 
 4. **GitHub Actions will automatically:**
@@ -57,7 +57,7 @@ Runs on every push and pull request to:
 
 ### Release Workflow (`.github/workflows/release.yml`)
 
-Triggers on version tags (e.g., `v0.3.0`) to:
+Triggers on version tags (e.g., `v0.3.1`) to:
 - Build release binaries for all platforms
 - Create a GitHub Release (as draft)
 - Upload installers and bundles

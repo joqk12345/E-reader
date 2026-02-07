@@ -99,7 +99,9 @@ impl AiClient for LmStudioClient {
             .map_err(|e| ReaderError::ModelApi(format!("Failed to parse response: {}", e)))?;
 
         if embedding_response.data.is_empty() {
-            return Err(ReaderError::ModelApi("No embedding data in response".to_string()));
+            return Err(ReaderError::ModelApi(
+                "No embedding data in response".to_string(),
+            ));
         }
 
         Ok(embedding_response.data[0].embedding.clone())

@@ -9,6 +9,30 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Library homepage upgrades**:
+  - multi-view switch: `Grid` / `List` / `Compact`
+  - quick filter by file type (`All/EPUB/PDF/Markdown`)
+  - keyword filter (title/author/path) + sorting (`Recent/Title/Type`)
+- **Search robustness + relevance**:
+  - client-side timeout for semantic/keyword search requests (avoid endless loading)
+  - server-side embedding timeout with automatic fallback
+  - semantic results now use lexical re-ranking (keyword exact-match boost) to reduce irrelevant hits for short queries (e.g. `weapon`)
+- **Markdown translation layout fix**:
+  - Markdown content now translates at paragraph-block level (not sentence-fragment level)
+  - translated output is rendered as Markdown/GFM to preserve headings/lists/code/table structure
+  - translation prompt explicitly requires Markdown structure preservation
+- **Audiobook UX improvements**:
+  - background playback kept alive when switching tool tabs
+  - floating mini player added for global control (`Play/Pause/Stop`)
+  - floating player supports minimize/close; default state is minimized
+  - stop/cancel path no longer reports false `Audio playback failed` errors
+- **Summary panel UX**:
+  - copy action added and moved to a compact icon button in the summary result card
+  - generate button visual weight reduced to fit panel hierarchy
+- **App icon refresh**:
+  - Tauri application icon set regenerated (`icns/ico/png`) from new brand mark
+  - includes desktop bundle and platform icon assets in `src-tauri/icons`
+
 - **Offline-first local embedding** with `@xenova/transformers` (`Xenova/all-MiniLM-L6-v2`, 384 dims) and SQLite storage.
 - **Embedding profile controls** in Settings:
   - provider / model / dimension / auto-reindex
@@ -146,6 +170,8 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 - **Table of Contents**: Use the TOC panel to navigate between chapters/sections
 - **Search**: Use the Search panel to find content semantically (not just keyword matching)
+- **Hybrid Search Ranking**: Semantic retrieval is re-ranked with lexical keyword signals for better precision on short queries
+- **Search Timeout Protection**: long-running semantic/keyword requests now fail fast with user-facing timeout hints
 - **Search Highlight**: Search hits are highlighted in the reading content
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
 - **Text-to-Speech**: Use the Audiobook panel to listen to content
@@ -153,6 +179,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - Select provider and playback speed
   - Click **Play** to start listening
   - Reader auto-scrolls and highlights currently reading content
+  - Use the floating mini player for global playback control when not in the Audio tab
 
 ### AI Features Setup
 
@@ -266,6 +293,7 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
 4. Choose your preferred style and scope
 5. Click **Generate Summary**
 6. Results are cached - regenerate to refresh
+7. Use the copy icon in the result card to copy summary text quickly
 
 ### Translation & Bilingual View
 

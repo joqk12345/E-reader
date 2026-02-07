@@ -40,6 +40,7 @@ pub struct SearchByEmbeddingRequest {
     pub query_vector: Vec<f32>,
     pub top_k: usize,
     pub doc_id: Option<String>,
+    pub query_text: Option<String>,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -88,7 +89,10 @@ pub struct ValidateLocalEmbeddingModelResponse {
 }
 
 #[tauri::command]
-pub async fn get_document_paragraphs(app_handle: AppHandle, doc_id: String) -> Result<Vec<Paragraph>> {
+pub async fn get_document_paragraphs(
+    app_handle: AppHandle,
+    doc_id: String,
+) -> Result<Vec<Paragraph>> {
     let conn = get_connection(&app_handle)?;
     let paragraphs = database::list_paragraphs(&conn, &doc_id)?;
     Ok(paragraphs)
@@ -163,29 +167,41 @@ pub async fn search_by_embedding(
         .collect();
 
     similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    similarities.truncate(top_k);
+    let candidate_k = (top_k.saturating_mul(8)).max(top_k);
+    similarities.truncate(candidate_k);
     if similarities.is_empty() {
         return Ok(Vec::new());
     }
 
     let paragraphs_map = load_paragraph_map(&conn, &similarities)?;
-    let mut output = Vec::new();
+    let query_lower = request.query_text.as_ref().map(|q| q.trim().to_lowercase());
+    let query_tokens = tokenize_query(query_lower.as_deref().unwrap_or_default());
+    let mut ranked = Vec::new();
+
     for (paragraph_id, score) in similarities {
         if let Some((text, location)) = paragraphs_map.get(paragraph_id.as_str()) {
+            let adjusted_score = if let Some(query) = &query_lower {
+                score + lexical_boost(query, &query_tokens, text)
+            } else {
+                score
+            };
             let snippet = if text.len() > 200 {
                 format!("{}...", &text[..200])
             } else {
                 text.clone()
             };
-            output.push(SearchByEmbeddingResult {
+            ranked.push(SearchByEmbeddingResult {
                 paragraph_id,
                 snippet,
-                score,
+                score: adjusted_score,
                 location: location.clone(),
             });
         }
     }
-    Ok(output)
+
+    ranked.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    ranked.truncate(top_k);
+    Ok(ranked)
 }
 
 #[tauri::command]
@@ -203,7 +219,9 @@ pub async fn get_embedding_profile_status(
             |row| row.get::<_, i64>(0),
         )? as usize
     } else {
-        conn.query_row("SELECT COUNT(*) FROM paragraphs", [], |row| row.get::<_, i64>(0))? as usize
+        conn.query_row("SELECT COUNT(*) FROM paragraphs", [], |row| {
+            row.get::<_, i64>(0)
+        })? as usize
     };
 
     let indexed = if let Some(doc_id) = &doc_id {
@@ -215,7 +233,12 @@ pub async fn get_embedding_profile_status(
                AND e.provider = ?2
                AND e.model = ?3
                AND e.dim = ?4",
-            params![doc_id, profile.provider, profile.model, profile.dimension as i32],
+            params![
+                doc_id,
+                profile.provider,
+                profile.model,
+                profile.dimension as i32
+            ],
             |row| row.get::<_, i64>(0),
         )? as usize
     } else {
@@ -238,7 +261,12 @@ pub async fn get_embedding_profile_status(
              JOIN embeddings e ON e.paragraph_id = p.id
              WHERE p.doc_id = ?1
                AND (e.provider != ?2 OR e.model != ?3 OR e.dim != ?4)",
-            params![doc_id, profile.provider, profile.model, profile.dimension as i32],
+            params![
+                doc_id,
+                profile.provider,
+                profile.model,
+                profile.dimension as i32
+            ],
             |row| row.get::<_, i64>(0),
         )? as usize
     } else {
@@ -287,9 +315,7 @@ pub async fn download_embedding_model_files(
         .path()
         .app_data_dir()
         .map_err(|e| ReaderError::Internal(format!("Failed to resolve app data dir: {}", e)))?;
-    let target_dir = app_data_dir
-        .join("models")
-        .join(model.replace('/', "_"));
+    let target_dir = app_data_dir.join("models").join(model.replace('/', "_"));
     std::fs::create_dir_all(&target_dir)?;
 
     let required_files = vec![
@@ -532,7 +558,11 @@ fn load_paragraph_map(
     scores: &[(String, f32)],
 ) -> Result<HashMap<String, (String, String)>> {
     let paragraph_ids = scores.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>();
-    let placeholders = paragraph_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let placeholders = paragraph_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
     let sql = format!(
         "SELECT id, text, location FROM paragraphs WHERE id IN ({})",
         placeholders
@@ -561,4 +591,38 @@ fn load_paragraph_map(
 
 fn path_to_string(path: &PathBuf) -> String {
     path.to_string_lossy().to_string()
+}
+
+fn lexical_boost(query: &str, query_tokens: &[String], text: &str) -> f32 {
+    let lowered_text = text.to_lowercase();
+    let mut boost = 0.0_f32;
+
+    if !query.is_empty() && lowered_text.contains(query) {
+        boost += 0.25;
+        let occurrences = lowered_text.matches(query).count() as f32;
+        boost += (occurrences * 0.03).min(0.15);
+    }
+
+    if !query_tokens.is_empty() {
+        let matched = query_tokens
+            .iter()
+            .filter(|token| lowered_text.contains(token.as_str()))
+            .count() as f32;
+        boost += (matched / query_tokens.len() as f32) * 0.2;
+    }
+
+    boost
+}
+
+fn tokenize_query(query: &str) -> Vec<String> {
+    query
+        .split(|c: char| !c.is_alphanumeric() && !is_cjk(c))
+        .map(str::trim)
+        .filter(|token| !token.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn is_cjk(c: char) -> bool {
+    ('\u{4e00}'..='\u{9fff}').contains(&c)
 }

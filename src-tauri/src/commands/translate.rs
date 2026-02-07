@@ -1,15 +1,9 @@
 use crate::config::load_config;
 use crate::database::{
-    get_connection,
-    get_paragraph,
-    save_translation,
-    get_translation,
-    save_text_translation,
-    get_text_translation,
-    save_summary,
-    get_summary,
+    get_connection, get_paragraph, get_summary, get_text_translation, get_translation,
+    save_summary, save_text_translation, save_translation,
 };
-use crate::error::{Result, ReaderError};
+use crate::error::{ReaderError, Result};
 use crate::llm::{create_client, ChatMessage};
 use sha2::{Digest, Sha256};
 use tauri::AppHandle;
@@ -43,12 +37,12 @@ pub async fn translate(
     match (&text, &paragraph_id) {
         (None, None) => {
             return Err(ReaderError::InvalidArgument(
-                "Either 'text' or 'paragraph_id' must be provided".to_string()
+                "Either 'text' or 'paragraph_id' must be provided".to_string(),
             ));
         }
         (Some(_), Some(_)) => {
             return Err(ReaderError::InvalidArgument(
-                "Only one of 'text' or 'paragraph_id' should be provided, not both".to_string()
+                "Only one of 'text' or 'paragraph_id' should be provided, not both".to_string(),
             ));
         }
         _ => {}
@@ -90,6 +84,8 @@ pub async fn translate(
 
     let system_prompt = format!(
         "You are a professional translator. Translate the following text to {}. \
+        If the input contains Markdown, preserve the original Markdown structure and syntax \
+        (headings, lists, links, code blocks, tables) while translating natural language text. \
         Provide only the translation without any additional commentary or explanation.",
         target_lang_name
     );
@@ -154,26 +150,33 @@ pub async fn summarize(
     style: String,
 ) -> Result<String> {
     // Validate that exactly one of doc_id, section_id, or paragraph_id is provided
-    let provided_count = [doc_id.is_some(), section_id.is_some(), paragraph_id.is_some()]
-        .iter()
-        .filter(|&&x| x)
-        .count();
+    let provided_count = [
+        doc_id.is_some(),
+        section_id.is_some(),
+        paragraph_id.is_some(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
 
     if provided_count != 1 {
         return Err(ReaderError::InvalidArgument(
-            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string()
+            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
         ));
     }
 
     // Validate style
     if !matches!(style.as_str(), "brief" | "detailed" | "bullet") {
-        return Err(ReaderError::InvalidArgument(
-            format!("Style must be one of: brief, detailed, bullet. Got: {}", style)
-        ));
+        return Err(ReaderError::InvalidArgument(format!(
+            "Style must be one of: brief, detailed, bullet. Got: {}",
+            style
+        )));
     }
 
     // Determine target_id and target_type, and load content
-    let (target_id, target_type, content): (String, String, String) = if let Some(pid) = &paragraph_id {
+    let (target_id, target_type, content): (String, String, String) = if let Some(pid) =
+        &paragraph_id
+    {
         let target_id = pid.clone();
         let target_type = "paragraph".to_string();
 
@@ -203,7 +206,10 @@ pub async fn summarize(
         use crate::database::list_paragraphs_by_section;
         let paragraphs = list_paragraphs_by_section(&conn, &target_id)?;
         if paragraphs.is_empty() {
-            return Err(ReaderError::NotFound(format!("Section {} has no content", &target_id)));
+            return Err(ReaderError::NotFound(format!(
+                "Section {} has no content",
+                &target_id
+            )));
         }
         let content = paragraphs
             .iter()
@@ -226,7 +232,10 @@ pub async fn summarize(
         use crate::database::list_paragraphs;
         let paragraphs = list_paragraphs(&conn, &target_id)?;
         if paragraphs.is_empty() {
-            return Err(ReaderError::NotFound(format!("Document {} has no content", &target_id)));
+            return Err(ReaderError::NotFound(format!(
+                "Document {} has no content",
+                &target_id
+            )));
         }
         let content = paragraphs
             .iter()
@@ -304,21 +313,26 @@ pub async fn get_summary_cache(
     paragraph_id: Option<String>,
     style: String,
 ) -> Result<Option<String>> {
-    let provided_count = [doc_id.is_some(), section_id.is_some(), paragraph_id.is_some()]
-        .iter()
-        .filter(|&&x| x)
-        .count();
+    let provided_count = [
+        doc_id.is_some(),
+        section_id.is_some(),
+        paragraph_id.is_some(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
 
     if provided_count != 1 {
         return Err(ReaderError::InvalidArgument(
-            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string()
+            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
         ));
     }
 
     if !matches!(style.as_str(), "brief" | "detailed" | "bullet") {
-        return Err(ReaderError::InvalidArgument(
-            format!("Style must be one of: brief, detailed, bullet. Got: {}", style)
-        ));
+        return Err(ReaderError::InvalidArgument(format!(
+            "Style must be one of: brief, detailed, bullet. Got: {}",
+            style
+        )));
     }
 
     let (target_id, target_type): (String, String) = if let Some(pid) = paragraph_id {

@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { splitIntoSentences } from '../utils/sentences';
 
+const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
+
 const renderTextWithHighlight = (text: string, query: string): ReactNode => {
   const keyword = query.trim();
   if (!keyword) return text;
@@ -103,8 +105,7 @@ export function ReaderContent() {
   };
 
   // 翻译单个句子
-  const translateSentence = async (paragraphId: string, sentence: string, index: number) => {
-    const key = `${paragraphId}_${index}`;
+  const translateSentence = async (key: string, sentence: string) => {
     if (translationsRef.current[key] || inFlightRef.current.has(key)) return;
 
     // 根据设置的翻译方向确定目标语言
@@ -127,7 +128,8 @@ export function ReaderContent() {
 
   // 点击翻译句子
   const handleTranslateSentence = async (paragraphId: string, sentence: string, index: number) => {
-    await translateSentence(paragraphId, sentence, index);
+    const key = `${paragraphId}_${index}`;
+    await translateSentence(key, sentence);
   };
 
   // 自动翻译当前章节所有句子（开启双语时）
@@ -135,16 +137,25 @@ export function ReaderContent() {
     if (translationMode === 'off' || !autoTranslate) return;
 
     let cancelled = false;
-    const pending: Array<{ paragraphId: string; sentence: string; index: number }> = [];
+    const pending: Array<{ key: string; text: string }> = [];
 
     for (const paragraph of paragraphs) {
+      if (currentDocumentType === 'markdown') {
+        const key = markdownTranslationKey(paragraph.id);
+        if (translationsRef.current[key]) continue;
+        if (inFlightRef.current.has(key)) continue;
+        if (!paragraph.text.trim()) continue;
+        pending.push({ key, text: paragraph.text });
+        continue;
+      }
+
       const sentences = splitIntoSentences(paragraph.text);
       sentences.forEach((sentence, index) => {
         const key = `${paragraph.id}_${index}`;
         if (translationsRef.current[key]) return;
         if (inFlightRef.current.has(key)) return;
         if (!sentence.trim()) return;
-        pending.push({ paragraphId: paragraph.id, sentence, index });
+        pending.push({ key, text: sentence });
       });
     }
 
@@ -155,7 +166,7 @@ export function ReaderContent() {
       while (pending.length > 0 && !cancelled) {
         const item = pending.shift();
         if (!item) return;
-        await translateSentence(item.paragraphId, item.sentence, item.index);
+        await translateSentence(item.key, item.text);
       }
     };
 
@@ -169,7 +180,7 @@ export function ReaderContent() {
     return () => {
       cancelled = true;
     };
-  }, [translationMode, autoTranslate, paragraphs]);
+  }, [translationMode, autoTranslate, paragraphs, currentDocumentType]);
 
   // 当章节或翻译方向变化时，清空翻译缓存并重建任务
   useEffect(() => {
@@ -311,20 +322,18 @@ export function ReaderContent() {
                         {paragraph.text}
                       </ReactMarkdown>
                     </div>
-                    {translationMode !== 'off' && sentences.length > 0 && (
-                      <div className="ml-4 space-y-1">
-                        {sentences.map((_, index) => {
-                          const key = `${paragraph.id}_${index}`;
-                          return translations[key] ? (
-                            <p
-                              key={`tr-${key}`}
-                              className="text-blue-600"
-                              style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
-                            >
-                              {translations[key]}
-                            </p>
-                          ) : null;
-                        })}
+                    {translationMode !== 'off' && (
+                      <div className="ml-4 rounded border-l-2 border-blue-200 pl-3">
+                        {translations[markdownTranslationKey(paragraph.id)] ? (
+                          <div
+                            className="markdown-content text-blue-700"
+                            style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+                          >
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {translations[markdownTranslationKey(paragraph.id)]}
+                            </ReactMarkdown>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>

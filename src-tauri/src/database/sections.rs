@@ -1,7 +1,7 @@
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
 use crate::models::Section;
+use rusqlite::{params, Connection, Result};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum SectionError {
@@ -46,18 +46,20 @@ pub fn list_by_document(conn: &Connection, doc_id: &str) -> Result<Vec<Section>,
         "SELECT id, doc_id, title, order_index, href
          FROM sections
          WHERE doc_id = ?1
-         ORDER BY order_index"
+         ORDER BY order_index",
     )?;
 
-    let sections = stmt.query_map(params![doc_id], |row| {
-        Ok(Section {
-            id: row.get(0)?,
-            doc_id: row.get(1)?,
-            title: row.get(2)?,
-            order_index: row.get(3)?,
-            href: row.get(4)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let sections = stmt
+        .query_map(params![doc_id], |row| {
+            Ok(Section {
+                id: row.get(0)?,
+                doc_id: row.get(1)?,
+                title: row.get(2)?,
+                order_index: row.get(3)?,
+                href: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(sections)
 }
@@ -69,18 +71,20 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Section>, SectionError>
     let mut stmt = conn.prepare(
         "SELECT id, doc_id, title, order_index, href
          FROM sections
-         WHERE id = ?1"
+         WHERE id = ?1",
     )?;
 
-    let sections = stmt.query_map(params![id], |row| {
-        Ok(Section {
-            id: row.get(0)?,
-            doc_id: row.get(1)?,
-            title: row.get(2)?,
-            order_index: row.get(3)?,
-            href: row.get(4)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let sections = stmt
+        .query_map(params![id], |row| {
+            Ok(Section {
+                id: row.get(0)?,
+                doc_id: row.get(1)?,
+                title: row.get(2)?,
+                order_index: row.get(3)?,
+                href: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(sections.into_iter().next())
 }
