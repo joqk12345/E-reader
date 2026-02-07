@@ -52,7 +52,12 @@ export const TranslatePanel: React.FC = () => {
       setTranslation(result);
     } catch (err) {
       console.error('Translate failed:', err);
-      setError(err instanceof Error ? err.message : 'Translation failed');
+      const message = err instanceof Error ? err.message : 'Translation failed';
+      if (message.toLowerCase().includes('timed out')) {
+        setError('Translation timed out. Please retry with shorter text or check model/network.');
+      } else {
+        setError(message);
+      }
       setTranslation('');
     } finally {
       setIsTranslating(false);

@@ -85,6 +85,8 @@ impl MarkdownParser {
                     }
 
                     current_section_title = heading.to_string();
+                    // Keep heading markdown line in body so reader can render full markdown document.
+                    current_buffer.push(trimmed.to_string());
                     continue;
                 }
             }
@@ -107,27 +109,30 @@ impl MarkdownParser {
 
 fn split_paragraphs(lines: &[String]) -> Vec<String> {
     let mut paragraphs = Vec::new();
-    let mut current = String::new();
+    let mut current: Vec<String> = Vec::new();
 
     for line in lines {
         let trimmed = line.trim();
 
         if trimmed.is_empty() {
-            if !current.trim().is_empty() {
-                paragraphs.push(current.trim().to_string());
+            if !current.is_empty() {
+                let block = current.join("\n").trim().to_string();
+                if !block.is_empty() {
+                    paragraphs.push(block);
+                }
                 current.clear();
             }
             continue;
         }
 
-        if !current.is_empty() {
-            current.push(' ');
-        }
-        current.push_str(trimmed);
+        current.push(line.to_string());
     }
 
-    if !current.trim().is_empty() {
-        paragraphs.push(current.trim().to_string());
+    if !current.is_empty() {
+        let block = current.join("\n").trim().to_string();
+        if !block.is_empty() {
+            paragraphs.push(block);
+        }
     }
 
     if paragraphs.is_empty() {

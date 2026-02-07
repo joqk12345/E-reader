@@ -2,16 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 type AiProvider = 'lmstudio' | 'openai';
+type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
 
 interface Config {
   provider: AiProvider;
   lm_studio_url: string;
+  embedding_provider: EmbeddingProvider;
   embedding_model: string;
+  embedding_dimension: number;
+  embedding_auto_reindex: boolean;
+  embedding_ollama_url?: string;
+  embedding_ollama_model?: string;
+  embedding_local_model_path?: string;
+  embedding_download_base_url?: string;
   chat_model: string;
   openai_api_key?: string;
   openai_base_url?: string;
   tts_provider: 'auto' | 'edge' | 'cosyvoice';
   edge_tts_voice: string;
+  edge_tts_proxy?: string;
   cosyvoice_base_url?: string;
   cosyvoice_api_key?: string;
   translation_mode: 'off' | 'en-zh' | 'zh-en';
@@ -23,16 +32,30 @@ interface SettingsProps {
   onClose: () => void;
 }
 
+interface EmbeddingStatus {
+  indexed: number;
+  total: number;
+  stale: number;
+}
+
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
     lm_studio_url: '',
-    embedding_model: '',
+    embedding_provider: 'local_transformers',
+    embedding_model: 'Xenova/all-MiniLM-L6-v2',
+    embedding_dimension: 384,
+    embedding_auto_reindex: true,
+    embedding_ollama_url: '',
+    embedding_ollama_model: '',
+    embedding_local_model_path: '',
+    embedding_download_base_url: '',
     chat_model: '',
     openai_api_key: '',
     openai_base_url: 'https://api.openai.com/v1',
     tts_provider: 'auto',
     edge_tts_voice: 'en-US-AriaNeural',
+    edge_tts_proxy: '',
     cosyvoice_base_url: '',
     cosyvoice_api_key: '',
     translation_mode: 'off',
@@ -42,16 +65,33 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
 
   useEffect(() => {
     loadConfig();
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const loadConfig = async () => {
     setIsLoading(true);
     try {
       const loadedConfig = await invoke<Config>('get_config');
       setConfig(loadedConfig);
+      try {
+        const status = await invoke<EmbeddingStatus>('get_embedding_profile_status', { docId: null });
+        setEmbeddingStatus(status);
+      } catch (e) {
+        console.warn('Failed to load embedding status:', e);
+      }
     } catch (error) {
       console.error('Failed to load config:', error);
       setMessage({ type: 'error', text: 'Failed to load configuration' });
@@ -92,10 +132,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[85vh] flex flex-col"
+        onClick={(event) => event.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
           <button
             onClick={onClose}
@@ -108,7 +154,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 space-y-4">
+        <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           {/* Message */}
           {message && (
             <div
@@ -125,7 +171,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           {/* AI Provider Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              AI Provider
+              Chat/Translate Provider
             </label>
             <select
               value={config.provider}
@@ -140,6 +186,144 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 ? 'Use local LM Studio for offline, privacy-focused AI features'
                 : 'Use OpenAI API for cloud-based AI features (requires API key)'}
             </p>
+          </div>
+
+          {/* Embedding Configuration */}
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-md space-y-3">
+            <p className="text-sm font-medium text-gray-800">Embedding</p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Embedding Provider
+              </label>
+              <select
+                value={config.embedding_provider}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    embedding_provider: e.target.value as EmbeddingProvider,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="local_transformers">Local Transformers (Offline First)</option>
+                <option value="lmstudio">LM Studio</option>
+                <option value="openai_compatible">OpenAI Compatible</option>
+                <option value="ollama">Ollama</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Embedding Model
+              </label>
+              <input
+                type="text"
+                value={config.embedding_model}
+                onChange={handleChange('embedding_model')}
+                placeholder="Xenova/all-MiniLM-L6-v2"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Recommended local model: Xenova/all-MiniLM-L6-v2 (384 dimensions)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Embedding Dimension
+              </label>
+              <input
+                type="number"
+                value={config.embedding_dimension}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={config.embedding_auto_reindex}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, embedding_auto_reindex: e.target.checked }))
+                }
+              />
+              <span>Auto reindex when embedding profile changes</span>
+            </label>
+            {config.embedding_provider === 'local_transformers' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Local Model Path (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={config.embedding_local_model_path || ''}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, embedding_local_model_path: e.target.value }))
+                  }
+                  placeholder="/Users/you/.../Xenova_all-MiniLM-L6-v2"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  If set, local embedding loads model files from this directory first.
+                </p>
+              </div>
+            )}
+            {config.embedding_provider === 'local_transformers' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Embedding Download Base URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={config.embedding_download_base_url || ''}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, embedding_download_base_url: e.target.value }))
+                  }
+                  placeholder="https://hf-mirror.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  If Hugging Face is blocked, set a mirror base URL. Example: https://hf-mirror.com
+                </p>
+              </div>
+            )}
+            {embeddingStatus && (
+              <p className="text-xs text-gray-500">
+                Indexed: {embeddingStatus.indexed}/{embeddingStatus.total}
+                {embeddingStatus.stale > 0 ? `, stale: ${embeddingStatus.stale}` : ''}
+              </p>
+            )}
+
+            {config.embedding_provider === 'ollama' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ollama URL
+                  </label>
+                  <input
+                    type="text"
+                    value={config.embedding_ollama_url || ''}
+                    onChange={(e) => setConfig((prev) => ({ ...prev, embedding_ollama_url: e.target.value }))}
+                    placeholder="http://localhost:11434"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ollama Embedding Model
+                  </label>
+                  <input
+                    type="text"
+                    value={config.embedding_ollama_model || ''}
+                    onChange={(e) => setConfig((prev) => ({ ...prev, embedding_ollama_model: e.target.value }))}
+                    placeholder="nomic-embed-text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* LM Studio Configuration */}
@@ -203,29 +387,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             </>
           )}
 
-          {/* Common Model Settings (for both providers) */}
-          {/* Embedding Model */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Embedding Model
-            </label>
-            <input
-              type="text"
-              value={config.embedding_model}
-              onChange={handleChange('embedding_model')}
-              placeholder="text-embedding-ada-002"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Model name for generating embeddings (semantic search)
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {config.provider === 'openai'
-                ? 'OpenAI: text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002'
-                : 'LM Studio: text-embedding-ada-002 (or compatible model)'}
-            </p>
-          </div>
-
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
             <p className="text-xs text-gray-600">
               Translation direction is now managed from the macOS menu bar: <span className="font-medium">Reading → Translation Direction</span>.
@@ -287,6 +448,22 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             </p>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Edge TTS Proxy (Optional)
+            </label>
+            <input
+              type="text"
+              value={config.edge_tts_proxy || ''}
+              onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_proxy: e.target.value }))}
+              placeholder="http://127.0.0.1:7890"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Used only for Edge TTS network requests. Leave empty to use system env proxy.
+            </p>
+          </div>
+
           {/* CosyVoice Config */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -316,7 +493,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex-shrink-0">
           <button
             onClick={onClose}
             disabled={isSaving}

@@ -7,12 +7,45 @@
 
 ## ✨ Features
 
+## 🆕 Recent Updates (2026-02)
+
+- **Offline-first local embedding** with `@xenova/transformers` (`Xenova/all-MiniLM-L6-v2`, 384 dims) and SQLite storage.
+- **Embedding profile controls** in Settings:
+  - provider / model / dimension / auto-reindex
+  - optional local model path (`embedding_local_model_path`) for pre-downloaded model files.
+- **Automatic full-document indexing** on document load/open (with manual `Rebuild Index` fallback).
+- **Model download resilience**:
+  - mirror fallback for model download (including `hf-mirror`)
+  - configurable embedding download base URL (`embedding_download_base_url`)
+  - local model path validation before indexing/search.
+- **Search UX upgrades**:
+  - search result click-to-jump fixed
+  - matched paragraphs are highlighted in reader content.
+- **Markdown reading reworked**:
+  - render full document content in reader (not section-snippet preview only)
+  - proper Markdown/GFM rendering via `react-markdown` + `remark-gfm`.
+- **Reader UI cleanup**:
+  - Settings modal supports scroll + close (including `Esc`)
+  - right Tool panel supports resize/collapse and internal scrolling.
+- **System menu integration** (macOS):
+  - translation direction moved into top menu
+  - menu text follows system language.
+- **Audiobook / TTS improvements**:
+  - Edge TTS + CosyVoice provider support
+  - Edge TTS command stability fixes (`--file` input instead of direct `--text`)
+  - optional Edge proxy setting (`edge_tts_proxy`)
+  - better fallback/error handling for network/voice/no-audio scenarios
+  - reading highlight and auto-follow during playback
+  - Markdown marker cleanup before TTS (avoid reading symbols like `*`).
+- **Translation stability improvement**:
+  - server-side timeout (30s) to avoid endless `Translating...` state.
+
 ### 📖 Core Reading Experience
 - **Library Management**: Import and organize EPUB, PDF, and Markdown documents
 - **Advanced Reader**: Table of Contents navigation, section/paragraph-based reading
 - **Semantic Search**: AI-powered search across all indexed paragraphs
 - **PDF Support**: Full PDF parsing and reading capabilities
-- **Markdown Support**: Import and read Markdown files with syntax highlighting
+- **Markdown Support**: Import and read full Markdown documents with proper formatting
 - **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
 
 ### 🤖 AI-Powered Tools (Flexible AI Provider Support)
@@ -28,9 +61,10 @@
     ```bash
     python3 -m pip install --user --break-system-packages edge-tts
     ```
+  - **Optional proxy** (if Edge TTS network is blocked): configure `Edge TTS Proxy` in Settings
   - Adjustable playback speed
   - Voice selection (multiple languages and accents)
-  - Text highlighting while reading
+  - Text highlighting + auto-follow while reading
 - **MCP Integration**: Model Context Protocol host server for external AI assistants
 - **Multiple AI Providers**:
   - **LM Studio**: Run AI completely locally for maximum privacy
@@ -112,12 +146,13 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 - **Table of Contents**: Use the TOC panel to navigate between chapters/sections
 - **Search**: Use the Search panel to find content semantically (not just keyword matching)
+- **Search Highlight**: Search hits are highlighted in the reading content
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
 - **Text-to-Speech**: Use the Audiobook panel to listen to content
   - Click the **Audiobook** tab in the right sidebar
-  - Select your preferred voice and playback speed
+  - Select provider and playback speed
   - Click **Play** to start listening
-  - Text is highlighted as it's being read
+  - Reader auto-scrolls and highlights currently reading content
 
 ### AI Features Setup
 
@@ -136,6 +171,57 @@ Reader supports two AI providers - choose based on your needs:
    - Enter LM Studio URL: `http://localhost:1234/v1`
    - Set model names for embeddings and chat
 5. **Use AI Tools**: Open the Summary or Translate panels in Reader
+
+### Embedding Setup (Recommended: Local Offline)
+
+1. Open **Settings → Embedding**
+2. Set:
+   - `Embedding Provider`: `local_transformers`
+   - `Embedding Model`: `Xenova/all-MiniLM-L6-v2`
+   - `Embedding Dimension`: `384`
+   - `Auto reindex`: `On`
+3. (Optional) If model files are already downloaded locally, set `Local Model Path`.
+4. (Optional) If direct download is blocked, set `Embedding Download Base URL` (e.g. `https://hf-mirror.com`).
+5. Save settings. Indexing will run automatically when opening a document (full document scope), or use `Rebuild Index` manually.
+
+If your network/proxy returns HTML or download errors, verify proxy settings and model name first.
+
+#### Manual Model Download (Fallback)
+
+If in-app model download fails, run this command locally and then set `Local Model Path` to the downloaded directory.
+
+```bash
+MODEL="Xenova/all-MiniLM-L6-v2"
+BASE_URL="https://hf-mirror.com"   # If Hugging Face is reachable, you can use https://huggingface.co
+TARGET="$HOME/Models/Xenova_all-MiniLM-L6-v2"
+
+mkdir -p "$TARGET/onnx"
+
+for f in \
+  config.json \
+  tokenizer.json \
+  tokenizer_config.json \
+  onnx/model_quantized.onnx \
+  special_tokens_map.json \
+  onnx/model.onnx
+do
+  url="$BASE_URL/$MODEL/resolve/main/$f"
+  out="$TARGET/$f"
+  mkdir -p "$(dirname "$out")"
+  echo "Downloading $f ..."
+  if ! curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 "$url" -o "$out"; then
+    if [[ "$f" == "special_tokens_map.json" || "$f" == "onnx/model.onnx" ]]; then
+      echo "Optional file skipped: $f"
+      continue
+    fi
+    echo "Required file failed: $f"
+    exit 1
+  fi
+done
+
+echo "Done: $TARGET"
+ls -lh "$TARGET" "$TARGET/onnx"
+```
 
 #### Option 2: OpenAI (Cloud, Convenient)
 
@@ -225,7 +311,10 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
 {
   "provider": "lmstudio",
   "lm_studio_url": "http://localhost:1234/v1",
-  "embedding_model": "text-embedding-ada-002",
+  "embedding_provider": "local_transformers",
+  "embedding_model": "Xenova/all-MiniLM-L6-v2",
+  "embedding_dimension": 384,
+  "embedding_auto_reindex": true,
   "chat_model": "local-model"
 }
 ```

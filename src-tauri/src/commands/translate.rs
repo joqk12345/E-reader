@@ -13,6 +13,9 @@ use crate::error::{Result, ReaderError};
 use crate::llm::{create_client, ChatMessage};
 use sha2::{Digest, Sha256};
 use tauri::AppHandle;
+use tokio::time::{timeout, Duration};
+
+const TRANSLATE_TIMEOUT_SECS: u64 = 30;
 
 /// Translates text or a paragraph to a target language
 ///
@@ -102,8 +105,18 @@ pub async fn translate(
         },
     ];
 
-    // Call LLM
-    let translation = llm_client.chat(messages, 0.3, 2000).await?;
+    // Call LLM with timeout to avoid endless "translating" state in UI
+    let translation = timeout(
+        Duration::from_secs(TRANSLATE_TIMEOUT_SECS),
+        llm_client.chat(messages, 0.3, 2000),
+    )
+    .await
+    .map_err(|_| {
+        ReaderError::ModelApi(format!(
+            "Translation request timed out after {} seconds",
+            TRANSLATE_TIMEOUT_SECS
+        ))
+    })??;
 
     // Cache result if we have a paragraph_id
     if let Some(pid) = &paragraph_id {

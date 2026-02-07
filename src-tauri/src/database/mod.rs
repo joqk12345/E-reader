@@ -25,7 +25,15 @@ pub use paragraphs::{insert as insert_paragraph, list_by_section as list_paragra
 pub use paragraphs::ParagraphError;
 
 // Embedding operations
-pub use embeddings::{insert as insert_embedding, get as get_embedding, list_all_vectors, list_by_document};
+pub use embeddings::{
+    insert as insert_embedding,
+    upsert_batch as upsert_embeddings_batch,
+    clear_by_profile as clear_embeddings_by_profile,
+    get as get_embedding,
+    list_all_vectors,
+    list_by_document,
+    list_by_profile,
+};
 pub use embeddings::{vec_f32_to_bytes, bytes_to_vec_f32};
 pub use embeddings::{EmbeddingError, Embedding};
 
