@@ -1,7 +1,7 @@
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
 use crate::models::Paragraph;
+use rusqlite::{params, Connection, Result};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum ParagraphError {
@@ -43,24 +43,29 @@ pub fn insert(
 /// Lists all paragraphs for a section
 ///
 /// Returns paragraphs ordered by order_index in ascending order.
-pub fn list_by_section(conn: &Connection, section_id: &str) -> Result<Vec<Paragraph>, ParagraphError> {
+pub fn list_by_section(
+    conn: &Connection,
+    section_id: &str,
+) -> Result<Vec<Paragraph>, ParagraphError> {
     let mut stmt = conn.prepare(
         "SELECT id, doc_id, section_id, order_index, text, location
          FROM paragraphs
          WHERE section_id = ?1
-         ORDER BY order_index"
+         ORDER BY order_index",
     )?;
 
-    let paragraphs = stmt.query_map(params![section_id], |row| {
-        Ok(Paragraph {
-            id: row.get(0)?,
-            doc_id: row.get(1)?,
-            section_id: row.get(2)?,
-            order_index: row.get(3)?,
-            text: row.get(4)?,
-            location: row.get(5)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let paragraphs = stmt
+        .query_map(params![section_id], |row| {
+            Ok(Paragraph {
+                id: row.get(0)?,
+                doc_id: row.get(1)?,
+                section_id: row.get(2)?,
+                order_index: row.get(3)?,
+                text: row.get(4)?,
+                location: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(paragraphs)
 }
@@ -72,19 +77,21 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Paragraph>, ParagraphEr
     let mut stmt = conn.prepare(
         "SELECT id, doc_id, section_id, order_index, text, location
          FROM paragraphs
-         WHERE id = ?1"
+         WHERE id = ?1",
     )?;
 
-    let paragraphs = stmt.query_map(params![id], |row| {
-        Ok(Paragraph {
-            id: row.get(0)?,
-            doc_id: row.get(1)?,
-            section_id: row.get(2)?,
-            order_index: row.get(3)?,
-            text: row.get(4)?,
-            location: row.get(5)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let paragraphs = stmt
+        .query_map(params![id], |row| {
+            Ok(Paragraph {
+                id: row.get(0)?,
+                doc_id: row.get(1)?,
+                section_id: row.get(2)?,
+                order_index: row.get(3)?,
+                text: row.get(4)?,
+                location: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(paragraphs.into_iter().next())
 }
@@ -98,19 +105,21 @@ pub fn list_by_document(conn: &Connection, doc_id: &str) -> Result<Vec<Paragraph
          FROM paragraphs p
          JOIN sections s ON p.section_id = s.id
          WHERE p.doc_id = ?1
-         ORDER BY s.order_index, p.order_index"
+         ORDER BY s.order_index, p.order_index",
     )?;
 
-    let paragraphs = stmt.query_map(params![doc_id], |row| {
-        Ok(Paragraph {
-            id: row.get(0)?,
-            doc_id: row.get(1)?,
-            section_id: row.get(2)?,
-            order_index: row.get(3)?,
-            text: row.get(4)?,
-            location: row.get(5)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let paragraphs = stmt
+        .query_map(params![doc_id], |row| {
+            Ok(Paragraph {
+                id: row.get(0)?,
+                doc_id: row.get(1)?,
+                section_id: row.get(2)?,
+                order_index: row.get(3)?,
+                text: row.get(4)?,
+                location: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(paragraphs)
 }

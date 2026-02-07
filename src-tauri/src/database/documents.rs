@@ -1,8 +1,8 @@
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
-use chrono::Utc;
 use crate::models::{Document, NewDocument};
+use chrono::Utc;
+use rusqlite::{params, Connection, Result};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum DocumentError {
@@ -54,21 +54,23 @@ pub fn list(conn: &Connection) -> Result<Vec<Document>, DocumentError> {
     let mut stmt = conn.prepare(
         "SELECT id, title, author, language, file_path, file_type, created_at, updated_at
          FROM documents
-         ORDER BY created_at DESC"
+         ORDER BY created_at DESC",
     )?;
 
-    let documents = stmt.query_map([], |row| {
-        Ok(Document {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            author: row.get(2)?,
-            language: row.get(3)?,
-            file_path: row.get(4)?,
-            file_type: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let documents = stmt
+        .query_map([], |row| {
+            Ok(Document {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                author: row.get(2)?,
+                language: row.get(3)?,
+                file_path: row.get(4)?,
+                file_type: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(documents)
 }
@@ -80,21 +82,23 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Document>, DocumentErro
     let mut stmt = conn.prepare(
         "SELECT id, title, author, language, file_path, file_type, created_at, updated_at
          FROM documents
-         WHERE id = ?1"
+         WHERE id = ?1",
     )?;
 
-    let documents = stmt.query_map(params![id], |row| {
-        Ok(Document {
-            id: row.get(0)?,
-            title: row.get(1)?,
-            author: row.get(2)?,
-            language: row.get(3)?,
-            file_path: row.get(4)?,
-            file_type: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let documents = stmt
+        .query_map(params![id], |row| {
+            Ok(Document {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                author: row.get(2)?,
+                language: row.get(3)?,
+                file_path: row.get(4)?,
+                file_type: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(documents.into_iter().next())
 }

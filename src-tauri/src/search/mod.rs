@@ -1,4 +1,4 @@
-use crate::database::{embeddings, paragraphs, get_connection};
+use crate::database::{embeddings, get_connection, paragraphs};
 use crate::error::{ReaderError, Result};
 use crate::llm::AiClient;
 use rusqlite::Connection;
@@ -20,7 +20,9 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> Result<f32> {
     }
 
     if a.is_empty() {
-        return Err(ReaderError::Internal("Cannot compute similarity of empty vectors".to_string()));
+        return Err(ReaderError::Internal(
+            "Cannot compute similarity of empty vectors".to_string(),
+        ));
     }
 
     let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
@@ -155,7 +157,11 @@ pub async fn semantic_search(
 
     let mut paragraphs_result = HashMap::new();
     let rows = stmt.query_map(
-        top_paragraph_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect::<Vec<_>>().as_slice(),
+        top_paragraph_ids
+            .iter()
+            .map(|s| s as &dyn rusqlite::ToSql)
+            .collect::<Vec<_>>()
+            .as_slice(),
         |row| {
             Ok((
                 row.get::<_, String>(0)?,

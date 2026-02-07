@@ -1,6 +1,6 @@
-use rusqlite::{Connection, Result, params};
-use uuid::Uuid;
+use rusqlite::{params, Connection, Result};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum CacheError {
@@ -79,18 +79,20 @@ pub fn get_translation(
     let mut stmt = conn.prepare(
         "SELECT id, paragraph_id, target_lang, translation, created_at
          FROM cache_translations
-         WHERE paragraph_id = ?1 AND target_lang = ?2"
+         WHERE paragraph_id = ?1 AND target_lang = ?2",
     )?;
 
-    let translations = stmt.query_map(params![paragraph_id, target_lang], |row| {
-        Ok(Translation {
-            id: row.get(0)?,
-            paragraph_id: row.get(1)?,
-            target_lang: row.get(2)?,
-            translation: row.get(3)?,
-            created_at: row.get(4)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let translations = stmt
+        .query_map(params![paragraph_id, target_lang], |row| {
+            Ok(Translation {
+                id: row.get(0)?,
+                paragraph_id: row.get(1)?,
+                target_lang: row.get(2)?,
+                translation: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(translations.into_iter().next())
 }
@@ -134,18 +136,20 @@ pub fn get_text_translation(
     let mut stmt = conn.prepare(
         "SELECT id, text_hash, target_lang, translation, created_at
          FROM cache_text_translations
-         WHERE text_hash = ?1 AND target_lang = ?2"
+         WHERE text_hash = ?1 AND target_lang = ?2",
     )?;
 
-    let translations = stmt.query_map(params![text_hash, target_lang], |row| {
-        Ok(TextTranslation {
-            id: row.get(0)?,
-            text_hash: row.get(1)?,
-            target_lang: row.get(2)?,
-            translation: row.get(3)?,
-            created_at: row.get(4)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let translations = stmt
+        .query_map(params![text_hash, target_lang], |row| {
+            Ok(TextTranslation {
+                id: row.get(0)?,
+                text_hash: row.get(1)?,
+                target_lang: row.get(2)?,
+                translation: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(translations.into_iter().next())
 }
@@ -192,19 +196,21 @@ pub fn get_summary(
     let mut stmt = conn.prepare(
         "SELECT id, target_id, target_type, style, summary, created_at
          FROM cache_summaries
-         WHERE target_id = ?1 AND target_type = ?2 AND style = ?3"
+         WHERE target_id = ?1 AND target_type = ?2 AND style = ?3",
     )?;
 
-    let summaries = stmt.query_map(params![target_id, target_type, style], |row| {
-        Ok(Summary {
-            id: row.get(0)?,
-            target_id: row.get(1)?,
-            target_type: row.get(2)?,
-            style: row.get(3)?,
-            summary: row.get(4)?,
-            created_at: row.get(5)?,
-        })
-    })?.collect::<Result<Vec<_>, _>>()?;
+    let summaries = stmt
+        .query_map(params![target_id, target_type, style], |row| {
+            Ok(Summary {
+                id: row.get(0)?,
+                target_id: row.get(1)?,
+                target_type: row.get(2)?,
+                style: row.get(3)?,
+                summary: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(summaries.into_iter().next())
 }

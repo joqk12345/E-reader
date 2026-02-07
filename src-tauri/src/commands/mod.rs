@@ -1,27 +1,24 @@
+mod config;
+mod embedding;
 mod import;
 mod index;
+mod mcp;
 mod search;
 mod translate;
 mod tts;
-mod config;
-mod mcp;
-mod embedding;
 
-pub use import::{import_epub, import_pdf, import_markdown, list_documents, get_document, delete_document, get_document_sections, get_section_paragraphs};
-pub use index::index_document;
-pub use search::{search, get_paragraph_context, SearchResultOutput, ParagraphContextOutput};
-pub use translate::{translate, summarize, get_summary_cache};
-pub use tts::{tts_synthesize, list_tts_voices};
 pub use config::{get_config, update_config};
-pub use mcp::{mcp_request, McpState};
 pub use embedding::{
-    get_document_paragraphs,
-    upsert_embeddings_batch,
-    search_by_embedding,
-    get_embedding_profile_status,
-    clear_embeddings_by_profile,
-    download_embedding_model_files,
-    validate_local_embedding_model_path,
-    EmbeddingProfileStatus,
-    SearchByEmbeddingResult,
+    clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,
+    get_embedding_profile_status, search_by_embedding, upsert_embeddings_batch,
+    validate_local_embedding_model_path, EmbeddingProfileStatus, SearchByEmbeddingResult,
 };
+pub use import::{
+    delete_document, get_document, get_document_sections, get_section_paragraphs, import_epub,
+    import_markdown, import_pdf, list_documents,
+};
+pub use index::index_document;
+pub use mcp::{mcp_request, McpState};
+pub use search::{get_paragraph_context, search, ParagraphContextOutput, SearchResultOutput};
+pub use translate::{get_summary_cache, summarize, translate};
+pub use tts::{list_tts_voices, tts_synthesize};

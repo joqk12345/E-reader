@@ -1,8 +1,8 @@
 use crate::error::Result;
 use crate::mcp::McpServer;
-use tauri::{AppHandle, State};
 use serde_json::Value;
 use std::sync::Mutex;
+use tauri::{AppHandle, State};
 
 #[derive(Default)]
 pub struct McpState(Mutex<Option<McpServer>>);
@@ -26,7 +26,8 @@ pub async fn mcp_request(
     // that handles common MCP requests synchronously.
 
     // Parse the request method
-    let method = request.get("method")
+    let method = request
+        .get("method")
         .and_then(|m| m.as_str())
         .ok_or_else(|| crate::ReaderError::InvalidArgument("Missing method".to_string()))?;
 
@@ -43,7 +44,7 @@ pub async fn mcp_request(
                     "tools": {}
                 }
             }))
-        },
+        }
         "tools/list" => {
             // Return tools list synchronously
             Ok(serde_json::json!({
@@ -61,14 +62,15 @@ pub async fn mcp_request(
                     }
                 ]
             }))
-        },
-        "ping" => {
-            Ok(serde_json::json!({}))
-        },
+        }
+        "ping" => Ok(serde_json::json!({})),
         _ => {
             // For other requests (like tools/call), we need async handling
             // For now, return an error
-            Err(crate::ReaderError::Internal(format!("Method '{}' not yet implemented in Send-safe way", method)))
+            Err(crate::ReaderError::Internal(format!(
+                "Method '{}' not yet implemented in Send-safe way",
+                method
+            )))
         }
     }
 }

@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.1] - 2026-02-07
+
+### Added
+- Floating audiobook mini-player with global `Play/Pause/Stop` controls.
+- Library multi-view modes: `Grid`, `List`, and `Compact`.
+- Library quick filter/search controls (type filter + keyword filter + sort).
+- Summary result copy action (icon button in result card).
+
+### Changed
+- Library homepage layout and interaction density improved for large collections.
+- Search relevance improved via lexical re-ranking in semantic results (short keyword precision boost).
+- Search flow now has explicit timeout handling to avoid long unresponsive states.
+- Summary action button style adjusted to reduce visual noise.
+- Application icon set regenerated from new brand mark (`src-tauri/icons`).
+
+### Fixed
+- Markdown translation layout drift fixed by block-level translation + Markdown rendering preservation.
+- Audiobook playback no longer stops when switching tool tabs.
+- Audiobook `Stop`/cancel actions no longer trigger false playback error toasts.
+
 ## [0.3.0] - 2026-02-07
 
 ### Added

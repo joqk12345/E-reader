@@ -9,6 +9,7 @@ export const SummaryPanel: React.FC = () => {
   const [style, setStyle] = useState<SummaryStyle>('brief');
   const [summary, setSummary] = useState<string>('');
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const getSummaryKey = () => {
@@ -118,6 +119,18 @@ export const SummaryPanel: React.FC = () => {
     return 'None';
   };
 
+  const handleCopy = async () => {
+    if (!summary) return;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1200);
+    } catch (err) {
+      console.error('Copy summary failed:', err);
+      setError('Copy failed. Please retry.');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Options */}
@@ -148,7 +161,7 @@ export const SummaryPanel: React.FC = () => {
           <button
             onClick={handleSummarize}
             disabled={isSummarizing || !selectedDocumentId}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 transition-colors"
           >
             {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
           </button>
@@ -175,7 +188,28 @@ export const SummaryPanel: React.FC = () => {
 
         {summary && (
           <div className="prose prose-sm max-w-none">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="relative bg-white border border-gray-200 rounded-lg p-4">
+              <button
+                onClick={() => void handleCopy()}
+                className={`absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
+                  isCopied
+                    ? 'border-green-200 bg-green-50 text-green-700'
+                    : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                }`}
+                title={isCopied ? 'Copied' : 'Copy summary'}
+                aria-label={isCopied ? 'Copied' : 'Copy summary'}
+              >
+                {isCopied ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3.25-3.25a1 1 0 111.414-1.414l2.543 2.543 6.543-6.543a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path d="M6 2a2 2 0 00-2 2v8a2 2 0 002 2h1V6a2 2 0 012-2h5V4a2 2 0 00-2-2H6z" />
+                    <path d="M9 6a1 1 0 00-1 1v9a2 2 0 002 2h6a1 1 0 001-1V8.414a1 1 0 00-.293-.707l-1.414-1.414A1 1 0 0014.586 6H9z" />
+                  </svg>
+                )}
+              </button>
               {style === 'bullet' ? (
                 <div className="whitespace-pre-wrap">{summary}</div>
               ) : (

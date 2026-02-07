@@ -1,11 +1,14 @@
 use crate::config::load_config;
-use crate::database::{get_connection, embeddings};
+use crate::database::{embeddings, get_connection};
 use crate::error::Result;
 use crate::llm::create_client;
-use crate::search::{SearchOptions, SearchResult, cosine_similarity};
-use tauri::AppHandle;
+use crate::search::{cosine_similarity, SearchOptions, SearchResult};
 use rusqlite::params;
 use std::collections::HashMap;
+use tauri::AppHandle;
+use tokio::time::{timeout, Duration};
+
+const SEARCH_EMBEDDING_TIMEOUT_SECS: u64 = 20;
 
 /// Output type for search results
 #[derive(Clone, serde::Serialize)]
@@ -61,7 +64,10 @@ pub async fn search(
     let llm_client = match create_client(&config) {
         Ok(client) => client,
         Err(err) => {
-            tracing::warn!("Semantic search unavailable, falling back to keyword search: {}", err);
+            tracing::warn!(
+                "Semantic search unavailable, falling back to keyword search: {}",
+                err
+            );
             let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
@@ -104,14 +110,29 @@ pub async fn search(
             let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
-
     }
 
     // Generate query embedding (async part - no connection held here)
-    let query_embedding = match llm_client.generate_embedding(query).await {
-        Ok(embedding) => embedding,
-        Err(err) => {
-            tracing::warn!("Embedding generation failed, falling back to keyword search: {}", err);
+    let query_embedding = match timeout(
+        Duration::from_secs(SEARCH_EMBEDDING_TIMEOUT_SECS),
+        llm_client.generate_embedding(query),
+    )
+    .await
+    {
+        Ok(Ok(embedding)) => embedding,
+        Ok(Err(err)) => {
+            tracing::warn!(
+                "Embedding generation failed, falling back to keyword search: {}",
+                err
+            );
+            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
+        }
+        Err(_) => {
+            tracing::warn!(
+                "Embedding generation timed out after {}s, falling back to keyword search",
+                SEARCH_EMBEDDING_TIMEOUT_SECS
+            );
             let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }

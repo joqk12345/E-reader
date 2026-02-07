@@ -2,26 +2,27 @@ mod commands;
 mod config;
 mod database;
 mod error;
-mod logger;
 mod llm;
-mod models;
+mod logger;
 mod mcp;
+mod models;
 mod parsers;
 mod search;
 
 pub use error::{ReaderError, Result};
 
+use commands::{
+    clear_embeddings_by_profile, delete_document, download_embedding_model_files, get_config,
+    get_document, get_document_paragraphs, get_document_sections, get_embedding_profile_status,
+    get_paragraph_context, get_section_paragraphs, get_summary_cache, import_epub, import_markdown,
+    import_pdf, index_document, list_documents, list_tts_voices, mcp_request, search,
+    search_by_embedding, summarize, translate, tts_synthesize, update_config,
+    upsert_embeddings_batch, validate_local_embedding_model_path,
+};
+use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     Emitter, Manager,
-};
-use std::sync::{Arc, Mutex};
-use commands::{
-    import_epub, import_pdf, import_markdown, list_documents, get_document, delete_document,
-    get_document_sections, get_section_paragraphs, index_document, search, get_paragraph_context,
-    get_document_paragraphs, upsert_embeddings_batch, search_by_embedding, get_embedding_profile_status, clear_embeddings_by_profile,
-    download_embedding_model_files, validate_local_embedding_model_path,
-    translate, summarize, get_summary_cache, tts_synthesize, list_tts_voices, get_config, update_config, mcp_request,
 };
 
 const MENU_EVENT_NAME: &str = "reader-menu-action";
@@ -105,7 +106,11 @@ fn set_font_size_menu_label<R: tauri::Runtime>(app: &tauri::AppHandle<R>, size: 
     }
 }
 
-fn set_translation_menu_label<R: tauri::Runtime>(app: &tauri::AppHandle<R>, direction: &str, zh: bool) {
+fn set_translation_menu_label<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    direction: &str,
+    zh: bool,
+) {
     if let Some(menu) = app.menu() {
         if let Some(reading_submenu) = menu
             .get(MENU_READING_SUBMENU_ID)
@@ -115,7 +120,9 @@ fn set_translation_menu_label<R: tauri::Runtime>(app: &tauri::AppHandle<R>, dire
                 .get(MENU_TRANSLATION_CURRENT)
                 .and_then(|item| item.as_menuitem().cloned())
             {
-                if let Err(err) = direction_item.set_text(translation_direction_label(direction, zh)) {
+                if let Err(err) =
+                    direction_item.set_text(translation_direction_label(direction, zh))
+                {
                     tracing::error!("Failed to update translation direction menu label: {}", err);
                 }
             }
@@ -152,21 +159,33 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
             &MenuItem::with_id(
                 app,
                 MENU_FONT_INCREASE,
-                if zh { "增大字体" } else { "Increase Font Size" },
+                if zh {
+                    "增大字体"
+                } else {
+                    "Increase Font Size"
+                },
                 true,
                 Some("CmdOrCtrl+="),
             )?,
             &MenuItem::with_id(
                 app,
                 MENU_FONT_DECREASE,
-                if zh { "减小字体" } else { "Decrease Font Size" },
+                if zh {
+                    "减小字体"
+                } else {
+                    "Decrease Font Size"
+                },
                 true,
                 Some("CmdOrCtrl+-"),
             )?,
             &MenuItem::with_id(
                 app,
                 MENU_FONT_RESET,
-                if zh { "重置字体" } else { "Reset Font Size" },
+                if zh {
+                    "重置字体"
+                } else {
+                    "Reset Font Size"
+                },
                 true,
                 Some("CmdOrCtrl+0"),
             )?,
@@ -218,7 +237,11 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
             &MenuItem::with_id(
                 app,
                 MENU_THEME_CUSTOM,
-                if zh { "自定义主题..." } else { "Custom Theme..." },
+                if zh {
+                    "自定义主题..."
+                } else {
+                    "Custom Theme..."
+                },
                 true,
                 None::<&str>,
             )?,
@@ -240,14 +263,22 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
             &MenuItem::with_id(
                 app,
                 MENU_TRANSLATION_EN_ZH,
-                if zh { "English → Chinese (英译中)" } else { "English → Chinese" },
+                if zh {
+                    "English → Chinese (英译中)"
+                } else {
+                    "English → Chinese"
+                },
                 true,
                 None::<&str>,
             )?,
             &MenuItem::with_id(
                 app,
                 MENU_TRANSLATION_ZH_EN,
-                if zh { "Chinese → English (中译英)" } else { "Chinese → English" },
+                if zh {
+                    "Chinese → English (中译英)"
+                } else {
+                    "Chinese → English"
+                },
                 true,
                 None::<&str>,
             )?,

@@ -18,7 +18,10 @@ impl EpubParser {
         let doc = EpubDoc::new(file_path)
             .map_err(|e| ReaderError::EpubParse(format!("Failed to open EPUB: {}", e)))?;
 
-        Ok(Self { doc, file_path: file_path.to_string() })
+        Ok(Self {
+            doc,
+            file_path: file_path.to_string(),
+        })
     }
 
     fn get_metadata_value(&self, key: &str) -> Option<String> {
@@ -31,14 +34,17 @@ impl EpubParser {
     }
 
     pub fn get_metadata(&self) -> Result<NewDocument> {
-        let title = self.get_metadata_value("title")
+        let title = self
+            .get_metadata_value("title")
             .or_else(|| self.get_metadata_value("dc:title"))
             .unwrap_or_else(|| "Untitled".to_string());
 
-        let author = self.get_metadata_value("creator")
+        let author = self
+            .get_metadata_value("creator")
             .or_else(|| self.get_metadata_value("dc:creator"));
 
-        let language = self.get_metadata_value("language")
+        let language = self
+            .get_metadata_value("language")
             .or_else(|| self.get_metadata_value("dc:language"));
 
         Ok(NewDocument {
@@ -57,7 +63,10 @@ impl EpubParser {
         // First, check if TOC from doc.toc has all necessary items
         // If TOC is too small (like < 15 items), use spine instead
         if self.doc.toc.len() < 15 {
-            tracing::info!("TOC is too small ({} items), using spine for complete chapters", self.doc.toc.len());
+            tracing::info!(
+                "TOC is too small ({} items), using spine for complete chapters",
+                self.doc.toc.len()
+            );
 
             for spine_item in &self.doc.spine {
                 if let Some(resource) = self.doc.resources.get(&spine_item.idref) {
@@ -134,7 +143,8 @@ impl EpubParser {
 
         // Build a map from path to resource_id
         let resources = &self.doc.resources;
-        let mut path_to_id: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut path_to_id: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
 
         for (resource_id, resource_item) in resources.iter() {
             if let Some(path_str) = resource_item.path.to_str() {
@@ -175,9 +185,16 @@ impl EpubParser {
                 for (path, resource_id) in &path_to_id {
                     let normalized_path = path.replace('\\', "/");
                     if normalized_path.ends_with(filename) {
-                        tracing::info!("Found matching resource by filename: path='{}' id='{}'", path, resource_id);
+                        tracing::info!(
+                            "Found matching resource by filename: path='{}' id='{}'",
+                            path,
+                            resource_id
+                        );
                         if let Some((content, _mime_type)) = self.doc.get_resource(resource_id) {
-                            tracing::info!("Successfully retrieved content, {} bytes", content.len());
+                            tracing::info!(
+                                "Successfully retrieved content, {} bytes",
+                                content.len()
+                            );
                             let text = self.extract_text_from_html(&content);
                             tracing::info!("Extracted {} paragraphs", text.len());
                             return Ok(text);
@@ -188,8 +205,11 @@ impl EpubParser {
         }
 
         // Log the available resources for debugging
-        tracing::warn!("Could not find chapter content for href: '{}'. Available paths: {:?}", base_href,
-            path_to_id.keys().take(5).cloned().collect::<Vec<_>>());
+        tracing::warn!(
+            "Could not find chapter content for href: '{}'. Available paths: {:?}",
+            base_href,
+            path_to_id.keys().take(5).cloned().collect::<Vec<_>>()
+        );
 
         Ok(Vec::new())
     }
@@ -233,7 +253,11 @@ impl EpubParser {
         for (title, order_index, href) in &toc {
             tracing::info!("Attempting to load chapter: {} href={}", title, href);
             let paragraphs = self.get_chapter_content(href)?;
-            tracing::info!("Chapter {} loaded with {} paragraphs", title, paragraphs.len());
+            tracing::info!(
+                "Chapter {} loaded with {} paragraphs",
+                title,
+                paragraphs.len()
+            );
             chapters.push((title.clone(), *order_index, href.clone(), paragraphs));
         }
 

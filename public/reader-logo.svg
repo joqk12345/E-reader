@@ -1,0 +1,12 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="readerGrad" x1="44" y1="28" x2="212" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0EA5A4"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="216" height="216" rx="52" fill="url(#readerGrad)"/>
+  <path d="M74 70C74 62.268 80.268 56 88 56H132C160.719 56 184 79.2812 184 108C184 136.719 160.719 160 132 160H102V186H74V70Z" fill="white"/>
+  <path d="M102 84V132H132C145.255 132 156 121.255 156 108C156 94.7452 145.255 84 132 84H102Z" fill="#DFF8FF"/>
+  <path d="M126 172H184V200H126V172Z" fill="white"/>
+</svg>

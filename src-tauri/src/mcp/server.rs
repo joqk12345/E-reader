@@ -18,7 +18,8 @@ impl McpServer {
     }
 
     pub async fn handle_request(&self, request: Value) -> Result<Value> {
-        let method = request.get("method")
+        let method = request
+            .get("method")
             .and_then(|m| m.as_str())
             .ok_or_else(|| ReaderError::InvalidArgument("Missing method".to_string()))?;
 
@@ -27,7 +28,10 @@ impl McpServer {
             "tools/list" => Ok(get_tools_list()),
             "tools/call" => self.handle_tool_call(request).await,
             "ping" => Ok(serde_json::json!({})),
-            _ => Err(ReaderError::InvalidArgument(format!("Unknown method: {}", method))),
+            _ => Err(ReaderError::InvalidArgument(format!(
+                "Unknown method: {}",
+                method
+            ))),
         }
     }
 
@@ -47,14 +51,17 @@ impl McpServer {
     }
 
     async fn handle_tool_call(&self, request: Value) -> Result<Value> {
-        let params = request.get("params")
+        let params = request
+            .get("params")
             .ok_or_else(|| ReaderError::InvalidArgument("Missing params".to_string()))?;
 
-        let tool_name = params.get("name")
+        let tool_name = params
+            .get("name")
             .and_then(|n| n.as_str())
             .ok_or_else(|| ReaderError::InvalidArgument("Missing tool name".to_string()))?;
 
-        let arguments = params.get("arguments")
+        let arguments = params
+            .get("arguments")
             .cloned()
             .unwrap_or(serde_json::json!({}));
 

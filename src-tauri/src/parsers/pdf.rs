@@ -41,7 +41,10 @@ impl PdfParser {
         // A full implementation would use pdf crate or pdf-extract
         let pages = vec![(
             "Page 1".to_string(),
-            vec!["PDF text extraction not yet fully implemented. Please check back later.".to_string()],
+            vec![
+                "PDF text extraction not yet fully implemented. Please check back later."
+                    .to_string(),
+            ],
         )];
 
         Ok(pages)
