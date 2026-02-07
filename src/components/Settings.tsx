@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useStore } from '../store/useStore';
 
 type AiProvider = 'lmstudio' | 'openai';
 
@@ -11,7 +10,13 @@ interface Config {
   chat_model: string;
   openai_api_key?: string;
   openai_base_url?: string;
-  translation_direction: 'en-zh' | 'zh-en';
+  tts_provider: 'auto' | 'edge' | 'cosyvoice';
+  edge_tts_voice: string;
+  cosyvoice_base_url?: string;
+  cosyvoice_api_key?: string;
+  translation_mode: 'off' | 'en-zh' | 'zh-en';
+  reader_background_color: string;
+  reader_font_size: number;
 }
 
 interface SettingsProps {
@@ -19,7 +24,6 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const { setTranslationDirection } = useStore();
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
     lm_studio_url: '',
@@ -27,7 +31,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     chat_model: '',
     openai_api_key: '',
     openai_base_url: 'https://api.openai.com/v1',
-    translation_direction: 'en-zh',
+    tts_provider: 'auto',
+    edge_tts_voice: 'en-US-AriaNeural',
+    cosyvoice_base_url: '',
+    cosyvoice_api_key: '',
+    translation_mode: 'off',
+    reader_background_color: '#F4F8EE',
+    reader_font_size: 18,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -53,9 +63,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const handleSave = async () => {
     setIsSaving(true);
     setMessage(null);
+
     try {
       await invoke('update_config', { config });
-      setTranslationDirection(config.translation_direction);
       setMessage({ type: 'success', text: 'Configuration saved successfully!' });
       setTimeout(() => onClose(), 1500);
     } catch (error) {
@@ -216,21 +226,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             </p>
           </div>
 
-          {/* Translation Direction */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Translation Direction
-            </label>
-            <select
-              value={config.translation_direction}
-              onChange={(e) => setConfig((prev) => ({ ...prev, translation_direction: e.target.value as 'en-zh' | 'zh-en' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="en-zh">English to Chinese (英译中)</option>
-              <option value="zh-en">Chinese to English (中译英)</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-500">
-              Set the default translation direction for bilingual mode
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+            <p className="text-xs text-gray-600">
+              Translation direction is now managed from the macOS menu bar: <span className="font-medium">Reading → Translation Direction</span>.
             </p>
           </div>
 
@@ -255,6 +253,66 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 : 'LM Studio: Any local model loaded (e.g., Llama 3.1, Qwen 2.5)'}
             </p>
           </div>
+
+          {/* TTS Provider */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              TTS Provider
+            </label>
+            <select
+              value={config.tts_provider}
+              onChange={(e) => setConfig((prev) => ({ ...prev, tts_provider: e.target.value as 'auto' | 'edge' | 'cosyvoice' }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="auto">Auto (ZH→CosyVoice, Others→Edge)</option>
+              <option value="edge">Edge TTS</option>
+              <option value="cosyvoice">CosyVoice</option>
+            </select>
+          </div>
+
+          {/* Edge Voice */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Edge Voice
+            </label>
+            <input
+              type="text"
+              value={config.edge_tts_voice || ''}
+              onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_voice: e.target.value }))}
+              placeholder="en-US-AriaNeural"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Example: en-US-AriaNeural / zh-CN-XiaoxiaoNeural
+            </p>
+          </div>
+
+          {/* CosyVoice Config */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CosyVoice Base URL
+            </label>
+            <input
+              type="text"
+              value={config.cosyvoice_base_url || ''}
+              onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_base_url: e.target.value }))}
+              placeholder="http://localhost:8000"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CosyVoice API Key (Optional)
+            </label>
+            <input
+              type="password"
+              value={config.cosyvoice_api_key || ''}
+              onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_api_key: e.target.value }))}
+              placeholder="Optional bearer token"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
         </div>
 
         {/* Footer */}

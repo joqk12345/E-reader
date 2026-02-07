@@ -24,7 +24,40 @@ pub struct Config {
     pub chat_model: String,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
-    pub translation_direction: String,
+    #[serde(default = "default_tts_provider")]
+    pub tts_provider: String,
+    #[serde(default = "default_edge_tts_voice")]
+    pub edge_tts_voice: String,
+    #[serde(default)]
+    pub cosyvoice_base_url: Option<String>,
+    #[serde(default)]
+    pub cosyvoice_api_key: Option<String>,
+    #[serde(default = "default_translation_mode", alias = "translation_direction")]
+    pub translation_mode: String,
+    #[serde(default = "default_reader_background_color")]
+    pub reader_background_color: String,
+    #[serde(default = "default_reader_font_size")]
+    pub reader_font_size: u32,
+}
+
+fn default_reader_background_color() -> String {
+    "#F4F8EE".to_string()
+}
+
+fn default_translation_mode() -> String {
+    "off".to_string()
+}
+
+fn default_tts_provider() -> String {
+    "auto".to_string()
+}
+
+fn default_edge_tts_voice() -> String {
+    "en-US-AriaNeural".to_string()
+}
+
+fn default_reader_font_size() -> u32 {
+    18
 }
 
 impl Default for Config {
@@ -36,7 +69,13 @@ impl Default for Config {
             chat_model: "local-model".to_string(),
             openai_api_key: None,
             openai_base_url: Some("https://api.openai.com/v1".to_string()),
-            translation_direction: "en-zh".to_string(),
+            tts_provider: default_tts_provider(),
+            edge_tts_voice: default_edge_tts_voice(),
+            cosyvoice_base_url: None,
+            cosyvoice_api_key: None,
+            translation_mode: default_translation_mode(),
+            reader_background_color: default_reader_background_color(),
+            reader_font_size: default_reader_font_size(),
         }
     }
 }
