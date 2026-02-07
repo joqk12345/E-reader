@@ -62,8 +62,61 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
             paragraph_id TEXT NOT NULL REFERENCES paragraphs(id) ON DELETE CASCADE,
             vector BLOB NOT NULL,
             dim INTEGER NOT NULL,
-            created_at INTEGER NOT NULL
+            provider TEXT NOT NULL DEFAULT 'unknown',
+            model TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
         )",
+        [],
+    )?;
+
+    // Backward-compatible migrations for existing embeddings table
+    let mut columns = Vec::new();
+    {
+        let mut stmt = conn.prepare("PRAGMA table_info(embeddings)")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        for row in rows {
+            columns.push(row?);
+        }
+    }
+    if !columns.iter().any(|c| c == "provider") {
+        conn.execute(
+            "ALTER TABLE embeddings ADD COLUMN provider TEXT NOT NULL DEFAULT 'unknown'",
+            [],
+        )?;
+    }
+    if !columns.iter().any(|c| c == "model") {
+        conn.execute(
+            "ALTER TABLE embeddings ADD COLUMN model TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+    if !columns.iter().any(|c| c == "updated_at") {
+        conn.execute(
+            "ALTER TABLE embeddings ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0",
+            [],
+        )?;
+        conn.execute(
+            "UPDATE embeddings SET updated_at = created_at WHERE updated_at = 0",
+            [],
+        )?;
+    }
+
+    // Deduplicate historical duplicates before enforcing unique paragraph_id
+    conn.execute(
+        "DELETE FROM embeddings
+         WHERE rowid IN (
+           SELECT rowid
+           FROM (
+             SELECT rowid,
+                    ROW_NUMBER() OVER (
+                      PARTITION BY paragraph_id
+                      ORDER BY updated_at DESC, created_at DESC, rowid DESC
+                    ) AS rn
+             FROM embeddings
+           ) t
+           WHERE t.rn > 1
+         )",
         [],
     )?;
 
@@ -120,6 +173,21 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_paragraphs_section_id ON paragraphs(section_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_embeddings_paragraph_id_unique ON embeddings(paragraph_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_embeddings_profile ON embeddings(provider, model, dim)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_embeddings_paragraph_id ON embeddings(paragraph_id)",
         [],
     )?;
 

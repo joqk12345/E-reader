@@ -1,12 +1,21 @@
 import { Library } from './components/Library';
 import { Reader } from './components/Reader';
 import { useStore } from './store/useStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { getEmbeddingStatus, indexDocumentWithLocalEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
 
 const MENU_EVENT_NAME = 'reader-menu-action';
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
+type Config = {
+  embedding_provider?: 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
+  embedding_model?: string;
+  embedding_dimension?: number;
+  embedding_auto_reindex?: boolean;
+  embedding_local_model_path?: string;
+};
 
 function App() {
   const {
@@ -21,10 +30,51 @@ function App() {
   const [customThemeOpen, setCustomThemeOpen] = useState(false);
   const [customThemeValue, setCustomThemeValue] = useState('#F4F8EE');
   const [customThemeError, setCustomThemeError] = useState<string | null>(null);
+  const autoIndexingKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    if (!selectedDocumentId) return;
+    const runAutoIndexForCurrentDocument = async () => {
+      let key = '';
+      try {
+        const config = await invoke<Config>('get_config');
+        if (!config.embedding_auto_reindex) return;
+        if ((config.embedding_provider || 'local_transformers') !== 'local_transformers') return;
+
+        const profile: EmbeddingProfile = {
+          provider: config.embedding_provider || 'local_transformers',
+          model: config.embedding_model || 'Xenova/all-MiniLM-L6-v2',
+          dimension: config.embedding_dimension || 384,
+        };
+        key = [
+          selectedDocumentId,
+          profile.provider,
+          profile.model,
+          profile.dimension,
+          config.embedding_local_model_path || '',
+        ].join('|');
+        if (autoIndexingKeysRef.current.has(key)) return;
+
+        const status = await getEmbeddingStatus(selectedDocumentId);
+        if (status.stale === 0 && status.indexed >= status.total) return;
+
+        autoIndexingKeysRef.current.add(key);
+        await indexDocumentWithLocalEmbedding(selectedDocumentId, profile, {
+          localModelPath: config.embedding_local_model_path,
+        });
+      } catch (error) {
+        console.warn('Auto indexing current document skipped:', error);
+        if (key) {
+          autoIndexingKeysRef.current.delete(key);
+        }
+      }
+    };
+    void runAutoIndexForCurrentDocument();
+  }, [selectedDocumentId]);
 
   useEffect(() => {
     let isMounted = true;

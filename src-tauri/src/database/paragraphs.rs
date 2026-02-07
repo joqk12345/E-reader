@@ -94,10 +94,11 @@ pub fn get(conn: &Connection, id: &str) -> Result<Option<Paragraph>, ParagraphEr
 /// Returns paragraphs ordered by section_id and order_index in ascending order.
 pub fn list_by_document(conn: &Connection, doc_id: &str) -> Result<Vec<Paragraph>, ParagraphError> {
     let mut stmt = conn.prepare(
-        "SELECT id, doc_id, section_id, order_index, text, location
-         FROM paragraphs
-         WHERE doc_id = ?1
-         ORDER BY section_id, order_index"
+        "SELECT p.id, p.doc_id, p.section_id, p.order_index, p.text, p.location
+         FROM paragraphs p
+         JOIN sections s ON p.section_id = s.id
+         WHERE p.doc_id = ?1
+         ORDER BY s.order_index, p.order_index"
     )?;
 
     let paragraphs = stmt.query_map(params![doc_id], |row| {

@@ -26,6 +26,8 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
     // Load configuration and create LLM client
     let config = load_config()?;
     let llm_client = create_client(&config)?;
+    let embedding_provider = config.embedding_provider.clone();
+    let embedding_model = config.embedding_model.clone();
 
     // Get database connection
     let conn = get_connection(&app_handle)?;
@@ -57,7 +59,13 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
                 match llm_client.generate_embedding(&paragraph.text).await {
                     Ok(embedding_vector) => {
                         // Store the embedding
-                        match insert_embedding(&conn, &paragraph.id, embedding_vector) {
+                        match insert_embedding(
+                            &conn,
+                            &paragraph.id,
+                            embedding_vector,
+                            &embedding_provider,
+                            &embedding_model,
+                        ) {
                             Ok(_) => {
                                 indexed_count += 1;
                                 info!("Successfully indexed paragraph {}", paragraph.id);

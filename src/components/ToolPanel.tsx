@@ -61,7 +61,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
 
   return (
     <aside
-      className="relative h-full flex flex-col bg-white border-l border-gray-200 flex-shrink-0"
+      className="relative h-full min-h-0 flex flex-col bg-white border-l border-gray-200 flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
       <div className={`flex items-center justify-between border-b border-gray-200 ${collapsed ? 'p-2' : 'px-3 py-2.5'}`}>
@@ -92,7 +92,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       </div>
 
       {collapsed ? (
-        <div className="flex-1 py-2 space-y-1">
+        <div className="flex-1 min-h-0 py-2 space-y-1 overflow-y-auto">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -132,7 +132,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {activeTab === 'search' && <SearchPanel />}
             {activeTab === 'summary' && <SummaryPanel />}
             {activeTab === 'translate' && <TranslatePanel />}

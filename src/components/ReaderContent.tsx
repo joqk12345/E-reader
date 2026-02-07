@@ -1,48 +1,127 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
 import { useStore } from '../store/useStore';
 import { invoke } from '@tauri-apps/api/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { splitIntoSentences } from '../utils/sentences';
+
+const renderTextWithHighlight = (text: string, query: string): ReactNode => {
+  const keyword = query.trim();
+  if (!keyword) return text;
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'ig');
+  const parts = text.split(regex);
+  if (parts.length <= 1) return text;
+  return parts.map((part, idx) => {
+    if (part.toLowerCase() === keyword.toLowerCase()) {
+      return (
+        <mark key={`mark-${idx}`} className="bg-yellow-200 text-inherit px-0.5 rounded">
+          {part}
+        </mark>
+      );
+    }
+    return <span key={`text-${idx}`}>{part}</span>;
+  });
+};
+
+const highlightMarkdownNode = (node: ReactNode, query: string): ReactNode => {
+  if (typeof node === 'string') {
+    return renderTextWithHighlight(node, query);
+  }
+  if (Array.isArray(node)) {
+    return node.map((child, idx) => <span key={`hn-${idx}`}>{highlightMarkdownNode(child, query)}</span>);
+  }
+  if (isValidElement(node)) {
+    const element = node as ReactElement<{ children?: ReactNode }>;
+    if (element.props.children === undefined) return element;
+    return cloneElement(
+      element,
+      undefined,
+      highlightMarkdownNode(element.props.children, query)
+    );
+  }
+  return node;
+};
+
+const renderMarkdownChildren = (children: ReactNode, query: string): ReactNode => {
+  const keyword = query.trim();
+  if (!keyword) return children;
+  return Children.map(children, (child) => highlightMarkdownNode(child, keyword));
+};
 
 export function ReaderContent() {
   const {
     paragraphs,
     isLoading,
     currentSectionId,
+    currentDocumentType,
     translationMode,
     readerBackgroundColor,
     readerFontSize,
     currentReadingSentenceKey,
+    focusedParagraphId,
+    setFocusedParagraphId,
+    searchHighlightQuery,
+    searchMatchedParagraphIds,
   } = useStore();
   const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [loadingSentences, setLoadingSentences] = useState<Set<string>>(new Set());
+  const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
+  const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const translationsRef = useRef<Record<string, string>>({});
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const pendingPatchRef = useRef<Record<string, string>>({});
+  const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
+  const matchedParagraphSet = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    matchedParagraphSet.current = new Set(searchMatchedParagraphIds);
+  }, [searchMatchedParagraphIds]);
+
+  const renderWithSearchHighlight = (text: string, enableHighlight: boolean) => {
+    const query = searchHighlightQuery.trim();
+    if (!enableHighlight || !query) return text;
+    return renderTextWithHighlight(text, query);
+  };
+
+  const clearFlushTimer = () => {
+    if (flushTimerRef.current !== null) {
+      window.clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  };
+
+  const scheduleFlushTranslations = () => {
+    if (flushTimerRef.current !== null) return;
+    flushTimerRef.current = window.setTimeout(() => {
+      flushTimerRef.current = null;
+      const patch = pendingPatchRef.current;
+      pendingPatchRef.current = {};
+      if (Object.keys(patch).length === 0) return;
+      setTranslations((prev) => ({ ...prev, ...patch }));
+    }, 120);
+  };
 
   // 翻译单个句子
   const translateSentence = async (paragraphId: string, sentence: string, index: number) => {
     const key = `${paragraphId}_${index}`;
-    if (translations[key]) return;
+    if (translationsRef.current[key] || inFlightRef.current.has(key)) return;
 
     // 根据设置的翻译方向确定目标语言
     const targetLang = translationMode === 'zh-en' ? 'en' : 'zh';
-
-    setLoadingSentences(prev => new Set(prev).add(key));
+    inFlightRef.current.add(key);
     try {
       const result = await invoke<string>('translate', {
         text: sentence,
-        targetLang
+        targetLang,
       });
-      setTranslations(prev => ({
-        ...prev,
-        [key]: result
-      }));
+      translationsRef.current[key] = result;
+      pendingPatchRef.current[key] = result;
+      scheduleFlushTranslations();
     } catch (error) {
       console.error('Failed to translate sentence:', error);
     } finally {
-      setLoadingSentences(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(key);
-        return newSet;
-      });
+      inFlightRef.current.delete(key);
     }
   };
 
@@ -62,8 +141,8 @@ export function ReaderContent() {
       const sentences = splitIntoSentences(paragraph.text);
       sentences.forEach((sentence, index) => {
         const key = `${paragraph.id}_${index}`;
-        if (translations[key]) return;
-        if (loadingSentences.has(key)) return;
+        if (translationsRef.current[key]) return;
+        if (inFlightRef.current.has(key)) return;
         if (!sentence.trim()) return;
         pending.push({ paragraphId: paragraph.id, sentence, index });
       });
@@ -90,23 +169,46 @@ export function ReaderContent() {
     return () => {
       cancelled = true;
     };
-  }, [translationMode, autoTranslate, paragraphs, translations, loadingSentences]);
+  }, [translationMode, autoTranslate, paragraphs]);
 
-  // 当翻译方向变化时，清空翻译缓存
+  // 当章节或翻译方向变化时，清空翻译缓存并重建任务
   useEffect(() => {
-    if (translationMode !== 'off') {
-      setTranslations({});
-      setLoadingSentences(new Set());
-    }
-  }, [translationMode]);
+    clearFlushTimer();
+    pendingPatchRef.current = {};
+    translationsRef.current = {};
+    inFlightRef.current.clear();
+    setTranslations({});
+  }, [currentSectionId, translationMode]);
 
-  // 关闭双语模式时清空翻译缓存
   useEffect(() => {
-    if (translationMode === 'off') {
-      setTranslations({});
-      setLoadingSentences(new Set());
+    return () => clearFlushTimer();
+  }, []);
+
+  // 跟随当前朗读句子自动滚动
+  useEffect(() => {
+    if (!currentReadingSentenceKey) return;
+    const el = sentenceRefs.current[currentReadingSentenceKey];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
     }
-  }, [translationMode]);
+    const paragraphId = currentReadingSentenceKey.split('_')[0];
+    if (!paragraphId) return;
+    const paragraphEl = paragraphRefs.current[paragraphId];
+    if (!paragraphEl) return;
+    paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [currentReadingSentenceKey]);
+
+  useEffect(() => {
+    if (!focusedParagraphId) return;
+    const el = paragraphRefs.current[focusedParagraphId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = window.setTimeout(() => {
+      setFocusedParagraphId(null);
+    }, 1600);
+    return () => window.clearTimeout(timer);
+  }, [focusedParagraphId, setFocusedParagraphId]);
 
   if (isLoading) {
     return (
@@ -133,52 +235,137 @@ export function ReaderContent() {
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ backgroundColor: readerBackgroundColor }}>
-      <div className="max-w-3xl mx-auto px-8 py-12">
+      <div className="max-w-4xl mx-auto px-8 py-12">
         <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
             const sentences = splitIntoSentences(paragraph.text);
+            const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
+            const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
+            const isReadingParagraph = Boolean(
+              currentReadingSentenceKey &&
+                currentReadingSentenceKey.startsWith(`${paragraph.id}_`)
+            );
+
             return (
-              <div key={paragraph.id} className="mb-4">
-                {sentences.map((sentence, index) => {
-                  const key = `${paragraph.id}_${index}`;
-                  const isReading = currentReadingSentenceKey === key;
-                  return (
-                    <div key={index} className="mb-2">
-                      <p
-                        className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
-                        style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
-                      >
-                        {sentence}
-                      </p>
-                      {translationMode !== 'off' && (
-                        <div className="flex items-center gap-2 ml-4">
-                          {loadingSentences.has(key) ? (
-                            <p
-                              className="text-blue-600"
-                              style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+              <div
+                key={paragraph.id}
+                ref={(el) => {
+                  paragraphRefs.current[paragraph.id] = el;
+                }}
+                className={`mb-4 rounded ${
+                  focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
+                } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''} ${
+                  currentDocumentType === 'markdown' && isReadingParagraph
+                    ? 'bg-amber-100/80 ring-1 ring-amber-300'
+                    : ''
+                }`}
+              >
+                {currentDocumentType === 'markdown' ? (
+                  <div className="space-y-2">
+                    <div
+                      className="markdown-content text-gray-800"
+                      style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
+                    >
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h1>,
+                          h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h2>,
+                          h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h3>,
+                          h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h4>,
+                          h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h5>,
+                          h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</h6>,
+                          p: ({ children }) => <p className="my-2 text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</p>,
+                          ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</ul>,
+                          ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</ol>,
+                          li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</li>,
+                          blockquote: ({ children }) => <blockquote className="my-3 border-l-4 border-gray-300 pl-4 italic text-gray-700">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</blockquote>,
+                          code: ({ children }) => (
+                            <code className="rounded bg-gray-200 px-1 py-0.5 text-gray-900">
+                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}
+                            </code>
+                          ),
+                          pre: ({ children }) => (
+                            <pre
+                              className="my-3 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 text-gray-800"
+                              style={{ fontSize: `${Math.max(readerFontSize - 2, 12)}px` }}
                             >
-                              Loading...
-                            </p>
-                          ) : translations[key] ? (
+                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}
+                            </pre>
+                          ),
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}
+                            </a>
+                          ),
+                          table: ({ children }) => (
+                            <div className="my-3 overflow-x-auto">
+                              <table className="min-w-full border border-gray-200 text-left">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</table>
+                            </div>
+                          ),
+                          thead: ({ children }) => <thead className="bg-gray-100">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</thead>,
+                          th: ({ children }) => <th className="border border-gray-200 px-3 py-2 font-semibold text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</th>,
+                          td: ({ children }) => <td className="border border-gray-200 px-3 py-2 text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '')}</td>,
+                        }}
+                      >
+                        {paragraph.text}
+                      </ReactMarkdown>
+                    </div>
+                    {translationMode !== 'off' && sentences.length > 0 && (
+                      <div className="ml-4 space-y-1">
+                        {sentences.map((_, index) => {
+                          const key = `${paragraph.id}_${index}`;
+                          return translations[key] ? (
                             <p
+                              key={`tr-${key}`}
                               className="text-blue-600"
                               style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
                             >
                               {translations[key]}
                             </p>
-                          ) : (
-                            <button
-                              onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
-                              className="text-xs text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Translate
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  sentences.map((sentence, index) => {
+                    const key = `${paragraph.id}_${index}`;
+                    const isReading = currentReadingSentenceKey === key;
+                    return (
+                      <div key={index} className="mb-2">
+                        <p
+                          ref={(el) => {
+                            sentenceRefs.current[key] = el;
+                          }}
+                          className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
+                          style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
+                        >
+                          {renderWithSearchHighlight(sentence, isSearchMatchedParagraph)}
+                        </p>
+                        {translationMode !== 'off' && (
+                          <div className="flex items-center gap-2 ml-4">
+                            {translations[key] ? (
+                              <p
+                                className="text-blue-600"
+                                style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+                              >
+                                {translations[key]}
+                              </p>
+                            ) : (
+                              <button
+                                onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
+                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              >
+                                Translate
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             );
           })}

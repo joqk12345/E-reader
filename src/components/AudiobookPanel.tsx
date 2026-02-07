@@ -30,9 +30,16 @@ export const AudiobookPanel: React.FC = () => {
   const playbackModeRef = useRef<'audio' | 'speech' | null>(null);
 
   const sentences = useMemo(() => {
+    const isSpeakableSentence = (text: string): boolean => {
+      const t = text.trim();
+      if (!t) return false;
+      return /[A-Za-z0-9\u4e00-\u9fff]/.test(t);
+    };
+
     const list: Array<{ key: string; sourceText: string }> = [];
     for (const paragraph of paragraphs) {
       splitIntoSentences(paragraph.text).forEach((sentence, index) => {
+        if (!isSpeakableSentence(sentence)) return;
         list.push({
           key: `${paragraph.id}_${index}`,
           sourceText: sentence,
@@ -71,9 +78,28 @@ export const AudiobookPanel: React.FC = () => {
     return detectLang(sourceText) === 'zh' ? 'en' : 'zh';
   };
 
+  const toSpeakableText = (input: string): string => {
+    return input
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^\s{0,3}>\s?/gm, '')
+      .replace(/^\s*[-*+]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      .replace(/[*_~|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const resolveSentenceForReading = async (sourceSentence: string): Promise<{ text: string; lang: TargetLang }> => {
     if (readTarget === 'source') {
-      return { text: sourceSentence, lang: detectLang(sourceSentence) };
+      const cleaned = toSpeakableText(sourceSentence);
+      return { text: cleaned, lang: detectLang(cleaned || sourceSentence) };
     }
 
     const targetLang = resolveTargetLang(sourceSentence);
@@ -81,7 +107,7 @@ export const AudiobookPanel: React.FC = () => {
       text: sourceSentence,
       targetLang,
     });
-    return { text: translated, lang: targetLang };
+    return { text: toSpeakableText(translated), lang: targetLang };
   };
 
   const playAudio = async (audio: number[], mimeType: string): Promise<void> => {
@@ -164,6 +190,9 @@ export const AudiobookPanel: React.FC = () => {
         if (stopRequestedRef.current) break;
 
         const resolved = await resolveSentenceForReading(sourceSentence);
+        if (!resolved.text.trim()) {
+          continue;
+        }
         try {
           const tts = await invoke<TtsAudioResponse>('tts_synthesize', {
             request: {
