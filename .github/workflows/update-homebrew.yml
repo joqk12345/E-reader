@@ -1,0 +1,120 @@
+name: Update Homebrew Cask
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to sync (for example v0.2.0)
+        required: true
+        type: string
+
+jobs:
+  update-homebrew-cask:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      APP_NAME: reader
+      TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || format('{0}/homebrew-tap', github.repository_owner) }}
+    steps:
+      - name: Resolve release assets
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          if [[ -z "${TAG}" ]]; then
+            echo "Unable to resolve release tag."
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          gh api "repos/${{ github.repository }}/releases/tags/${TAG}" > release.json
+
+          ARM64_URL="$(jq -r '.assets[] | select(.name | test("(?i)(aarch64|arm64).*\\.dmg$")) | .browser_download_url' release.json | head -n 1)"
+          INTEL_URL="$(jq -r '.assets[] | select(.name | test("(?i)(x86_64|x64).*\\.dmg$")) | .browser_download_url' release.json | head -n 1)"
+
+          if [[ -z "${ARM64_URL}" || -z "${INTEL_URL}" ]]; then
+            echo "Missing macOS dmg assets in release ${TAG}"
+            jq -r '.assets[].name' release.json
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "arm64_url=${ARM64_URL}" >> "${GITHUB_OUTPUT}"
+          echo "intel_url=${INTEL_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download dmgs and calculate checksums
+        id: checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -fL "${{ steps.release.outputs.arm64_url }}" -o reader-arm64.dmg
+          curl -fL "${{ steps.release.outputs.intel_url }}" -o reader-x64.dmg
+
+          ARM64_SHA="$(sha256sum reader-arm64.dmg | awk '{print $1}')"
+          INTEL_SHA="$(sha256sum reader-x64.dmg | awk '{print $1}')"
+
+          echo "arm64_sha=${ARM64_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "intel_sha=${INTEL_SHA}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAP_REPO }}
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: tap
+
+      - name: Update cask formula
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p tap/Casks
+          cat > tap/Casks/${{ env.APP_NAME }}.rb <<EOF
+          cask "${{ env.APP_NAME }}" do
+            version "${{ steps.release.outputs.version }}"
+
+            on_arm do
+              sha256 "${{ steps.checksums.outputs.arm64_sha }}"
+              url "${{ steps.release.outputs.arm64_url }}"
+            end
+
+            on_intel do
+              sha256 "${{ steps.checksums.outputs.intel_sha }}"
+              url "${{ steps.release.outputs.intel_url }}"
+            end
+
+            name "reader"
+            desc "Local-first EPUB reader with AI-powered features"
+            homepage "https://github.com/${{ github.repository }}"
+
+            app "reader.app"
+          end
+          EOF
+
+      - name: Commit and push tap changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add Casks/${{ env.APP_NAME }}.rb
+          if git diff --cached --quiet; then
+            echo "No Homebrew changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update ${{ env.APP_NAME }} to ${{ steps.release.outputs.version }}"
+          git push

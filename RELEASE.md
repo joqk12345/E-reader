@@ -62,6 +62,18 @@ Triggers on version tags (e.g., `v0.3.1`) to:
 - Create a GitHub Release (as draft)
 - Upload installers and bundles
 
+### Homebrew Sync Workflow (`.github/workflows/update-homebrew.yml`)
+
+Triggers when a release is published to:
+- Fetch macOS `.dmg` assets for both Apple Silicon and Intel
+- Calculate SHA256 checksums
+- Update `Casks/reader.rb` in your tap repository (default: `<owner>/homebrew-tap`)
+- Commit and push the updated cask
+
+Required repository settings:
+- Secret: `HOMEBREW_TAP_GITHUB_TOKEN` (PAT with write access to the tap repo)
+- Optional variable: `HOMEBREW_TAP_REPO` (for custom tap repo, e.g. `joqk12345/homebrew-tap`)
+
 ## Manual Testing Before Release
 
 Before pushing a release tag, you can test the build locally:
