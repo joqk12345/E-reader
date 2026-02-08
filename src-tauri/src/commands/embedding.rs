@@ -199,7 +199,11 @@ pub async fn search_by_embedding(
         }
     }
 
-    ranked.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    ranked.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     ranked.truncate(top_k);
     Ok(ranked)
 }
