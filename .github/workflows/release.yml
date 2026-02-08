@@ -91,8 +91,8 @@ jobs:
             copy_matches_if_dir_exists "src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg" "*.dmg"
           elif [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
             # Windows: bundle/msi/*.msi and bundle/nsis/*.exe
-            copy_matches_if_dir_exists "src-tauri/target/${{ matrix.platform.target }}/release/bundle/msi" "*.msi"
-            copy_matches_if_dir_exists "src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis" "*.exe"
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.msi" -exec cp {} release/ \;
+            find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.exe" -exec cp {} release/ \;
           fi
 
           # List artifacts for debugging
