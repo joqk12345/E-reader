@@ -47,6 +47,13 @@ Grab the latest release for your platform from the [Releases](https://github.com
 - **Linux**: `.deb` package or `.AppImage`
 - **Windows**: `.msi` or `.exe` installer
 
+### Install via Homebrew (macOS)
+
+```bash
+brew tap joqk12345/tap
+brew install --cask reader
+```
+
 ### Build from Source
 
 #### Prerequisites
