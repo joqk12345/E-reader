@@ -19,6 +19,7 @@ jobs:
     env:
       APP_NAME: reader
       TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO || format('{0}/homebrew-tap', github.repository_owner) }}
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
     steps:
       - name: Resolve release assets
         id: release
@@ -66,19 +67,19 @@ jobs:
           echo "arm64_sha=${ARM64_SHA}" >> "${GITHUB_OUTPUT}"
           echo "intel_sha=${INTEL_SHA}" >> "${GITHUB_OUTPUT}"
 
+      - name: Validate tap token
+        run: |
+          if [[ -z "${TAP_TOKEN}" ]]; then
+            echo "::error::Missing secret HOMEBREW_TAP_GITHUB_TOKEN in repository joqk12345/E-reader, or the secret value is empty."
+            exit 1
+          fi
+
       - name: Checkout homebrew tap
-        if: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN != '' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ env.TAP_REPO }}
-          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          token: ${{ env.TAP_TOKEN }}
           path: tap
-
-      - name: Fail when tap token is missing
-        if: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN == '' }}
-        run: |
-          echo "::error::Missing secret HOMEBREW_TAP_GITHUB_TOKEN in repository joqk12345/E-reader, or the secret value is empty."
-          exit 1
 
       - name: Update cask formula
         shell: bash
