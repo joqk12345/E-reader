@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
 import { useStore } from '../store/useStore';
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { splitIntoSentences } from '../utils/sentences';
 import type { Annotation, AnnotationStyle } from '../types';
 
 const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
+const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const annotationStyleOrder: AnnotationStyle[] = ['single_underline', 'double_underline', 'wavy_strikethrough'];
 const annotationStyleLabel: Record<AnnotationStyle, string> = {
   single_underline: '单下划线',
@@ -148,8 +149,25 @@ const renderMarkdownChildren = (children: ReactNode, query: string, annotations:
   return Children.map(children, (child, idx) => highlightMarkdownNode(child, keyword, annotations, `${keyPrefix}-${idx}`));
 };
 
+const parsePdfImageMarker = (text: string): string | null => {
+  const m = text.trim().match(PDF_IMAGE_MARKER_RE);
+  if (!m) return null;
+  const path = m[1]?.trim();
+  return path || null;
+};
+
+const parsePdfPageFromLocation = (location?: string): number | null => {
+  if (!location) return null;
+  const m = location.match(/page(\d+)/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 export function ReaderContent() {
   const {
+    documents,
+    selectedDocumentId,
     paragraphs,
     isLoading,
     currentSectionId,
@@ -167,6 +185,7 @@ export function ReaderContent() {
   const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
   const [isAnnotationPanelOpen, setIsAnnotationPanelOpen] = useState(false);
+  const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -188,6 +207,8 @@ export function ReaderContent() {
         .sort((a, b) => b.created_at - a.created_at),
     [annotationsByParagraph]
   );
+  const selectedDoc = documents.find((doc) => doc.id === selectedDocumentId) || null;
+  const currentPdfPath = currentDocumentType === 'pdf' ? selectedDoc?.file_path || '' : '';
 
   const renderWithSearchHighlight = (text: string, enableHighlight: boolean, paragraphAnnotations: Annotation[], keyPrefix: string) => {
     const query = searchHighlightQuery.trim();
@@ -467,41 +488,87 @@ export function ReaderContent() {
       onMouseUp={handleSelectionEnd}
     >
       <div className="max-w-4xl mx-auto px-8 py-12">
-        <div className="mb-4 flex justify-end">
-          <button
-            data-annotation-popover="true"
-            onClick={() => setIsAnnotationPanelOpen(true)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-          >
-            批注与划线 ({allAnnotations.length})
-          </button>
-        </div>
-        <article className="prose max-w-none">
+        {currentDocumentType === 'pdf' && (
+          <div className="mb-4 flex items-center justify-end gap-2">
+            <button
+              onClick={() => setPdfDisplayMode('text')}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${
+                pdfDisplayMode === 'text'
+                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                  : 'border-slate-300 bg-white text-slate-700'
+              }`}
+            >
+              文本解析
+            </button>
+            <button
+              onClick={() => setPdfDisplayMode('original')}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${
+                pdfDisplayMode === 'original'
+                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                  : 'border-slate-300 bg-white text-slate-700'
+              }`}
+            >
+              PDF原文
+            </button>
+          </div>
+        )}
+        {currentDocumentType === 'pdf' && pdfDisplayMode === 'original' && currentPdfPath ? (
+          <section className="rounded-lg border border-slate-200 bg-white p-2">
+            <iframe
+              title="PDF Original Viewer"
+              src={convertFileSrc(currentPdfPath)}
+              className="h-[82vh] w-full rounded"
+            />
+          </section>
+        ) : (
+        <>
+          <div className="mb-4 flex justify-end">
+            <button
+              data-annotation-popover="true"
+              onClick={() => setIsAnnotationPanelOpen(true)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+            >
+              批注与划线 ({allAnnotations.length})
+            </button>
+          </div>
+          <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
             const sentences = splitIntoSentences(paragraph.text);
             const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
             const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
             const paragraphAnnotations = annotationsByParagraph[paragraph.id] || [];
+            const currentPage = parsePdfPageFromLocation(paragraph.location);
+            const shouldShowPdfPreview = false;
             const isReadingParagraph = Boolean(
               currentReadingSentenceKey &&
                 currentReadingSentenceKey.startsWith(`${paragraph.id}_`)
             );
 
             return (
-              <div
-                key={paragraph.id}
-                ref={(el) => {
-                  paragraphRefs.current[paragraph.id] = el;
-                }}
-                data-paragraph-id={paragraph.id}
-                className={`mb-4 rounded ${
-                  focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
-                } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''} ${
-                  currentDocumentType === 'markdown' && isReadingParagraph
-                    ? 'bg-amber-100/80 ring-1 ring-amber-300'
-                    : ''
-                }`}
-              >
+              <div key={paragraph.id}>
+                {shouldShowPdfPreview && (
+                  <section className="mb-3 rounded-lg border border-slate-200 bg-white p-2">
+                    <div className="mb-2 text-xs text-slate-500">Page {currentPage}</div>
+                    <iframe
+                      title={`PDF Page ${currentPage}`}
+                      src={`${convertFileSrc(currentPdfPath)}#page=${currentPage}&zoom=page-width`}
+                      className="h-[70vh] w-full rounded"
+                    />
+                  </section>
+                )}
+                <div
+                  ref={(el) => {
+                    paragraphRefs.current[paragraph.id] = el;
+                  }}
+                  data-paragraph-id={paragraph.id}
+                  className={`mb-4 rounded ${
+                    focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
+                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''} ${
+                    currentDocumentType === 'markdown' && isReadingParagraph
+                      ? 'bg-amber-100/80 ring-1 ring-amber-300'
+                      : ''
+                  }`}
+                >
                 {currentDocumentType === 'markdown' ? (
                   <div className="space-y-2">
                     <div
@@ -569,7 +636,20 @@ export function ReaderContent() {
                     )}
                   </div>
                 ) : (
-                  sentences.map((sentence, index) => {
+                  (() => {
+                    const imagePath = parsePdfImageMarker(paragraph.text);
+                    if (imagePath) {
+                      return (
+                        <figure className="my-3">
+                          <img
+                            src={convertFileSrc(imagePath)}
+                            alt="PDF image"
+                            className="max-h-[36rem] w-auto max-w-full rounded border border-gray-200 object-contain"
+                          />
+                        </figure>
+                      );
+                    }
+                    return sentences.map((sentence, index) => {
                     const key = `${paragraph.id}_${index}`;
                     const isReading = currentReadingSentenceKey === key;
                     return (
@@ -604,12 +684,16 @@ export function ReaderContent() {
                         )}
                       </div>
                     );
-                  })
+                    });
+                  })()
                 )}
+                </div>
               </div>
             );
           })}
-        </article>
+          </article>
+        </>
+        )}
       </div>
       {selectionDraft && (
         <div
