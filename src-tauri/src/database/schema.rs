@@ -160,6 +160,20 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    // Create annotations table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS annotations (
+            id TEXT PRIMARY KEY,
+            paragraph_id TEXT NOT NULL REFERENCES paragraphs(id) ON DELETE CASCADE,
+            selected_text TEXT NOT NULL,
+            style TEXT NOT NULL,
+            note TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
     // Create indexes for performance (only 3 indexes as per spec)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sections_doc_id ON sections(doc_id)",
@@ -188,6 +202,11 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_embeddings_paragraph_id ON embeddings(paragraph_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_annotations_paragraph_id ON annotations(paragraph_id)",
         [],
     )?;
 

@@ -12,10 +12,11 @@ mod search;
 pub use error::{ReaderError, Result};
 
 use commands::{
-    clear_embeddings_by_profile, delete_document, download_embedding_model_files, get_config,
-    get_document, get_document_paragraphs, get_document_sections, get_embedding_profile_status,
-    get_paragraph_context, get_section_paragraphs, get_summary_cache, import_epub, import_markdown,
-    import_pdf, index_document, list_documents, list_tts_voices, mcp_request, search,
+    clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
+    download_embedding_model_files, get_config, get_document, get_document_paragraphs,
+    get_document_sections, get_embedding_profile_status, get_paragraph_context,
+    get_section_paragraphs, get_summary_cache, import_epub, import_markdown, import_pdf,
+    index_document, list_annotations, list_documents, list_tts_voices, mcp_request, search,
     search_by_embedding, summarize, translate, tts_synthesize, update_config,
     upsert_embeddings_batch, validate_local_embedding_model_path,
 };
@@ -388,6 +389,9 @@ pub fn run() {
             search,
             get_paragraph_context,
             get_document_paragraphs,
+            list_annotations,
+            create_annotation,
+            delete_annotation,
             upsert_embeddings_batch,
             search_by_embedding,
             get_embedding_profile_status,

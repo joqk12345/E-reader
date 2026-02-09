@@ -1,14 +1,16 @@
 use crate::config::load_config;
 use crate::database::{embeddings, get_connection};
-use crate::error::Result;
+use crate::error::{ReaderError, Result};
 use crate::llm::create_client;
 use crate::search::{cosine_similarity, SearchOptions, SearchResult};
 use rusqlite::params;
 use std::collections::HashMap;
 use tauri::AppHandle;
+use tokio::task::spawn_blocking;
 use tokio::time::{timeout, Duration};
 
 const SEARCH_EMBEDDING_TIMEOUT_SECS: u64 = 20;
+const SEARCH_KEYWORD_TIMEOUT_SECS: u64 = 20;
 
 /// Output type for search results
 #[derive(Clone, serde::Serialize)]
@@ -54,11 +56,30 @@ pub async fn search(
         return Ok(Vec::new());
     }
     let top_k = options.top_k.max(1);
+    let query_owned = query.to_string();
+    let doc_id = options.doc_id.clone();
+
+    if options.force_keyword {
+        let fallback = keyword_search_with_timeout(
+            app_handle.clone(),
+            query_owned.clone(),
+            doc_id.clone(),
+            top_k,
+        )
+        .await?;
+        return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
+    }
 
     // Load configuration and create LLM client
     let config = load_config()?;
     if config.embedding_provider == "local_transformers" {
-        let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+        let fallback = keyword_search_with_timeout(
+            app_handle.clone(),
+            query_owned.clone(),
+            doc_id.clone(),
+            top_k,
+        )
+        .await?;
         return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
     }
     let llm_client = match create_client(&config) {
@@ -68,7 +89,13 @@ pub async fn search(
                 "Semantic search unavailable, falling back to keyword search: {}",
                 err
             );
-            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            let fallback = keyword_search_with_timeout(
+                app_handle.clone(),
+                query_owned.clone(),
+                doc_id.clone(),
+                top_k,
+            )
+            .await?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
     };
@@ -107,7 +134,13 @@ pub async fn search(
 
         // Return early if no embeddings
         if all_embeddings.is_empty() {
-            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            let fallback = keyword_search_with_timeout(
+                app_handle.clone(),
+                query_owned.clone(),
+                doc_id.clone(),
+                top_k,
+            )
+            .await?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
     }
@@ -125,7 +158,13 @@ pub async fn search(
                 "Embedding generation failed, falling back to keyword search: {}",
                 err
             );
-            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            let fallback = keyword_search_with_timeout(
+                app_handle.clone(),
+                query_owned.clone(),
+                doc_id.clone(),
+                top_k,
+            )
+            .await?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
         Err(_) => {
@@ -133,7 +172,13 @@ pub async fn search(
                 "Embedding generation timed out after {}s, falling back to keyword search",
                 SEARCH_EMBEDDING_TIMEOUT_SECS
             );
-            let fallback = keyword_search(&app_handle, query, options.doc_id.as_deref(), top_k)?;
+            let fallback = keyword_search_with_timeout(
+                app_handle.clone(),
+                query_owned.clone(),
+                doc_id.clone(),
+                top_k,
+            )
+            .await?;
             return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
         }
     };
@@ -338,4 +383,28 @@ fn keyword_search(
     }
 
     Ok(results)
+}
+
+async fn keyword_search_with_timeout(
+    app_handle: AppHandle,
+    query: String,
+    doc_id: Option<String>,
+    top_k: usize,
+) -> Result<Vec<SearchResult>> {
+    match timeout(
+        Duration::from_secs(SEARCH_KEYWORD_TIMEOUT_SECS),
+        spawn_blocking(move || keyword_search(&app_handle, &query, doc_id.as_deref(), top_k)),
+    )
+    .await
+    {
+        Ok(Ok(search_result)) => search_result,
+        Ok(Err(join_err)) => Err(ReaderError::Internal(format!(
+            "Keyword search task failed: {}",
+            join_err
+        ))),
+        Err(_) => Err(ReaderError::Internal(format!(
+            "Keyword search timed out after {} seconds",
+            SEARCH_KEYWORD_TIMEOUT_SECS
+        ))),
+    }
 }

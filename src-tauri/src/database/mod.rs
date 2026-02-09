@@ -1,3 +1,4 @@
+mod annotations;
 mod cache;
 mod documents;
 pub mod embeddings;
@@ -48,6 +49,13 @@ pub use cache::{
 };
 pub use cache::{CacheError, Summary, Translation};
 
+// Annotation operations
+pub use annotations::AnnotationError;
+pub use annotations::{
+    delete as delete_annotation, insert as insert_annotation,
+    list_by_paragraph_ids as list_annotations_by_paragraph_ids,
+};
+
 // Convert EmbeddingError to ReaderError
 impl From<EmbeddingError> for crate::ReaderError {
     fn from(err: EmbeddingError) -> Self {
@@ -65,6 +73,13 @@ impl From<ParagraphError> for crate::ReaderError {
 // Convert CacheError to ReaderError
 impl From<CacheError> for crate::ReaderError {
     fn from(err: CacheError) -> Self {
+        crate::ReaderError::Internal(err.to_string())
+    }
+}
+
+// Convert AnnotationError to ReaderError
+impl From<AnnotationError> for crate::ReaderError {
+    fn from(err: AnnotationError) -> Self {
         crate::ReaderError::Internal(err.to_string())
     }
 }

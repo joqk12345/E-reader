@@ -1,3 +1,4 @@
+mod annotation;
 mod config;
 mod embedding;
 mod import;
@@ -7,6 +8,7 @@ mod search;
 mod translate;
 mod tts;
 
+pub use annotation::{create_annotation, delete_annotation, list_annotations};
 pub use config::{get_config, update_config};
 pub use embedding::{
     clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,

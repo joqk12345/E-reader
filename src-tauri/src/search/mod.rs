@@ -58,6 +58,10 @@ pub struct SearchOptions {
     /// Optional document ID to restrict search to a specific document
     #[serde(default)]
     pub doc_id: Option<String>,
+
+    /// Force keyword-only search path (skip semantic embedding generation)
+    #[serde(default)]
+    pub force_keyword: bool,
 }
 
 fn default_top_k() -> usize {

@@ -86,6 +86,7 @@ pub async fn handle_search(app_handle: &AppHandle, args: Value) -> Result<Value>
         query: args.query.clone(),
         top_k: args.top_k,
         doc_id: args.doc_id,
+        force_keyword: false,
     };
 
     let results = crate::search::semantic_search(&conn, &llm_client, options).await?;

@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.4] - 2026-02-09
+
+### Added
+- Reader annotations with selectable styles:
+  - single underline
+  - double underline
+  - wavy strikethrough
+- Optional note content for each annotation.
+- Annotation persistence via new SQLite `annotations` table and Tauri commands:
+  - `list_annotations`
+  - `create_annotation`
+  - `delete_annotation`
+- Annotation drawer panel (`批注与划线`) for focused review, jump-to-location, and deletion.
+
+### Changed
+- Annotation creation popover moved to bottom-center to reduce reading obstruction.
+- Annotation details are now shown on-demand via a button + side drawer instead of always expanded inline.
+- Search robustness improved:
+  - keyword fallback now supports explicit keyword-only path (`force_keyword`)
+  - backend keyword search now has timeout protection
+  - frontend keyword fallback explicitly enforces keyword mode
+
 ## [0.3.1] - 2026-02-07
 
 ### Added

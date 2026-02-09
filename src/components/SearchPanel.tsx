@@ -218,6 +218,7 @@ export const SearchPanel: React.FC = () => {
           query,
           top_k: topK,
           doc_id: selectedDocumentId || undefined,
+          force_keyword: true,
         },
       }),
       SEARCH_TIMEOUT_MS,
