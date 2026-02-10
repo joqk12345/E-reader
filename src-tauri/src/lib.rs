@@ -13,7 +13,7 @@ pub use error::{ReaderError, Result};
 
 use commands::{
     clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
-    download_embedding_model_files, get_config, get_document, get_document_paragraphs,
+    deep_analyze, download_embedding_model_files, get_config, get_document, get_document_paragraphs,
     get_document_sections, get_embedding_profile_status, get_paragraph_context,
     get_section_paragraphs, get_summary_cache, import_epub, import_markdown, import_pdf,
     index_document, list_annotations, list_documents, list_tts_voices, mcp_request, search,
@@ -42,6 +42,11 @@ const MENU_TRANSLATION_CURRENT: &str = "reader.translation.current";
 const MENU_TRANSLATION_OFF: &str = "reader.translation.off";
 const MENU_TRANSLATION_EN_ZH: &str = "reader.translation.en_zh";
 const MENU_TRANSLATION_ZH_EN: &str = "reader.translation.zh_en";
+const MENU_OPEN_SETTINGS: &str = "reader.action.open_settings";
+const MENU_TOGGLE_MAXIMIZE: &str = "reader.action.toggle_maximize";
+const MENU_TOGGLE_HEADER_TOOLS: &str = "reader.action.toggle_header_tools";
+const MENU_NEXT_PAGE: &str = "reader.action.next_page";
+const MENU_PREV_PAGE: &str = "reader.action.prev_page";
 
 const MIN_FONT_SIZE: u32 = 14;
 const MAX_FONT_SIZE: u32 = 28;
@@ -155,6 +160,42 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
                 font_size_label(initial_font_size, zh),
                 false,
                 None::<&str>,
+            )?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(
+                app,
+                MENU_OPEN_SETTINGS,
+                if zh { "打开设置" } else { "Open Settings" },
+                true,
+                Some("CmdOrCtrl+,"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MENU_TOGGLE_MAXIMIZE,
+                if zh { "切换最大化窗口" } else { "Toggle Maximize Window" },
+                true,
+                Some("CmdOrCtrl+Shift+M"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MENU_TOGGLE_HEADER_TOOLS,
+                if zh { "切换顶部工具栏" } else { "Toggle Header Toolbar" },
+                true,
+                Some("CmdOrCtrl+Shift+T"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MENU_NEXT_PAGE,
+                if zh { "下一页/下一章节" } else { "Next Page/Section" },
+                true,
+                Some("PageDown"),
+            )?,
+            &MenuItem::with_id(
+                app,
+                MENU_PREV_PAGE,
+                if zh { "上一页/上一章节" } else { "Previous Page/Section" },
+                true,
+                Some("PageUp"),
             )?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(
@@ -360,6 +401,32 @@ pub fn run() {
                     set_translation_menu_label(app, &direction_guard, zh);
                     Some("translation_zh_en")
                 }
+                MENU_OPEN_SETTINGS => Some("open_settings"),
+                MENU_TOGGLE_MAXIMIZE => {
+                    if let Some(main_window) = app.get_webview_window("main") {
+                        match main_window.is_maximized() {
+                            Ok(true) => {
+                                if let Err(err) = main_window.unmaximize() {
+                                    tracing::error!("Failed to unmaximize window: {}", err);
+                                }
+                            }
+                            Ok(false) => {
+                                if let Err(err) = main_window.maximize() {
+                                    tracing::error!("Failed to maximize window: {}", err);
+                                }
+                            }
+                            Err(err) => {
+                                tracing::error!("Failed to read window maximize state: {}", err);
+                            }
+                        }
+                    } else {
+                        tracing::error!("Main window not found for maximize toggle");
+                    }
+                    None
+                }
+                MENU_TOGGLE_HEADER_TOOLS => Some("toggle_header_tools"),
+                MENU_NEXT_PAGE => Some("next_page"),
+                MENU_PREV_PAGE => Some("prev_page"),
                 _ => None,
             };
 
@@ -401,6 +468,7 @@ pub fn run() {
             translate,
             summarize,
             get_summary_cache,
+            deep_analyze,
             tts_synthesize,
             list_tts_voices,
             get_config,

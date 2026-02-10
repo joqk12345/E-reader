@@ -22,5 +22,5 @@ pub use import::{
 pub use index::index_document;
 pub use mcp::{mcp_request, McpState};
 pub use search::{get_paragraph_context, search, ParagraphContextOutput, SearchResultOutput};
-pub use translate::{get_summary_cache, summarize, translate};
+pub use translate::{deep_analyze, get_summary_cache, summarize, translate};
 pub use tts::{list_tts_voices, tts_synthesize};

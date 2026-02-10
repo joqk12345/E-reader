@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { Document, Section, Paragraph } from '../types';
+import { defaultKeymap, normalizeKeymap, type Keymap } from '../utils/shortcuts';
 
 export type TranslationMode = 'off' | 'en-zh' | 'zh-en';
 
@@ -21,6 +22,7 @@ type AppConfig = {
   translation_direction?: 'en-zh' | 'zh-en';
   reader_background_color?: string;
   reader_font_size?: number;
+  keymap?: Partial<Keymap>;
 };
 
 const normalizeTranslationMode = (mode?: string): TranslationMode => {
@@ -50,6 +52,7 @@ interface ReaderState {
   focusedParagraphId: string | null;
   searchHighlightQuery: string;
   searchMatchedParagraphIds: string[];
+  keymap: Keymap;
 
   // UI cache
   summaryCache: Record<string, string>;
@@ -113,6 +116,7 @@ export const useStore = create<ReaderState>((set, get) => ({
   focusedParagraphId: null,
   searchHighlightQuery: '',
   searchMatchedParagraphIds: [],
+  keymap: defaultKeymap,
 
   // Load config
   loadConfig: async () => {
@@ -122,6 +126,7 @@ export const useStore = create<ReaderState>((set, get) => ({
         translationMode: normalizeTranslationMode(config.translation_mode || config.translation_direction),
         readerBackgroundColor: config.reader_background_color || '#F4F8EE',
         readerFontSize: config.reader_font_size || 18,
+        keymap: normalizeKeymap(config.keymap),
       });
     } catch (error) {
       console.error('Failed to load config:', error);

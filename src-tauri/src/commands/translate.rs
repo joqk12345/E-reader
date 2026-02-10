@@ -349,3 +349,158 @@ pub async fn get_summary_cache(
     let cached = get_summary(&conn, &target_id, &target_type, &style)?;
     Ok(cached.map(|c| c.summary))
 }
+
+/// Deep analysis pipeline for document/section/paragraph.
+///
+/// Output is structured in markdown and follows a fixed analysis template:
+/// concepts, definitions, concept relations, COT-style logic, facts vs opinions,
+/// FAQ, visualizations (mermaid), analogies, and quote highlights.
+#[tauri::command]
+pub async fn deep_analyze(
+    app_handle: AppHandle,
+    doc_id: Option<String>,
+    section_id: Option<String>,
+    paragraph_id: Option<String>,
+) -> Result<String> {
+    let provided_count = [
+        doc_id.is_some(),
+        section_id.is_some(),
+        paragraph_id.is_some(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
+
+    if provided_count != 1 {
+        return Err(ReaderError::InvalidArgument(
+            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
+        ));
+    }
+
+    let analysis_style = "deep_pipeline_v1";
+
+    let (target_id, target_type, content): (String, String, String) = if let Some(pid) =
+        &paragraph_id
+    {
+        let target_id = pid.clone();
+        let target_type = "paragraph".to_string();
+        let conn = get_connection(&app_handle)?;
+        if let Some(cached) = get_summary(&conn, &target_id, &target_type, analysis_style)? {
+            return Ok(cached.summary);
+        }
+        let paragraph = get_paragraph(&conn, &target_id)?
+            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", &target_id)))?;
+        (target_id, target_type, paragraph.text)
+    } else if let Some(sid) = &section_id {
+        let target_id = sid.clone();
+        let target_type = "section".to_string();
+        let conn = get_connection(&app_handle)?;
+        if let Some(cached) = get_summary(&conn, &target_id, &target_type, analysis_style)? {
+            return Ok(cached.summary);
+        }
+        use crate::database::list_paragraphs_by_section;
+        let paragraphs = list_paragraphs_by_section(&conn, &target_id)?;
+        if paragraphs.is_empty() {
+            return Err(ReaderError::NotFound(format!(
+                "Section {} has no content",
+                &target_id
+            )));
+        }
+        let content = paragraphs
+            .iter()
+            .map(|p| p.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        (target_id, target_type, content)
+    } else if let Some(did) = &doc_id {
+        let target_id = did.clone();
+        let target_type = "document".to_string();
+        let conn = get_connection(&app_handle)?;
+        if let Some(cached) = get_summary(&conn, &target_id, &target_type, analysis_style)? {
+            return Ok(cached.summary);
+        }
+        use crate::database::list_paragraphs;
+        let paragraphs = list_paragraphs(&conn, &target_id)?;
+        if paragraphs.is_empty() {
+            return Err(ReaderError::NotFound(format!(
+                "Document {} has no content",
+                &target_id
+            )));
+        }
+        let content = paragraphs
+            .iter()
+            .map(|p| p.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        (target_id, target_type, content)
+    } else {
+        unreachable!("We already validated that exactly one is provided")
+    };
+
+    let system_prompt = r#"你是一个严格的“信息深度分析引擎”。请仅基于给定文本输出 Markdown，禁止臆测。
+
+必须输出以下章节（按顺序）：
+## 1) 概念清单（中英文）
+- 列举文本中的名词性成分/概念
+- 每项格式：`- 中文名（English）`
+
+## 2) 概念定义（中英文）
+- 对第1节每个概念给出简明定义
+- 每项格式：`- 中文名（English）：定义...`
+
+## 3) 概念关系（中英文）
+- 给出概念间关系（包含等式/方程/逻辑表达，如适用）
+- 优先使用：包含、并列、因果、推导、约束、假设-结论
+
+## 4) COT逻辑梳理（显式步骤）
+- 用编号步骤给出：定义 -> 分类 -> 比较 -> 因果 -> 科学方法论
+- 每步最多3行，强调可验证性
+
+## 5) 事实与看法（病毒）
+### 5.1 事实
+- 仅可被文本直接支持的事实
+### 5.2 看法
+- 作者观点、推测、价值判断
+
+## 6) FAQ（由文中问题整理）
+- 提取显式或隐式问题并给出简答
+- 格式：`Q: ...` / `A: ...`
+
+## 7) Visualization
+- 先给一段“图示索引”说明每张图主题
+- 然后给多个独立 mermaid 代码块
+- 每个代码块使用单独 `subgraph`，一个 subgraph 表示一张图
+- 至少包含：概念图、因果链图、方法流程图（若文本支持）
+
+## 8) 类比清单
+- 列举文中出现的所有类比，若无则写“未发现明确类比”
+
+## 9) 金句（10条）
+- 给出10条高价值句子（若原文不足10条，尽量接近并注明不足）
+- 每条后补一句“意义解读”
+
+输出要求：
+- 语言：中文为主，概念名必须中英双语
+- 严禁输出与文本无关内容
+- 保留结构化层级，便于后续程序处理"#;
+
+    let messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: system_prompt.to_string(),
+        },
+        ChatMessage {
+            role: "user".to_string(),
+            content,
+        },
+    ];
+
+    let config = load_config()?;
+    let llm_client = create_client(&config)?;
+    let analysis = llm_client.chat(messages, 0.3, 3600).await?;
+
+    let conn = get_connection(&app_handle)?;
+    save_summary(&conn, &target_id, &target_type, analysis_style, &analysis)?;
+
+    Ok(analysis)
+}

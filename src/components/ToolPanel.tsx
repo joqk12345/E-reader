@@ -3,8 +3,9 @@ import { SearchPanel } from './SearchPanel';
 import { SummaryPanel } from './SummaryPanel';
 import { TranslatePanel } from './TranslatePanel';
 import { AudiobookPanel } from './AudiobookPanel';
+import { DeepAnalysisPanel } from './DeepAnalysisPanel';
 
-type Tab = 'search' | 'summary' | 'translate' | 'audiobook';
+type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'audiobook';
 
 type ToolPanelProps = {
   collapsed: boolean;
@@ -30,6 +31,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     { key: 'search', label: 'Search', icon: '🔍' },
     { key: 'summary', label: 'Summary', icon: '📝' },
     { key: 'translate', label: 'Translate', icon: '🌐' },
+    { key: 'deep', label: 'Deep', icon: '🧠' },
     { key: 'audiobook', label: 'Audio', icon: '🎧' },
   ];
 
@@ -114,7 +116,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       ) : (
         <>
           {/* Tabs */}
-          <div className="grid grid-cols-2 border-b border-gray-200">
+          <div className="grid grid-cols-3 border-b border-gray-200">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -136,6 +138,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             {activeTab === 'search' && <SearchPanel />}
             {activeTab === 'summary' && <SummaryPanel />}
             {activeTab === 'translate' && <TranslatePanel />}
+            {activeTab === 'deep' && <DeepAnalysisPanel />}
           </div>
         </>
       )}

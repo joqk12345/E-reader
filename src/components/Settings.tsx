@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useStore } from '../store/useStore';
+import {
+  formatShortcutListInput,
+  normalizeKeymap,
+  parseShortcutListInput,
+  type Keymap,
+} from '../utils/shortcuts';
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
@@ -26,6 +33,7 @@ interface Config {
   translation_mode: 'off' | 'en-zh' | 'zh-en';
   reader_background_color: string;
   reader_font_size: number;
+  keymap: Keymap;
 }
 
 interface SettingsProps {
@@ -39,6 +47,7 @@ interface EmbeddingStatus {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
+  const loadAppConfig = useStore((state) => state.loadConfig);
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
     lm_studio_url: '',
@@ -61,6 +70,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     translation_mode: 'off',
     reader_background_color: '#F4F8EE',
     reader_font_size: 18,
+    keymap: normalizeKeymap(undefined),
+  });
+  const [shortcutInput, setShortcutInput] = useState({
+    next_page: formatShortcutListInput(config.keymap.next_page),
+    prev_page: formatShortcutListInput(config.keymap.prev_page),
+    open_settings: formatShortcutListInput(config.keymap.open_settings),
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,7 +100,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     setIsLoading(true);
     try {
       const loadedConfig = await invoke<Config>('get_config');
-      setConfig(loadedConfig);
+      const normalized = {
+        ...loadedConfig,
+        keymap: normalizeKeymap(loadedConfig.keymap),
+      };
+      setConfig(normalized);
+      setShortcutInput({
+        next_page: formatShortcutListInput(normalized.keymap.next_page),
+        prev_page: formatShortcutListInput(normalized.keymap.prev_page),
+        open_settings: formatShortcutListInput(normalized.keymap.open_settings),
+      });
       try {
         const status = await invoke<EmbeddingStatus>('get_embedding_profile_status', { docId: null });
         setEmbeddingStatus(status);
@@ -106,6 +130,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
     try {
       await invoke('update_config', { config });
+      await loadAppConfig();
       setMessage({ type: 'success', text: 'Configuration saved successfully!' });
       setTimeout(() => onClose(), 1500);
     } catch (error) {
@@ -118,6 +143,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
   const handleChange = (field: keyof Config) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setConfig((prev) => ({ ...prev, [field]: e.target.value }));
+    setMessage(null);
+  };
+
+  const handleShortcutChange = (field: keyof Keymap) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setShortcutInput((prev) => ({ ...prev, [field]: value }));
+    setConfig((prev) => ({
+      ...prev,
+      keymap: {
+        ...prev.keymap,
+        [field]: parseShortcutListInput(value),
+      },
+    }));
     setMessage(null);
   };
 
@@ -391,6 +429,49 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             <p className="text-xs text-gray-600">
               Translation direction is now managed from the macOS menu bar: <span className="font-medium">Reading → Translation Direction</span>.
             </p>
+          </div>
+
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-md space-y-3">
+            <p className="text-sm font-medium text-gray-800">Keyboard Shortcuts</p>
+            <p className="text-xs text-gray-500">
+              Use <span className="font-medium">;</span> to separate multiple bindings, e.g. <span className="font-medium">PageDown; Space; J</span>.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Next Page / Next Section
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.next_page}
+                onChange={handleShortcutChange('next_page')}
+                placeholder="PageDown; Space; J"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Previous Page / Previous Section
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.prev_page}
+                onChange={handleShortcutChange('prev_page')}
+                placeholder="PageUp; Shift+Space; K"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Open Settings
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.open_settings}
+                onChange={handleShortcutChange('open_settings')}
+                placeholder="Cmd+,; Ctrl+,"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           {/* Chat Model */}

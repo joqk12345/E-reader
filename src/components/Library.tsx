@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
-import { Settings } from './Settings';
 
-export const Library: React.FC = () => {
+type LibraryProps = {
+  onOpenSettings?: () => void;
+};
+
+export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
   const { documents, isLoading, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
-  const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'pdf' | 'markdown'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
@@ -80,8 +82,6 @@ export const Library: React.FC = () => {
 
   return (
     <>
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
-
       <div className="h-full flex flex-col bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -89,7 +89,7 @@ export const Library: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Library</h1>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowSettings(true)}
+                onClick={onOpenSettings}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 ⚙️ Settings

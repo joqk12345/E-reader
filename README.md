@@ -9,6 +9,23 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Deep Analysis tool (new `Deep` tab in Reader)**:
+  - one-click structured analysis pipeline for document/section/paragraph
+  - output includes: bilingual concepts, definitions, concept relations, COT-style logic, facts vs opinions, FAQ, analogies, top quotes
+  - visualization-ready output with multiple Mermaid graphs
+- **macOS menu shortcuts expanded**:
+  - added menu actions for `Open Settings`, `Toggle Maximize Window`, `Toggle Header Toolbar`, `Next/Previous Page`
+  - menu actions are emitted to Reader and executed as native app actions
+- **Configurable keymap support**:
+  - shortcut mappings now support persisted config (`next_page`, `prev_page`, `open_settings`)
+  - shortcut matcher supports alias normalization (e.g. `PageDown/Next`, `PageUp/Prior`)
+- **Reader header toolbar UX**:
+  - header tools can be collapsed
+  - when window is maximized, header vertical padding is reduced (`py-0`) for denser reading area
+- **PDF parsing quality improvements**:
+  - better handling for split words and hyphenated line wraps
+  - improved normalization for spaced-uppercase heading artifacts in technical PDFs
+
 - **Library homepage upgrades**:
   - multi-view switch: `Grid` / `List` / `Compact`
   - quick filter by file type (`All/EPUB/PDF/Markdown`)
@@ -120,7 +137,7 @@ Grab the latest release for your platform from the [Releases](https://github.com
 
 ```bash
 brew tap joqk12345/tap
-brew install --cask reader
+brew list --cask reader >/dev/null 2>&1 && brew upgrade --cask reader || brew install --cask --adopt reader
 ```
 
 ### Build from Source

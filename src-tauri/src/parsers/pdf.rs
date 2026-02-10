@@ -259,9 +259,10 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
         }
 
         let line_is_table = is_tabular_line(trimmed);
+        let normalized_line = normalize_pdf_line_text(trimmed);
 
         if current.is_empty() {
-            current.push_str(trimmed);
+            current.push_str(&normalized_line);
             current_is_table = line_is_table;
             continue;
         }
@@ -269,13 +270,13 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
         if current_is_table || line_is_table {
             if current_is_table && line_is_table {
                 current.push('\n');
-                current.push_str(trimmed);
+                current.push_str(&normalized_line);
                 continue;
             }
 
-            paragraphs.push(current.trim().to_string());
+            paragraphs.push(normalize_pdf_paragraph_text(&current));
             current.clear();
-            current.push_str(trimmed);
+            current.push_str(&normalized_line);
             current_is_table = line_is_table;
             continue;
         }
@@ -285,17 +286,16 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
             || current.ends_with('?')
             || current.ends_with(':');
         if ends_sentence || current.len() > 800 {
-            paragraphs.push(current.trim().to_string());
+            paragraphs.push(normalize_pdf_paragraph_text(&current));
             current.clear();
-            current.push_str(trimmed);
+            current.push_str(&normalized_line);
         } else {
-            current.push(' ');
-            current.push_str(trimmed);
+            append_pdf_line_to_paragraph(&mut current, &normalized_line);
         }
     }
 
     if !current.is_empty() {
-        paragraphs.push(current.trim().to_string());
+        paragraphs.push(normalize_pdf_paragraph_text(&current));
     }
 
     if paragraphs.is_empty() {
@@ -314,7 +314,7 @@ fn extract_lines_with_pdftotext(pdf_path: &str) -> Option<Vec<Vec<String>>> {
     let mut output = None;
     for cmd in ["/opt/homebrew/bin/pdftotext", "pdftotext"] {
         match Command::new(cmd)
-            .args(["-layout", "-enc", "UTF-8", pdf_path, "-"])
+            .args(["-enc", "UTF-8", pdf_path, "-"])
             .output()
         {
             Ok(result) => {
@@ -346,6 +346,185 @@ fn extract_lines_with_pdftotext(pdf_path: &str) -> Option<Vec<Vec<String>>> {
         }
     }
     Some(pages)
+}
+
+fn append_pdf_line_to_paragraph(current: &mut String, line: &str) {
+    let line = line.trim();
+    if line.is_empty() {
+        return;
+    }
+    if current.is_empty() {
+        current.push_str(line);
+        return;
+    }
+
+    // Fix common PDF line-wrap hyphenation: "human-" + "centered" => "humancentered".
+    if current.ends_with('-')
+        && line
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() && c.is_ascii_lowercase())
+    {
+        current.pop();
+        current.push_str(line);
+        return;
+    }
+
+    current.push(' ');
+    current.push_str(line);
+}
+
+fn normalize_pdf_line_text(line: &str) -> String {
+    collapse_spaced_uppercase_letters(line)
+}
+
+fn collapse_spaced_uppercase_letters(input: &str) -> String {
+    let chars: Vec<char> = input.chars().collect();
+    let mut out = String::with_capacity(input.len());
+    let mut i = 0usize;
+
+    while i < chars.len() {
+        if chars[i].is_ascii_uppercase() {
+            let mut j = i + 1;
+            let mut letters = String::new();
+            letters.push(chars[i]);
+            let mut count = 1usize;
+
+            loop {
+                let mut spaces = 0usize;
+                while j < chars.len() && chars[j] == ' ' {
+                    spaces += 1;
+                    j += 1;
+                }
+                if spaces != 1 || j >= chars.len() || !chars[j].is_ascii_uppercase() {
+                    break;
+                }
+                letters.push(chars[j]);
+                count += 1;
+                j += 1;
+            }
+
+            if count >= 3 {
+                out.push_str(&split_merged_uppercase_heading_word(&letters));
+                i = j;
+                continue;
+            }
+        }
+
+        out.push(chars[i]);
+        i += 1;
+    }
+
+    out
+}
+
+fn split_merged_uppercase_heading_word(word: &str) -> String {
+    for suffix in [
+        "REPORT",
+        "PAPER",
+        "ABSTRACT",
+        "APPENDIX",
+        "INTRODUCTION",
+        "CONCLUSION",
+        "CONCLUSIONS",
+        "METHOD",
+        "METHODS",
+        "RESULT",
+        "RESULTS",
+    ] {
+        if word.len() > suffix.len() + 3 && word.ends_with(suffix) {
+            let prefix_len = word.len() - suffix.len();
+            return format!("{} {}", &word[..prefix_len], suffix);
+        }
+    }
+    word.to_string()
+}
+
+fn normalize_pdf_paragraph_text(text: &str) -> String {
+    let mut tokens = text
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+    if tokens.len() < 2 {
+        return text.trim().to_string();
+    }
+
+    let mut i = 0usize;
+    while i + 1 < tokens.len() {
+        if should_merge_two_broken_tokens(&tokens[i], &tokens[i + 1]) {
+            let merged = format!("{}{}", tokens[i], tokens[i + 1]);
+            tokens.splice(i..=i + 1, [merged]);
+            continue;
+        }
+        if i + 2 < tokens.len() && should_merge_three_broken_tokens(&tokens[i], &tokens[i + 1], &tokens[i + 2]) {
+            let merged = format!("{}{}{}", tokens[i], tokens[i + 1], tokens[i + 2]);
+            tokens.splice(i..=i + 2, [merged]);
+            continue;
+        }
+        i += 1;
+    }
+
+    tokens.join(" ")
+}
+
+fn should_merge_two_broken_tokens(left: &str, right: &str) -> bool {
+    if !is_ascii_alpha_word(left) || !is_ascii_alpha_word(right) {
+        return false;
+    }
+    if !(2..=4).contains(&left.len()) || right.len() < 2 {
+        return false;
+    }
+    if is_common_short_word(left) {
+        return false;
+    }
+    let total = left.len() + right.len();
+    let right_starts_lower = right.chars().next().is_some_and(|c| c.is_ascii_lowercase());
+    let left_capitalized = left.chars().next().is_some_and(|c| c.is_ascii_uppercase());
+    let looks_like_title_split = left_capitalized && right.len() <= 3 && total >= 5;
+    let looks_like_body_split = total >= 6 && right.len() >= 4;
+    right_starts_lower && (looks_like_body_split || looks_like_title_split)
+}
+
+fn should_merge_three_broken_tokens(a: &str, b: &str, c: &str) -> bool {
+    if !is_ascii_alpha_word(a) || !is_ascii_alpha_word(b) || !is_ascii_alpha_word(c) {
+        return false;
+    }
+    if !(2..=3).contains(&a.len()) || b.len() != 1 || c.len() < 3 {
+        return false;
+    }
+    if is_common_short_word(a) {
+        return false;
+    }
+    let c_starts_lower = c.chars().next().is_some_and(|ch| ch.is_ascii_lowercase());
+    c_starts_lower && (a.len() + b.len() + c.len() >= 7)
+}
+
+fn is_ascii_alpha_word(word: &str) -> bool {
+    !word.is_empty() && word.chars().all(|c| c.is_ascii_alphabetic())
+}
+
+fn is_common_short_word(word: &str) -> bool {
+    matches!(
+        word.to_ascii_lowercase().as_str(),
+        "a"
+            | "an"
+            | "and"
+            | "as"
+            | "at"
+            | "by"
+            | "for"
+            | "from"
+            | "in"
+            | "into"
+            | "is"
+            | "it"
+            | "of"
+            | "on"
+            | "or"
+            | "the"
+            | "to"
+            | "with"
+    )
 }
 
 fn extract_page_image_markers_with_pdfimages(
@@ -1044,7 +1223,10 @@ fn expand_mono_bitmap(input: &[u8], target_pixels: usize) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::PdfParser;
+    use super::{
+        append_pdf_line_to_paragraph, collapse_spaced_uppercase_letters, normalize_pdf_paragraph_text,
+        PdfParser,
+    };
 
     #[test]
     fn parse_pdf_case_from_env_when_available() {
@@ -1079,4 +1261,27 @@ mod tests {
         }
     }
 
+    #[test]
+    fn collapse_spaced_uppercase_heading_words() {
+        let line = "Kimi K2 T E C H N I C A L R E P O R T";
+        let fixed = collapse_spaced_uppercase_letters(line);
+        assert_eq!(fixed, "Kimi K2 TECHNICAL REPORT");
+    }
+
+    #[test]
+    fn merge_hyphenated_wrap_between_lines() {
+        let mut current = "this approach allows an AI agent to go beyond static human-".to_string();
+        append_pdf_line_to_paragraph(&mut current, "centered limits.");
+        assert_eq!(
+            current,
+            "this approach allows an AI agent to go beyond static humancentered limits."
+        );
+    }
+
+    #[test]
+    fn normalize_split_words_in_paragraph() {
+        let input = "1 Intr oduction The de v elopment of Lar ge Language Models";
+        let fixed = normalize_pdf_paragraph_text(input);
+        assert_eq!(fixed, "1 Introduction The development of Large Language Models");
+    }
 }

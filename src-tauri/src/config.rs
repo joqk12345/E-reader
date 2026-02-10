@@ -17,6 +17,26 @@ impl Default for AiProvider {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeymapConfig {
+    #[serde(default = "default_keymap_next_page")]
+    pub next_page: Vec<String>,
+    #[serde(default = "default_keymap_prev_page")]
+    pub prev_page: Vec<String>,
+    #[serde(default = "default_keymap_open_settings")]
+    pub open_settings: Vec<String>,
+}
+
+impl Default for KeymapConfig {
+    fn default() -> Self {
+        Self {
+            next_page: default_keymap_next_page(),
+            prev_page: default_keymap_prev_page(),
+            open_settings: default_keymap_open_settings(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub provider: AiProvider,
     pub lm_studio_url: String,
@@ -55,6 +75,8 @@ pub struct Config {
     pub reader_background_color: String,
     #[serde(default = "default_reader_font_size")]
     pub reader_font_size: u32,
+    #[serde(default)]
+    pub keymap: KeymapConfig,
 }
 
 fn default_reader_background_color() -> String {
@@ -111,6 +133,18 @@ fn default_reader_font_size() -> u32 {
     18
 }
 
+fn default_keymap_next_page() -> Vec<String> {
+    vec!["PageDown".to_string(), "Space".to_string(), "J".to_string()]
+}
+
+fn default_keymap_prev_page() -> Vec<String> {
+    vec!["PageUp".to_string(), "Shift+Space".to_string(), "K".to_string()]
+}
+
+fn default_keymap_open_settings() -> Vec<String> {
+    vec!["Cmd+,".to_string(), "Ctrl+,".to_string()]
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -135,6 +169,7 @@ impl Default for Config {
             translation_mode: default_translation_mode(),
             reader_background_color: default_reader_background_color(),
             reader_font_size: default_reader_font_size(),
+            keymap: KeymapConfig::default(),
         }
     }
 }
@@ -184,7 +219,7 @@ pub fn load_config() -> Result<Config> {
     // Backward compatibility: persist new embedding fields if missing in old config files.
     let needs_backfill = value
         .as_object()
-        .map(|obj| !obj.contains_key("embedding_provider"))
+        .map(|obj| !obj.contains_key("embedding_provider") || !obj.contains_key("keymap"))
         .unwrap_or(false);
     if needs_backfill || changed {
         save_config(&config)?;

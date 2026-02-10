@@ -1,10 +1,13 @@
 import { Library } from './components/Library';
 import { Reader } from './components/Reader';
+import { Settings } from './components/Settings';
 import { useStore } from './store/useStore';
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getEmbeddingStatus, indexDocumentWithLocalEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
+import { matchesAnyShortcut } from './utils/shortcuts';
 
 const MENU_EVENT_NAME = 'reader-menu-action';
 const MIN_FONT_SIZE = 14;
@@ -17,6 +20,13 @@ type Config = {
   embedding_local_model_path?: string;
 };
 
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+  return target.isContentEditable;
+};
+
 function App() {
   const {
     selectedDocumentId,
@@ -26,8 +36,10 @@ function App() {
     persistTranslationMode,
     persistReaderFontSize,
     persistReaderBackgroundColor,
+    keymap,
   } = useStore();
   const [customThemeOpen, setCustomThemeOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [customThemeValue, setCustomThemeValue] = useState('#F4F8EE');
   const [customThemeError, setCustomThemeError] = useState<string | null>(null);
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
@@ -75,6 +87,17 @@ function App() {
     };
     void runAutoIndexForCurrentDocument();
   }, [selectedDocumentId]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (!matchesAnyShortcut(event, keymap.open_settings)) return;
+      event.preventDefault();
+      setShowSettings(true);
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, [keymap.open_settings]);
 
   useEffect(() => {
     let isMounted = true;
@@ -128,6 +151,32 @@ function App() {
               setCustomThemeOpen(true);
               break;
             }
+            case 'open_settings':
+              setShowSettings(true);
+              break;
+            case 'window_toggle_maximize': {
+              try {
+                const appWindow = getCurrentWindow();
+                const maximized = await appWindow.isMaximized();
+                if (maximized) {
+                  await appWindow.unmaximize();
+                } else {
+                  await appWindow.maximize();
+                }
+              } catch (windowError) {
+                console.error('Failed to toggle maximize:', windowError);
+              }
+              break;
+            }
+            case 'toggle_header_tools':
+              window.dispatchEvent(new CustomEvent('reader:toggle-header-tools'));
+              break;
+            case 'next_page':
+              window.dispatchEvent(new CustomEvent('reader:next-page'));
+              break;
+            case 'prev_page':
+              window.dispatchEvent(new CustomEvent('reader:prev-page'));
+              break;
             default:
               break;
           }
@@ -170,8 +219,14 @@ function App() {
 
   return (
     <>
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+
       <div className="h-screen w-screen bg-gray-50">
-        {selectedDocumentId ? <Reader /> : <Library />}
+        {selectedDocumentId ? (
+          <Reader onOpenSettings={() => setShowSettings(true)} />
+        ) : (
+          <Library onOpenSettings={() => setShowSettings(true)} />
+        )}
       </div>
 
       {customThemeOpen && (
