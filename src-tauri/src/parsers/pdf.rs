@@ -223,13 +223,81 @@ fn flush_line(lines: &mut Vec<String>, current_line: &mut String) {
 }
 
 fn normalize_whitespace(input: &str) -> String {
-    input
+    let normalized = input
         .replace('\u{00A0}', " ")
         .replace('\t', " ")
         .replace('\r', " ")
-        .replace('\n', " ")
+        .replace('\n', " ");
+    repair_garbled_pdf_text(&normalized)
         .trim()
         .to_string()
+}
+
+fn repair_garbled_pdf_text(input: &str) -> String {
+    let control_normalized = input.replace('\u{0000}', " ").replace('\u{0003}', "\t");
+    if !looks_like_shifted_spaced_text(&control_normalized) {
+        return control_normalized.replace('\t', " ");
+    }
+
+    let mut decoded = String::with_capacity(control_normalized.len());
+    for ch in control_normalized.chars() {
+        if ch == '\t' {
+            if !decoded.ends_with('\t') {
+                decoded.push('\t');
+            }
+            continue;
+        }
+        if ch.is_whitespace() {
+            continue;
+        }
+        decoded.push(decode_shifted_printable_char(ch));
+    }
+
+    let words = decoded
+        .split('\t')
+        .map(str::trim)
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    if words.is_empty() {
+        return control_normalized.replace('\t', " ");
+    }
+    words.join(" ")
+}
+
+fn looks_like_shifted_spaced_text(input: &str) -> bool {
+    let tokenized = input.replace('\t', " ");
+    let tokens = tokenized.split_whitespace().collect::<Vec<_>>();
+    if tokens.len() < 8 {
+        return false;
+    }
+
+    let one_char_tokens = tokens.iter().filter(|token| token.chars().count() == 1).count();
+    if one_char_tokens * 100 < tokens.len() * 70 {
+        return false;
+    }
+
+    let ascii_graphic_tokens = tokens
+        .iter()
+        .filter(|token| {
+            token
+                .chars()
+                .all(|ch| ch.is_ascii_graphic() || ch.is_ascii_whitespace())
+        })
+        .count();
+    if ascii_graphic_tokens * 100 < tokens.len() * 80 {
+        return false;
+    }
+
+    input.contains('\t') || one_char_tokens * 100 >= tokens.len() * 90
+}
+
+fn decode_shifted_printable_char(ch: char) -> char {
+    if !ch.is_ascii_graphic() {
+        return ch;
+    }
+    let code = ch as u8;
+    let shifted = ((code - 32 + 29) % 95) + 32;
+    shifted as char
 }
 
 fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
@@ -1225,7 +1293,7 @@ fn expand_mono_bitmap(input: &[u8], target_pixels: usize) -> Vec<u8> {
 mod tests {
     use super::{
         append_pdf_line_to_paragraph, collapse_spaced_uppercase_letters, normalize_pdf_paragraph_text,
-        PdfParser,
+        normalize_whitespace, PdfParser,
     };
 
     #[test]
@@ -1283,5 +1351,19 @@ mod tests {
         let input = "1 Intr oduction The de v elopment of Lar ge Language Models";
         let fixed = normalize_pdf_paragraph_text(input);
         assert_eq!(fixed, "1 Introduction The development of Large Language Models");
+    }
+
+    #[test]
+    fn decode_shifted_spaced_pdf_text() {
+        let input = "3 U H I D F H , Q \u{0003} W K H \u{0003} Y L E U D Q W \u{0003} V W U H H W V";
+        let fixed = normalize_whitespace(input);
+        assert_eq!(fixed, "PrefaceIn the vibrant streets");
+    }
+
+    #[test]
+    fn keep_normal_text_unchanged_when_not_garbled() {
+        let input = "Understanding LLM inference throughput and latency.";
+        let fixed = normalize_whitespace(input);
+        assert_eq!(fixed, input);
     }
 }
