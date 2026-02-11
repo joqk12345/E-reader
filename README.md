@@ -26,6 +26,13 @@
   - better handling for split words and hyphenated line wraps
   - improved normalization for spaced-uppercase heading artifacts in technical PDFs
 
+## 🧭 Backlog Notes
+
+- **Vector store scalability track (deferred)**:
+  - keep current SQLite vector path for now
+  - when corpus scale grows, evaluate LanceDB as a parallel vector index backend (A/B with current implementation)
+  - migration decision gate: retrieval quality, P95 latency, indexing throughput, memory footprint, and packaging stability on desktop
+
 - **Library homepage upgrades**:
   - multi-view switch: `Grid` / `List` / `Compact`
   - quick filter by file type (`All/EPUB/PDF/Markdown`)

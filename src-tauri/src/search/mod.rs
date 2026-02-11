@@ -73,6 +73,7 @@ fn default_top_k() -> usize {
 /// 1. Generates an embedding for the query text
 /// 2. Compares the query embedding with all stored embeddings using cosine similarity
 /// 3. Returns the top_k most similar paragraphs with their scores
+#[allow(dead_code)]
 pub async fn semantic_search(
     conn: &Connection,
     llm_client: &dyn AiClient,

@@ -16,8 +16,8 @@ pub use embedding::{
     validate_local_embedding_model_path, EmbeddingProfileStatus, SearchByEmbeddingResult,
 };
 pub use import::{
-    delete_document, get_document, get_document_sections, get_section_paragraphs, import_epub,
-    import_markdown, import_pdf, list_documents,
+    delete_document, fetch_url_html, get_document, get_document_sections, get_section_paragraphs,
+    import_epub, import_markdown, import_markdown_content, import_pdf, import_url, list_documents,
 };
 pub use index::index_document;
 pub use mcp::{mcp_request, McpState};

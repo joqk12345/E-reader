@@ -13,9 +13,10 @@ pub use error::{ReaderError, Result};
 
 use commands::{
     clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
-    deep_analyze, download_embedding_model_files, get_config, get_document, get_document_paragraphs,
-    get_document_sections, get_embedding_profile_status, get_paragraph_context,
-    get_section_paragraphs, get_summary_cache, import_epub, import_markdown, import_pdf,
+    deep_analyze, download_embedding_model_files, fetch_url_html, get_config, get_document,
+    get_document_paragraphs, get_document_sections, get_embedding_profile_status,
+    get_paragraph_context, get_section_paragraphs, get_summary_cache, import_epub, import_markdown,
+    import_markdown_content, import_pdf, import_url,
     index_document, list_annotations, list_documents, list_tts_voices, mcp_request, search,
     search_by_embedding, summarize, translate, tts_synthesize, update_config,
     upsert_embeddings_batch, validate_local_embedding_model_path,
@@ -447,6 +448,9 @@ pub fn run() {
             import_epub,
             import_pdf,
             import_markdown,
+            import_url,
+            fetch_url_html,
+            import_markdown_content,
             list_documents,
             get_document,
             delete_document,
