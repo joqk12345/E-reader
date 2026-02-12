@@ -12,6 +12,7 @@ mod search;
 pub use error::{ReaderError, Result};
 
 use commands::{
+    chat_with_context,
     clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
     deep_analyze, download_embedding_model_files, fetch_url_html, get_config, get_document,
     get_document_paragraphs, get_document_sections, get_embedding_profile_status,
@@ -474,6 +475,7 @@ pub fn run() {
             summarize,
             get_summary_cache,
             deep_analyze,
+            chat_with_context,
             tts_synthesize,
             list_tts_voices,
             get_config,

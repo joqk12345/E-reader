@@ -10,6 +10,13 @@ use tauri::AppHandle;
 use tokio::time::{timeout, Duration};
 
 const TRANSLATE_TIMEOUT_SECS: u64 = 30;
+const CHAT_TIMEOUT_SECS: u64 = 45;
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct ChatTurnInput {
+    pub role: String,
+    pub content: String,
+}
 
 /// Translates text or a paragraph to a target language
 ///
@@ -503,4 +510,126 @@ pub async fn deep_analyze(
     save_summary(&conn, &target_id, &target_type, analysis_style, &analysis)?;
 
     Ok(analysis)
+}
+
+#[tauri::command]
+pub async fn chat_with_context(
+    app_handle: AppHandle,
+    question: String,
+    doc_id: Option<String>,
+    section_id: Option<String>,
+    paragraph_id: Option<String>,
+    history: Option<Vec<ChatTurnInput>>,
+) -> Result<String> {
+    let q = question.trim();
+    if q.is_empty() {
+        return Err(ReaderError::InvalidArgument(
+            "Question cannot be empty".to_string(),
+        ));
+    }
+
+    let provided_count = [
+        doc_id.is_some(),
+        section_id.is_some(),
+        paragraph_id.is_some(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
+
+    if provided_count != 1 {
+        return Err(ReaderError::InvalidArgument(
+            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
+        ));
+    }
+
+    let conn = get_connection(&app_handle)?;
+    let (context_scope, context_text) = if let Some(pid) = &paragraph_id {
+        let p = get_paragraph(&conn, pid)?
+            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", pid)))?;
+        ("Current paragraph".to_string(), p.text)
+    } else if let Some(sid) = &section_id {
+        use crate::database::list_paragraphs_by_section;
+        let paragraphs = list_paragraphs_by_section(&conn, sid)?;
+        if paragraphs.is_empty() {
+            return Err(ReaderError::NotFound(format!("Section {} has no content", sid)));
+        }
+        let text = paragraphs
+            .iter()
+            .map(|p| p.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        ("Current section".to_string(), text)
+    } else if let Some(did) = &doc_id {
+        use crate::database::list_paragraphs;
+        let paragraphs = list_paragraphs(&conn, did)?;
+        if paragraphs.is_empty() {
+            return Err(ReaderError::NotFound(format!("Document {} has no content", did)));
+        }
+        let text = paragraphs
+            .iter()
+            .take(180)
+            .map(|p| p.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        ("Current document".to_string(), text)
+    } else {
+        unreachable!("validated above")
+    };
+
+    let max_context_chars = 24_000;
+    let trimmed_context = context_text.chars().take(max_context_chars).collect::<String>();
+
+    let mut messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: "You are a reading assistant for QA over a document context. Answer based only on the provided context. If context is insufficient, say what is missing and do not fabricate. Keep answers concise, accurate, and directly actionable.".to_string(),
+        },
+        ChatMessage {
+            role: "system".to_string(),
+            content: format!(
+                "Context scope: {}\nContext content:\n{}",
+                context_scope, trimmed_context
+            ),
+        },
+    ];
+
+    if let Some(hist) = history {
+        for turn in hist.into_iter().rev().take(8).collect::<Vec<_>>().into_iter().rev() {
+            let role = turn.role.to_lowercase();
+            if !matches!(role.as_str(), "user" | "assistant") {
+                continue;
+            }
+            let content = turn.content.trim();
+            if content.is_empty() {
+                continue;
+            }
+            messages.push(ChatMessage {
+                role,
+                content: content.to_string(),
+            });
+        }
+    }
+
+    messages.push(ChatMessage {
+        role: "user".to_string(),
+        content: q.to_string(),
+    });
+
+    let config = load_config()?;
+    let llm_client = create_client(&config)?;
+
+    let answer = timeout(
+        Duration::from_secs(CHAT_TIMEOUT_SECS),
+        llm_client.chat(messages, 0.2, 1200),
+    )
+    .await
+    .map_err(|_| {
+        ReaderError::ModelApi(format!(
+            "Chat request timed out after {} seconds",
+            CHAT_TIMEOUT_SECS
+        ))
+    })??;
+
+    Ok(answer)
 }

@@ -465,6 +465,30 @@ export function ReaderContent() {
     }
   };
 
+  const handleExplainSelection = () => {
+    if (!selectionDraft?.selectedText?.trim()) return;
+    window.dispatchEvent(
+      new CustomEvent<{ selectedText: string }>('reader:chat-explain', {
+        detail: { selectedText: selectionDraft.selectedText.trim() },
+      })
+    );
+    clearSelectionDraft();
+  };
+
+  const handleTakeNoteSelection = () => {
+    if (!selectionDraft?.selectedText?.trim()) return;
+    window.dispatchEvent(
+      new CustomEvent<{ docId?: string; paragraphId?: string; selectedText: string }>('reader:take-note', {
+        detail: {
+          docId: selectedDocumentId || undefined,
+          paragraphId: selectionDraft.paragraphId,
+          selectedText: selectionDraft.selectedText.trim(),
+        },
+      })
+    );
+    clearSelectionDraft();
+  };
+
   // 跟随当前朗读句子自动滚动
   useEffect(() => {
     if (!currentReadingSentenceKey) return;
@@ -739,6 +763,20 @@ export function ReaderContent() {
           onMouseUp={(e) => e.stopPropagation()}
         >
           <p className="mb-2 line-clamp-2 text-xs text-gray-600">“{selectionDraft.selectedText}”</p>
+          <div className="mb-2 flex items-center gap-2">
+            <button
+              onClick={handleExplainSelection}
+              className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-800 hover:bg-gray-50"
+            >
+              Explain
+            </button>
+            <button
+              onClick={handleTakeNoteSelection}
+              className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-800 hover:bg-gray-50"
+            >
+              Take Notes
+            </button>
+          </div>
           <div className="mb-2 flex items-center gap-2">
             {annotationStyleOrder.map((style) => (
               <button

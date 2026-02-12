@@ -4,8 +4,20 @@ import { SummaryPanel } from './SummaryPanel';
 import { TranslatePanel } from './TranslatePanel';
 import { AudiobookPanel } from './AudiobookPanel';
 import { DeepAnalysisPanel } from './DeepAnalysisPanel';
+import { ChatPanel } from './ChatPanel';
+import { NotesPanel } from './NotesPanel';
 
-type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'audiobook';
+type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'chat' | 'notes' | 'audiobook';
+
+type ExplainEventDetail = {
+  selectedText?: string;
+};
+
+type TakeNoteEventDetail = {
+  docId?: string;
+  paragraphId?: string;
+  selectedText?: string;
+};
 
 type ToolPanelProps = {
   collapsed: boolean;
@@ -25,6 +37,13 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   onWidthChange,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('search');
+  const [chatRequest, setChatRequest] = useState<{ id: number; question: string } | null>(null);
+  const [noteRequest, setNoteRequest] = useState<{
+    id: number;
+    docId?: string;
+    paragraphId?: string;
+    selectedText: string;
+  } | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
@@ -32,6 +51,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     { key: 'summary', label: 'Summary', icon: '📝' },
     { key: 'translate', label: 'Translate', icon: '🌐' },
     { key: 'deep', label: 'Deep', icon: '🧠' },
+    { key: 'chat', label: 'Chat', icon: '💬' },
+    { key: 'notes', label: 'Notes', icon: '📒' },
     { key: 'audiobook', label: 'Audio', icon: '🎧' },
   ];
 
@@ -60,6 +81,45 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       window.removeEventListener('pointerup', handlePointerUp);
     };
   }, [maxWidth, minWidth, onWidthChange]);
+
+  useEffect(() => {
+    const onExplain = (event: Event) => {
+      const customEvent = event as CustomEvent<ExplainEventDetail>;
+      const selectedText = customEvent.detail?.selectedText?.trim();
+      if (!selectedText) return;
+      setActiveTab('chat');
+      setChatRequest({
+        id: Date.now(),
+        question: `Please explain this selected content in the current reading context:\n\n"${selectedText}"`,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onTakeNote = (event: Event) => {
+      const customEvent = event as CustomEvent<TakeNoteEventDetail>;
+      const selectedText = customEvent.detail?.selectedText?.trim();
+      if (!selectedText) return;
+      setActiveTab('notes');
+      setNoteRequest({
+        id: Date.now(),
+        docId: customEvent.detail?.docId,
+        paragraphId: customEvent.detail?.paragraphId,
+        selectedText,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    window.addEventListener('reader:chat-explain', onExplain as EventListener);
+    window.addEventListener('reader:take-note', onTakeNote as EventListener);
+    return () => {
+      window.removeEventListener('reader:chat-explain', onExplain as EventListener);
+      window.removeEventListener('reader:take-note', onTakeNote as EventListener);
+    };
+  }, [collapsed, onToggleCollapse]);
 
   return (
     <aside
@@ -139,6 +199,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             {activeTab === 'summary' && <SummaryPanel />}
             {activeTab === 'translate' && <TranslatePanel />}
             {activeTab === 'deep' && <DeepAnalysisPanel />}
+            {activeTab === 'chat' && <ChatPanel request={chatRequest} />}
+            {activeTab === 'notes' && <NotesPanel request={noteRequest} />}
           </div>
         </>
       )}

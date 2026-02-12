@@ -30,6 +30,13 @@
   - category filter and grouped/ungrouped view toggle
   - grouped mode supports per-category collapse/expand and `Show more / Show less`
   - card layouts (`Grid`/`List`/`Compact`) tuned to denser spacing with long-title clamping
+- **Context Chat + Notes workflow (new)**:
+  - right tool panel adds `Chat` and `Notes` tabs
+  - `Chat` supports multi-turn QA grounded in current reading scope (paragraph/section/document)
+  - text selection popover now includes quick actions: `Explain` and `Take Notes`
+  - `Explain` jumps to `Chat` and asks for contextual explanation automatically
+  - `Take Notes` writes selected text into `Notes` workspace for centralized management
+  - `Notes` supports per-document note editing, delete, JSON import/export, and Markdown export (copy)
 
 ## 🧭 Backlog Notes
 
@@ -110,6 +117,14 @@
   - Smart caching to avoid redundant generations
 - **Translation**: Translate content to Chinese or English
 - **Bilingual Mode**: Side-by-side original and translated text view
+- **Context Chat (new)**:
+  - multi-turn Q&A based on current paragraph/section/document context
+  - preserves short conversation history for follow-up questions
+  - supports quick handoff from selection via `Explain`
+- **Notes Workspace (new)**:
+  - capture selected snippets via `Take Notes`
+  - centralized per-document notes list for review and editing
+  - import/export notes for backup and workflow integration
 - **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
   - **Edge TTS Engine**: Uses Microsoft Edge's TTS service for high-quality voices
   - **Installation**: Requires Python and edge-tts package
@@ -215,6 +230,10 @@ The built application will be in `src-tauri/target/release/bundle/`.
 - **Search Timeout Protection**: long-running semantic/keyword requests now fail fast with user-facing timeout hints
 - **Search Highlight**: Search hits are highlighted in the reading content
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
+- **Selection Actions**:
+  - select text in Reader to open quick actions popover
+  - `Explain`: send selection to `Chat` for contextual explanation
+  - `Take Notes`: append selection to `Notes` tab under current document
 - **Text-to-Speech**: Use the Audiobook panel to listen to content
   - Click the **Audiobook** tab in the right sidebar
   - Select provider, `voice` (optional), and playback speed
