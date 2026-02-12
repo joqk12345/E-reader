@@ -85,6 +85,12 @@
   - better fallback/error handling for network/voice/no-audio scenarios
   - reading highlight and auto-follow during playback
   - Markdown marker cleanup before TTS (avoid reading symbols like `*`).
+  - CosyVoice supports custom `voice` + `speed` controls from Audiobook panel
+  - CosyVoice endpoint auto-detection:
+    - full endpoint mode: `http://host/v1/audio/speech` (no extra suffix appended)
+    - base URL mode: `http://host` / `http://host/v1` (auto expands to OpenAI-style speech endpoint, with legacy `/tts` fallback)
+  - click-to-start reading: click a sentence/paragraph in Reader to start playback from that position
+  - text sanitization before sentence split/TTS (filters control chars and malformed replacement glyphs)
 - **Translation stability improvement**:
   - server-side timeout (30s) to avoid endless `Translating...` state.
 
@@ -200,7 +206,8 @@ The built application will be in `src-tauri/target/release/bundle/`.
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
 - **Text-to-Speech**: Use the Audiobook panel to listen to content
   - Click the **Audiobook** tab in the right sidebar
-  - Select provider and playback speed
+  - Select provider, `voice` (optional), and playback speed
+  - You can click sentence/paragraph text in Reader to start from that location
   - Click **Play** to start listening
   - Reader auto-scrolls and highlights currently reading content
   - Use the floating mini player for global playback control when not in the Audio tab

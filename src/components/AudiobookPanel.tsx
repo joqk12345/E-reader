@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
-import { detectLang, splitIntoSentences, type TargetLang } from '../utils/sentences';
+import { detectLang, sanitizeText, splitIntoSentences, type TargetLang } from '../utils/sentences';
 
 type TtsProvider = 'auto' | 'edge' | 'cosyvoice';
 type ReadTarget = 'source' | 'translation';
@@ -16,6 +16,11 @@ type AudiobookControlAction = 'play' | 'toggle-pause' | 'stop';
 
 type AudiobookControlEventDetail = {
   action: AudiobookControlAction;
+};
+
+type AudiobookStartEventDetail = {
+  sentenceKey?: string;
+  paragraphId?: string;
 };
 
 type AudiobookStateEventDetail = {
@@ -44,6 +49,7 @@ export const AudiobookPanel: React.FC = () => {
   const playingRef = useRef(false);
   const pausedRef = useRef(false);
   const playbackModeRef = useRef<'audio' | 'speech' | null>(null);
+  const playbackSessionRef = useRef(0);
 
   const sentences = useMemo(() => {
     const isSpeakableSentence = (text: string): boolean => {
@@ -65,7 +71,16 @@ export const AudiobookPanel: React.FC = () => {
     return list;
   }, [paragraphs]);
 
-  const stopPlayback = () => {
+  const sentenceIndexByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    sentences.forEach((item, index) => map.set(item.key, index));
+    return map;
+  }, [sentences]);
+
+  const stopPlayback = (invalidateSession = true) => {
+    if (invalidateSession) {
+      playbackSessionRef.current += 1;
+    }
     stopRequestedRef.current = true;
     pausedRef.current = false;
     setIsPaused(false);
@@ -108,7 +123,8 @@ export const AudiobookPanel: React.FC = () => {
   };
 
   const toSpeakableText = (input: string): string => {
-    return input
+    return sanitizeText(
+      input
       .replace(/```[\s\S]*?```/g, ' ')
       .replace(/`([^`]+)`/g, '$1')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
@@ -121,8 +137,7 @@ export const AudiobookPanel: React.FC = () => {
       .replace(/__([^_]+)__/g, '$1')
       .replace(/_([^_]+)_/g, '$1')
       .replace(/[*_~|]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    );
   };
 
   const resolveSentenceForReading = async (sourceSentence: string): Promise<{ text: string; lang: TargetLang }> => {
@@ -210,8 +225,11 @@ export const AudiobookPanel: React.FC = () => {
     });
   };
 
-  const startPlayback = async () => {
+  const startPlayback = async (startFromKey?: string) => {
     if (playingRef.current || sentences.length === 0) return;
+    const startIndex = startFromKey ? sentenceIndexByKey.get(startFromKey) ?? 0 : 0;
+    const sessionId = playbackSessionRef.current + 1;
+    playbackSessionRef.current = sessionId;
 
     stopRequestedRef.current = false;
     pausedRef.current = false;
@@ -221,16 +239,17 @@ export const AudiobookPanel: React.FC = () => {
     setError(null);
 
     try {
-      for (const sentenceItem of sentences) {
-        if (stopRequestedRef.current) break;
+      for (let i = startIndex; i < sentences.length; i += 1) {
+        if (stopRequestedRef.current || playbackSessionRef.current !== sessionId) break;
+        const sentenceItem = sentences[i];
         const sourceSentence = sentenceItem.sourceText;
         setCurrentSentence(sourceSentence);
         setCurrentReadingSentenceKey(sentenceItem.key);
 
-        while (pausedRef.current && !stopRequestedRef.current) {
+        while (pausedRef.current && !stopRequestedRef.current && playbackSessionRef.current === sessionId) {
           await new Promise((r) => setTimeout(r, 120));
         }
-        if (stopRequestedRef.current) break;
+        if (stopRequestedRef.current || playbackSessionRef.current !== sessionId) break;
 
         const resolved = await resolveSentenceForReading(sourceSentence);
         if (!resolved.text.trim()) {
@@ -262,15 +281,31 @@ export const AudiobookPanel: React.FC = () => {
         }
       }
     } catch (err) {
-      if (stopRequestedRef.current) {
+      if (stopRequestedRef.current || playbackSessionRef.current !== sessionId) {
         return;
       }
       console.error('Audiobook playback failed:', err);
       const message = err instanceof Error ? err.message : String(err);
       setError(`Audiobook playback failed: ${message}`);
     } finally {
-      stopPlayback();
+      if (playbackSessionRef.current === sessionId) {
+        stopPlayback(false);
+      }
     }
+  };
+
+  const startFromSentenceKey = (sentenceKey: string) => {
+    if (!sentenceIndexByKey.has(sentenceKey)) return;
+    const launch = () => {
+      setCurrentReadingSentenceKey(sentenceKey);
+      void startPlayback(sentenceKey);
+    };
+    if (playingRef.current) {
+      stopPlayback();
+      window.setTimeout(launch, 80);
+      return;
+    }
+    launch();
   };
 
   const togglePause = async () => {
@@ -322,9 +357,25 @@ export const AudiobookPanel: React.FC = () => {
       }
     };
 
+    const onStartFrom = (event: Event) => {
+      const customEvent = event as CustomEvent<AudiobookStartEventDetail>;
+      if (!customEvent.detail) return;
+      const sentenceKey =
+        customEvent.detail.sentenceKey ||
+        (customEvent.detail.paragraphId
+          ? sentences.find((item) => item.key.startsWith(`${customEvent.detail.paragraphId}_`))?.key
+          : undefined);
+      if (!sentenceKey) return;
+      startFromSentenceKey(sentenceKey);
+    };
+
     window.addEventListener('reader:audiobook-control', onControl as EventListener);
-    return () => window.removeEventListener('reader:audiobook-control', onControl as EventListener);
-  }, [startPlayback, togglePause]);
+    window.addEventListener('reader:audiobook-start', onStartFrom as EventListener);
+    return () => {
+      window.removeEventListener('reader:audiobook-control', onControl as EventListener);
+      window.removeEventListener('reader:audiobook-start', onStartFrom as EventListener);
+    };
+  }, [sentences, startPlayback, togglePause, sentenceIndexByKey]);
 
   return (
     <div className="flex flex-col h-full p-4 overflow-y-auto">
@@ -395,7 +446,7 @@ export const AudiobookPanel: React.FC = () => {
           {isPaused ? 'Resume' : 'Pause'}
         </button>
         <button
-          onClick={stopPlayback}
+          onClick={() => stopPlayback()}
           disabled={!isPlaying}
           className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
         >

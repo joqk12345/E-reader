@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, type MouseEvent as ReactMouseEvent, Children, cloneElement, isValidElement } from 'react';
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +20,11 @@ type SelectionDraft = {
   selectedText: string;
   style: AnnotationStyle;
   note: string;
+};
+
+type AudiobookStartEventDetail = {
+  sentenceKey?: string;
+  paragraphId?: string;
 };
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -214,6 +219,35 @@ export function ReaderContent() {
     const query = searchHighlightQuery.trim();
     const effectiveQuery = enableHighlight ? query : '';
     return renderTextWithDecorations(text, effectiveQuery, paragraphAnnotations, keyPrefix);
+  };
+
+  const hasActiveTextSelection = () => {
+    const selection = window.getSelection();
+    return Boolean(selection && selection.toString().trim());
+  };
+
+  const shouldIgnoreAudiobookStart = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false;
+    return Boolean(
+      target.closest(
+        'button,a,input,textarea,select,label,[data-annotation-popover="true"],[data-no-audiobook-start="true"]'
+      )
+    );
+  };
+
+  const dispatchAudiobookStart = (detail: AudiobookStartEventDetail) => {
+    window.dispatchEvent(new CustomEvent<AudiobookStartEventDetail>('reader:audiobook-start', { detail }));
+  };
+
+  const handleStartFromParagraph = (paragraphId: string, event: ReactMouseEvent<HTMLElement>) => {
+    if (shouldIgnoreAudiobookStart(event.target) || hasActiveTextSelection()) return;
+    dispatchAudiobookStart({ paragraphId });
+  };
+
+  const handleStartFromSentence = (sentenceKey: string, event: ReactMouseEvent<HTMLElement>) => {
+    if (shouldIgnoreAudiobookStart(event.target) || hasActiveTextSelection()) return;
+    event.stopPropagation();
+    dispatchAudiobookStart({ sentenceKey });
   };
 
   const clearFlushTimer = () => {
@@ -560,6 +594,7 @@ export function ReaderContent() {
                   ref={(el) => {
                     paragraphRefs.current[paragraph.id] = el;
                   }}
+                  onClick={(event) => handleStartFromParagraph(paragraph.id, event)}
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
                     focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
@@ -658,6 +693,7 @@ export function ReaderContent() {
                           ref={(el) => {
                             sentenceRefs.current[key] = el;
                           }}
+                          onClick={(event) => handleStartFromSentence(key, event)}
                           className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
                           style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
                         >
