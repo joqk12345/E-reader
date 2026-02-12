@@ -257,6 +257,56 @@ pub async fn list_documents(app_handle: AppHandle) -> Result<Vec<crate::models::
     Ok(docs)
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DocumentPreview {
+    pub doc_id: String,
+    pub preview: String,
+}
+
+#[tauri::command]
+pub async fn get_document_previews(
+    app_handle: AppHandle,
+    doc_ids: Vec<String>,
+    max_chars: usize,
+) -> Result<Vec<DocumentPreview>> {
+    let conn = database::get_connection(&app_handle)?;
+    let char_limit = max_chars.clamp(160, 4000);
+    let mut previews = Vec::new();
+
+    let mut stmt = conn.prepare(
+        "SELECT p.text
+         FROM paragraphs p
+         JOIN sections s ON p.section_id = s.id
+         WHERE p.doc_id = ?1
+         ORDER BY s.order_index, p.order_index
+         LIMIT 12",
+    )?;
+
+    for doc_id in doc_ids {
+        let rows = stmt.query_map([&doc_id], |row| row.get::<_, String>(0))?;
+        let mut merged = String::new();
+        for row in rows {
+            let text = row.unwrap_or_default();
+            let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+            if normalized.is_empty() {
+                continue;
+            }
+            if !merged.is_empty() {
+                merged.push(' ');
+            }
+            merged.push_str(&normalized);
+            if merged.chars().count() >= char_limit {
+                break;
+            }
+        }
+
+        let preview = merged.chars().take(char_limit).collect::<String>();
+        previews.push(DocumentPreview { doc_id, preview });
+    }
+
+    Ok(previews)
+}
+
 #[tauri::command]
 pub async fn get_document(
     app_handle: AppHandle,

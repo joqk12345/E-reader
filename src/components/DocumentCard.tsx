@@ -6,9 +6,18 @@ interface DocumentCardProps {
   onClick: () => void;
   onDelete: () => void;
   variant?: 'grid' | 'list' | 'compact';
+  category?: string;
+  tags?: string[];
 }
 
-export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, onDelete, variant = 'grid' }) => {
+export const DocumentCard: React.FC<DocumentCardProps> = ({
+  document,
+  onClick,
+  onDelete,
+  variant = 'grid',
+  category,
+  tags = [],
+}) => {
   const getFileTypeIcon = () => {
     if (document.file_type === 'epub') return '📚';
     if (document.file_type === 'markdown') return '📝';
@@ -28,12 +37,13 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, o
   if (variant === 'compact') {
     return (
       <div
-        className="bg-white rounded-md border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer px-3 py-2"
+        className="bg-white rounded border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer px-2 py-1"
         onClick={onClick}
       >
         <div className="flex items-center gap-2">
-          <span className="text-lg">{getFileTypeIcon()}</span>
-          <p className="flex-1 min-w-0 text-sm font-medium text-gray-900 truncate">{document.title}</p>
+          <span className="text-base leading-none">{getFileTypeIcon()}</span>
+          <p className="flex-1 min-w-0 text-xs font-medium text-gray-900 truncate">{document.title}</p>
+          {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">{category}</span>}
           <span className="text-[11px] text-gray-500">{getFileTypeLabel()}</span>
           <button
             onClick={(e) => {
@@ -55,19 +65,29 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, o
   if (variant === 'list') {
     return (
       <div
-        className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer px-4 py-3"
+        className="bg-white rounded-md border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer px-2.5 py-1.5"
         onClick={onClick}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{getFileTypeIcon()}</span>
+        <div className="flex items-start gap-2">
+          <span className="text-lg leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 truncate">{document.title}</h3>
+            <div className="flex items-start gap-1.5">
+              <h3 className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{document.title}</h3>
+              {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-2 py-0.5">{category}</span>}
               <span className="text-[11px] text-gray-600 bg-gray-100 rounded px-2 py-0.5">{getFileTypeLabel()}</span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[11px] text-gray-500 mt-0.5">
               {document.author ? `${document.author} · ` : ''}Added {formatDate(document.created_at)}
             </p>
+            {tags.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {tags.slice(0, 4).map((tag) => (
+                  <span key={tag} className="text-[10px] text-slate-600 bg-slate-100 rounded px-1 py-0.5">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={(e) => {
@@ -88,20 +108,30 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onClick, o
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer p-4"
+      className="bg-white rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-2.5"
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3 flex-1">
-          <span className="text-3xl">{getFileTypeIcon()}</span>
+        <div className="flex items-start gap-2.5 flex-1">
+          <span className="text-xl leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{document.title}</h3>
+            <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{document.title}</h3>
+            {category && <p className="text-xs text-blue-700 mt-0.5">{category}</p>}
             {document.author && (
-              <p className="text-sm text-gray-600 truncate">{document.author}</p>
+              <p className="text-xs text-gray-600 truncate">{document.author}</p>
             )}
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[11px] text-gray-500 mt-0.5">
               Added {formatDate(document.created_at)}
             </p>
+            {tags.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {tags.slice(0, 4).map((tag) => (
+                  <span key={tag} className="text-[10px] text-slate-600 bg-slate-100 rounded px-1 py-0.5">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <button

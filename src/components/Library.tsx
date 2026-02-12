@@ -6,19 +6,90 @@ import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
+import type { Document as ReaderDocument } from '../types';
 
 type LibraryProps = {
   onOpenSettings?: () => void;
 };
 
+type DocumentPreview = {
+  doc_id: string;
+  preview: string;
+};
+
+type DocumentInsight = {
+  category: string;
+  tags: string[];
+};
+
+const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
+  { name: 'AI/机器学习', keywords: ['ai', 'llm', 'ml', 'machine learning', '模型', '推理', 'agent', 'rag', 'vllm'] },
+  { name: '编程/工程', keywords: ['rust', 'python', 'javascript', 'typescript', 'react', 'tauri', '架构', '代码', '开发'] },
+  { name: '商业/产品', keywords: ['product', 'saas', 'startup', 'business', '用户', '增长', '运营', '商业'] },
+  { name: '金融/经济', keywords: ['finance', 'economy', 'market', 'stock', 'investment', '金融', '经济', '投资'] },
+  { name: '科学/研究', keywords: ['paper', 'research', 'benchmark', 'physics', 'biology', '实验', '论文', '研究'] },
+  { name: '教育/教程', keywords: ['tutorial', 'guide', 'course', 'lesson', 'learn', '教学', '教程', '入门'] },
+  { name: '新闻/时事', keywords: ['news', 'breaking', 'today', '日报', '新闻', '快讯', '发布'] },
+  { name: '文学/社科', keywords: ['novel', 'story', 'history', 'philosophy', '社会', '历史', '小说', '随笔'] },
+];
+
+const TAG_RULES: Array<{ tag: string; keywords: string[] }> = [
+  { tag: 'LLM', keywords: ['llm', '大模型', 'gpt', 'qwen', 'vllm'] },
+  { tag: 'RAG', keywords: ['rag', 'retrieval', '检索增强'] },
+  { tag: 'Agent', keywords: ['agent', '智能体'] },
+  { tag: 'Rust', keywords: ['rust', 'cargo', 'tauri'] },
+  { tag: 'Python', keywords: ['python', 'pandas', 'numpy'] },
+  { tag: 'Web', keywords: ['react', 'frontend', 'browser', 'web'] },
+  { tag: '数据库', keywords: ['sqlite', 'database', 'postgres', 'mysql', '向量库'] },
+  { tag: '性能', keywords: ['performance', 'benchmark', 'latency', '优化', '吞吐'] },
+  { tag: '产品', keywords: ['product', '用户', '增长', '体验'] },
+  { tag: '投资', keywords: ['investment', 'stock', '基金', '投资'] },
+];
+
+const inferDocumentInsight = (doc: ReaderDocument, preview: string): DocumentInsight => {
+  const corpus = `${doc.title} ${doc.author || ''} ${preview}`.toLowerCase();
+
+  let bestCategory = '其他';
+  let bestScore = 0;
+  for (const rule of CATEGORY_RULES) {
+    const score = rule.keywords.reduce((acc, keyword) => (corpus.includes(keyword) ? acc + 1 : acc), 0);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCategory = rule.name;
+    }
+  }
+
+  const tags = TAG_RULES
+    .filter((rule) => rule.keywords.some((keyword) => corpus.includes(keyword)))
+    .map((rule) => rule.tag);
+
+  const fileTypeTag = doc.file_type.toUpperCase();
+  if (!tags.includes(fileTypeTag)) {
+    tags.push(fileTypeTag);
+  }
+
+  return {
+    category: bestCategory,
+    tags: tags.slice(0, 5),
+  };
+};
+
 export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
+  const DEFAULT_CATEGORY_VISIBLE_COUNT = 8;
+  const DEFAULT_EXPANDED_CATEGORY_COUNT = 2;
   const { documents, isLoading, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'pdf' | 'markdown'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
   const [searchText, setSearchText] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [groupByCategory, setGroupByCategory] = useState(true);
   const [urlInput, setUrlInput] = useState('');
   const [isImportingUrl, setIsImportingUrl] = useState(false);
+  const [isAutoClassifying, setIsAutoClassifying] = useState(false);
+  const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [expandedCategoryItems, setExpandedCategoryItems] = useState<Record<string, boolean>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 
   const normalizeUrl = (input: string) => {
@@ -28,7 +99,7 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
     return `https://${trimmed}`;
   };
 
-  const extractPublishedTime = (doc: Document): string | undefined => {
+  const extractPublishedTime = (doc: globalThis.Document): string | undefined => {
     const selectors = [
       'meta[property="article:published_time"]',
       'meta[name="article:published_time"]',
@@ -161,6 +232,50 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
     loadDocuments();
   }, [loadDocuments]);
 
+  useEffect(() => {
+    if (documents.length === 0) {
+      setDocumentInsights({});
+      return;
+    }
+
+    let cancelled = false;
+    setIsAutoClassifying(true);
+    invoke<DocumentPreview[]>('get_document_previews', {
+      docIds: documents.map((doc) => doc.id),
+      maxChars: 1200,
+    })
+      .then((rows) => {
+        if (cancelled) return;
+        const previewMap = rows.reduce<Record<string, string>>((acc, item) => {
+          acc[item.doc_id] = item.preview || '';
+          return acc;
+        }, {});
+        const next = documents.reduce<Record<string, DocumentInsight>>((acc, doc) => {
+          acc[doc.id] = inferDocumentInsight(doc, previewMap[doc.id] || '');
+          return acc;
+        }, {});
+        setDocumentInsights(next);
+      })
+      .catch((error) => {
+        console.warn('Auto classify fallback to title-only mode:', error);
+        if (cancelled) return;
+        const next = documents.reduce<Record<string, DocumentInsight>>((acc, doc) => {
+          acc[doc.id] = inferDocumentInsight(doc, '');
+          return acc;
+        }, {});
+        setDocumentInsights(next);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsAutoClassifying(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documents]);
+
   const handleImport = async () => {
     try {
       const selected = await open({
@@ -257,6 +372,9 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
     const q = searchText.trim().toLowerCase();
     const filtered = documents.filter((doc) => {
       if (typeFilter !== 'all' && doc.file_type !== typeFilter) return false;
+      if (categoryFilter !== 'all' && (documentInsights[doc.id]?.category || '其他') !== categoryFilter) {
+        return false;
+      }
       if (!q) return true;
       const title = doc.title.toLowerCase();
       const author = (doc.author || '').toLowerCase();
@@ -273,7 +391,32 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
       sorted.sort((a, b) => a.file_type.localeCompare(b.file_type) || a.title.localeCompare(b.title));
     }
     return sorted;
-  }, [documents, searchText, sortBy, typeFilter]);
+  }, [categoryFilter, documentInsights, documents, searchText, sortBy, typeFilter]);
+
+  const categoryOptions = useMemo(() => {
+    const categories = new Set<string>();
+    documents.forEach((doc) => categories.add(documentInsights[doc.id]?.category || '其他'));
+    return Array.from(categories).sort((a, b) => a.localeCompare(b));
+  }, [documentInsights, documents]);
+
+  const groupedEntries = useMemo(() => {
+    const grouped = displayedDocuments.reduce<Record<string, ReaderDocument[]>>((acc, doc) => {
+      const category = documentInsights[doc.id]?.category || '其他';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(doc);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  }, [displayedDocuments, documentInsights]);
+
+  const toggleCategoryCollapsed = (category: string) => {
+    setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
+  };
+
+  const toggleCategoryExpandedItems = (category: string) => {
+    setExpandedCategoryItems((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
+  };
 
   return (
     <>
@@ -384,6 +527,34 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
             </div>
 
             <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Category: All</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setGroupByCategory((prev) => !prev)}
+              className={`px-2.5 py-1.5 text-xs rounded-md border ${
+                groupByCategory
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {groupByCategory ? 'Grouped' : 'Ungrouped'}
+            </button>
+
+            {isAutoClassifying && (
+              <span className="text-xs text-gray-500">Auto-tagging...</span>
+            )}
+
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'type')}
               className="ml-auto px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -410,25 +581,93 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
             <p className="text-base">No documents match current filters</p>
             <p className="text-sm mt-2">Try clearing search text or switching type filter</p>
           </div>
+        ) : groupByCategory ? (
+          <div className="space-y-6">
+            {groupedEntries.map(([category, items], categoryIndex) => {
+              const defaultCollapsed = categoryIndex >= DEFAULT_EXPANDED_CATEGORY_COUNT;
+              const isCollapsed = collapsedCategories[category] ?? defaultCollapsed;
+              const showAllItems = expandedCategoryItems[category] ?? false;
+              const visibleItems = showAllItems ? items : items.slice(0, DEFAULT_CATEGORY_VISIBLE_COUNT);
+              const hasMoreItems = items.length > DEFAULT_CATEGORY_VISIBLE_COUNT;
+
+              return (
+              <section key={category}>
+                <div className="mb-2 flex items-center justify-between">
+                  <button
+                    onClick={() => toggleCategoryCollapsed(category)}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-gray-900"
+                  >
+                    <span className={`text-xs transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
+                    <span>{category}</span>
+                  </button>
+                  <span className="text-xs text-gray-500">{items.length} docs</span>
+                </div>
+                {!isCollapsed && (viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {visibleItems.map((doc) => (
+                      <DocumentCard
+                        key={doc.id}
+                        document={doc}
+                        variant="grid"
+                        category={documentInsights[doc.id]?.category}
+                        tags={documentInsights[doc.id]?.tags || []}
+                        onClick={() => selectDocument(doc.id)}
+                        onDelete={() => handleDeleteRequest(doc.id, doc.title)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={viewMode === 'list' ? 'space-y-2' : 'space-y-1.5'}>
+                    {visibleItems.map((doc) => (
+                      <DocumentCard
+                        key={doc.id}
+                        document={doc}
+                        variant={viewMode}
+                        category={documentInsights[doc.id]?.category}
+                        tags={documentInsights[doc.id]?.tags || []}
+                        onClick={() => selectDocument(doc.id)}
+                        onDelete={() => handleDeleteRequest(doc.id, doc.title)}
+                      />
+                    ))}
+                  </div>
+                ))}
+                {!isCollapsed && hasMoreItems && (
+                  <div className="mt-2 flex justify-center">
+                    <button
+                      onClick={() => toggleCategoryExpandedItems(category)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {showAllItems ? 'Show less' : `Show more (${items.length - DEFAULT_CATEGORY_VISIBLE_COUNT})`}
+                    </button>
+                  </div>
+                )}
+              </section>
+            );
+            })}
+          </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {displayedDocuments.map((doc) => (
               <DocumentCard
                 key={doc.id}
                 document={doc}
                 variant="grid"
+                category={documentInsights[doc.id]?.category}
+                tags={documentInsights[doc.id]?.tags || []}
                 onClick={() => selectDocument(doc.id)}
                 onDelete={() => handleDeleteRequest(doc.id, doc.title)}
               />
             ))}
           </div>
         ) : (
-          <div className={viewMode === 'list' ? 'space-y-3' : 'space-y-2'}>
+          <div className={viewMode === 'list' ? 'space-y-2' : 'space-y-1.5'}>
             {displayedDocuments.map((doc) => (
               <DocumentCard
                 key={doc.id}
                 document={doc}
                 variant={viewMode}
+                category={documentInsights[doc.id]?.category}
+                tags={documentInsights[doc.id]?.tags || []}
                 onClick={() => selectDocument(doc.id)}
                 onDelete={() => handleDeleteRequest(doc.id, doc.title)}
               />

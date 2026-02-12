@@ -25,6 +25,11 @@
 - **PDF parsing quality improvements**:
   - better handling for split words and hyphenated line wraps
   - improved normalization for spaced-uppercase heading artifacts in technical PDFs
+- **Library auto organization (new)**:
+  - auto category + tag inference from title and extracted content preview
+  - category filter and grouped/ungrouped view toggle
+  - grouped mode supports per-category collapse/expand and `Show more / Show less`
+  - card layouts (`Grid`/`List`/`Compact`) tuned to denser spacing with long-title clamping
 
 ## 🧭 Backlog Notes
 
@@ -33,10 +38,6 @@
   - when corpus scale grows, evaluate LanceDB as a parallel vector index backend (A/B with current implementation)
   - migration decision gate: retrieval quality, P95 latency, indexing throughput, memory footprint, and packaging stability on desktop
 
-- **Library homepage upgrades**:
-  - multi-view switch: `Grid` / `List` / `Compact`
-  - quick filter by file type (`All/EPUB/PDF/Markdown`)
-  - keyword filter (title/author/path) + sorting (`Recent/Title/Type`)
 - **Search robustness + relevance**:
   - client-side timeout for semantic/keyword search requests (avoid endless loading)
   - server-side embedding timeout with automatic fallback
@@ -195,6 +196,16 @@ The built application will be in `src-tauri/target/release/bundle/`.
 - **EPUB**: Standard e-book format
 - **PDF**: Portable Document Format
 - **Markdown**: Lightweight markup language (`.md`, `.markdown`)
+
+### Library Home
+
+- View switch: `Grid` / `List` / `Compact`
+- Basic filter: file type (`All/EPUB/PDF/Markdown`) + keyword + sorting (`Recent/Title/Type`)
+- Auto organization:
+  - documents are auto-tagged and auto-categorized from title + content preview
+  - use `Category` filter for quick narrowing
+  - use `Grouped/Ungrouped` to switch grouped display
+  - grouped display supports category collapse/expand and `Show more / Show less`
 
 ### Reading & Navigation
 
