@@ -336,37 +336,39 @@ async fn synthesize_cosyvoice(
         .unwrap_or_else(|| "cosyvoice-default".to_string());
     let client = reqwest::Client::new();
     let base = base_url.trim_end_matches('/');
-    let openai_base = if base.ends_with("/v1") {
-        base.to_string()
-    } else {
-        format!("{}/v1", base)
-    };
+    let lower = base.to_lowercase();
 
-    let attempts: Vec<(String, serde_json::Value)> = vec![
-        (
-            format!("{}/audio/speech", openai_base),
-            json!({
-                "input": request.text,
-                "input_text": request.text,
-                "input_instruction": request.text,
-                "voice": voice,
-                "response_format": "mp3",
-                "sample_rate": 24000,
-                "stream": false,
-                "speed": rate
-            }),
-        ),
-        (
-            format!("{}/tts", base),
-            json!({
-                "text": request.text,
-                "voice": voice,
-                "lang": language,
-                "speed": rate,
-                "format": "mp3"
-            }),
-        ),
-    ];
+    let openai_payload = json!({
+        "input": request.text,
+        "input_text": request.text,
+        "input_instruction": request.text,
+        "voice": voice,
+        "response_format": "mp3",
+        "sample_rate": 24000,
+        "stream": false,
+        "speed": rate
+    });
+    let legacy_payload = json!({
+        "text": request.text,
+        "voice": voice,
+        "lang": language,
+        "speed": rate,
+        "format": "mp3"
+    });
+
+    let mut attempts: Vec<(String, serde_json::Value)> = Vec::new();
+
+    if lower.ends_with("/audio/speech") {
+        // User provided full OpenAI-compatible speech endpoint.
+        attempts.push((base.to_string(), openai_payload.clone()));
+    } else if lower.ends_with("/v1") {
+        attempts.push((format!("{}/audio/speech", base), openai_payload.clone()));
+    } else if lower.ends_with("/tts") {
+        attempts.push((base.to_string(), legacy_payload.clone()));
+    } else {
+        attempts.push((format!("{}/v1/audio/speech", base), openai_payload.clone()));
+        attempts.push((format!("{}/tts", base), legacy_payload.clone()));
+    }
 
     let mut last_error = String::new();
     for (url, payload) in attempts {
