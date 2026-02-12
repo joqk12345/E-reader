@@ -330,58 +330,100 @@ async fn synthesize_cosyvoice(
     let base_url = config.cosyvoice_base_url.as_ref().ok_or_else(|| {
         ReaderError::InvalidArgument("CosyVoice base URL is not configured".to_string())
     })?;
-    let url = format!("{}/tts", base_url.trim_end_matches('/'));
     let voice = request
         .voice
         .clone()
         .unwrap_or_else(|| "cosyvoice-default".to_string());
-
-    let payload = json!({
-        "text": request.text,
-        "voice": voice,
-        "lang": language,
-        "speed": rate,
-        "format": "mp3"
-    });
-
     let client = reqwest::Client::new();
-    let mut req = client.post(url).json(&payload);
-    if let Some(api_key) = &config.cosyvoice_api_key {
-        if !api_key.trim().is_empty() {
-            req = req.bearer_auth(api_key);
+    let base = base_url.trim_end_matches('/');
+    let openai_base = if base.ends_with("/v1") {
+        base.to_string()
+    } else {
+        format!("{}/v1", base)
+    };
+
+    let attempts: Vec<(String, serde_json::Value)> = vec![
+        (
+            format!("{}/audio/speech", openai_base),
+            json!({
+                "input": request.text,
+                "input_text": request.text,
+                "input_instruction": request.text,
+                "voice": voice,
+                "response_format": "mp3",
+                "sample_rate": 24000,
+                "stream": false,
+                "speed": rate
+            }),
+        ),
+        (
+            format!("{}/tts", base),
+            json!({
+                "text": request.text,
+                "voice": voice,
+                "lang": language,
+                "speed": rate,
+                "format": "mp3"
+            }),
+        ),
+    ];
+
+    let mut last_error = String::new();
+    for (url, payload) in attempts {
+        let mut req = client.post(&url).json(&payload);
+        if let Some(api_key) = &config.cosyvoice_api_key {
+            if !api_key.trim().is_empty() {
+                req = req.bearer_auth(api_key);
+            }
         }
-    }
 
-    let response = req
-        .send()
-        .await
-        .map_err(|e| ReaderError::ModelApi(format!("CosyVoice request failed: {}", e)))?;
+        let response = req
+            .send()
+            .await
+            .map_err(|e| ReaderError::ModelApi(format!("CosyVoice request failed: {}", e)))?;
 
-    if !response.status().is_success() {
+        if response.status().is_success() {
+            let mime_type = response
+                .headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("audio/mpeg")
+                .to_string();
+
+            let audio = response
+                .bytes()
+                .await
+                .map_err(|e| ReaderError::ModelApi(format!("CosyVoice audio decode failed: {}", e)))?
+                .to_vec();
+
+            return Ok(TtsAudio {
+                audio,
+                mime_type,
+                provider: "cosyvoice".to_string(),
+            });
+        }
+
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(ReaderError::ModelApi(format!(
-            "CosyVoice returned {}: {}",
-            status, body
-        )));
+        let detail = format!("{} => {}: {}", url, status, body);
+        if should_try_next_cosyvoice_endpoint(status) {
+            last_error = detail;
+            continue;
+        }
+        return Err(ReaderError::ModelApi(format!("CosyVoice returned {}", detail)));
     }
 
-    let mime_type = response
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("audio/mpeg")
-        .to_string();
+    Err(ReaderError::ModelApi(format!(
+        "CosyVoice request failed on all endpoints: {}",
+        last_error
+    )))
+}
 
-    let audio = response
-        .bytes()
-        .await
-        .map_err(|e| ReaderError::ModelApi(format!("CosyVoice audio decode failed: {}", e)))?
-        .to_vec();
-
-    Ok(TtsAudio {
-        audio,
-        mime_type,
-        provider: "cosyvoice".to_string(),
-    })
+fn should_try_next_cosyvoice_endpoint(status: reqwest::StatusCode) -> bool {
+    matches!(
+        status,
+        reqwest::StatusCode::NOT_FOUND
+            | reqwest::StatusCode::METHOD_NOT_ALLOWED
+            | reqwest::StatusCode::UNPROCESSABLE_ENTITY
+    )
 }

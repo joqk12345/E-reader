@@ -31,6 +31,7 @@ export const AudiobookPanel: React.FC = () => {
   const { paragraphs, translationMode, setCurrentReadingSentenceKey } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [readTarget, setReadTarget] = useState<ReadTarget>('source');
+  const [voice, setVoice] = useState('');
   const [rate, setRate] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -241,6 +242,7 @@ export const AudiobookPanel: React.FC = () => {
               text: resolved.text,
               language: resolved.lang,
               provider: ttsProvider,
+              voice: voice.trim() || undefined,
               rate,
             },
           });
@@ -350,6 +352,17 @@ export const AudiobookPanel: React.FC = () => {
             <option value="source">Source Text</option>
             <option value="translation">Translation Text</option>
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Voice (optional)</label>
+          <input
+            type="text"
+            value={voice}
+            onChange={(e) => setVoice(e.target.value)}
+            placeholder="e.g. cosyvoice-default"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
         </div>
 
         <div>
