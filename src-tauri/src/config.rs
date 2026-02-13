@@ -24,6 +24,16 @@ pub struct KeymapConfig {
     pub prev_page: Vec<String>,
     #[serde(default = "default_keymap_open_settings")]
     pub open_settings: Vec<String>,
+    #[serde(default = "default_keymap_open_search")]
+    pub open_search: Vec<String>,
+    #[serde(default = "default_keymap_audio_play")]
+    pub audio_play: Vec<String>,
+    #[serde(default = "default_keymap_audio_toggle_pause")]
+    pub audio_toggle_pause: Vec<String>,
+    #[serde(default = "default_keymap_audio_stop")]
+    pub audio_stop: Vec<String>,
+    #[serde(default = "default_keymap_toggle_reading_mode")]
+    pub toggle_reading_mode: Vec<String>,
 }
 
 impl Default for KeymapConfig {
@@ -32,6 +42,11 @@ impl Default for KeymapConfig {
             next_page: default_keymap_next_page(),
             prev_page: default_keymap_prev_page(),
             open_settings: default_keymap_open_settings(),
+            open_search: default_keymap_open_search(),
+            audio_play: default_keymap_audio_play(),
+            audio_toggle_pause: default_keymap_audio_toggle_pause(),
+            audio_stop: default_keymap_audio_stop(),
+            toggle_reading_mode: default_keymap_toggle_reading_mode(),
         }
     }
 }
@@ -143,6 +158,29 @@ fn default_keymap_prev_page() -> Vec<String> {
 
 fn default_keymap_open_settings() -> Vec<String> {
     vec!["Cmd+,".to_string(), "Ctrl+,".to_string()]
+}
+
+fn default_keymap_open_search() -> Vec<String> {
+    vec!["Cmd+F".to_string(), "Ctrl+F".to_string()]
+}
+
+fn default_keymap_audio_play() -> Vec<String> {
+    vec!["Cmd+Shift+P".to_string(), "Ctrl+Shift+P".to_string()]
+}
+
+fn default_keymap_audio_toggle_pause() -> Vec<String> {
+    vec![
+        "Cmd+Shift+Space".to_string(),
+        "Ctrl+Shift+Space".to_string(),
+    ]
+}
+
+fn default_keymap_audio_stop() -> Vec<String> {
+    vec!["Cmd+Shift+S".to_string(), "Ctrl+Shift+S".to_string()]
+}
+
+fn default_keymap_toggle_reading_mode() -> Vec<String> {
+    vec!["Cmd+Shift+R".to_string(), "Ctrl+Shift+R".to_string()]
 }
 
 impl Default for Config {

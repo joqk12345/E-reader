@@ -2,12 +2,22 @@ export type Keymap = {
   next_page: string[];
   prev_page: string[];
   open_settings: string[];
+  open_search: string[];
+  audio_play: string[];
+  audio_toggle_pause: string[];
+  audio_stop: string[];
+  toggle_reading_mode: string[];
 };
 
 export const defaultKeymap: Keymap = {
   next_page: ['PageDown', 'Space', 'J'],
   prev_page: ['PageUp', 'Shift+Space', 'K'],
   open_settings: ['Cmd+,', 'Ctrl+,'],
+  open_search: ['Cmd+F', 'Ctrl+F'],
+  audio_play: ['Cmd+Shift+P', 'Ctrl+Shift+P'],
+  audio_toggle_pause: ['Cmd+Shift+Space', 'Ctrl+Shift+Space'],
+  audio_stop: ['Cmd+Shift+S', 'Ctrl+Shift+S'],
+  toggle_reading_mode: ['Cmd+Shift+R', 'Ctrl+Shift+R'],
 };
 
 const normalizeKeyToken = (token: string): string => {
@@ -79,6 +89,26 @@ export const normalizeKeymap = (keymap?: Partial<Keymap> | null): Keymap => {
       keymap?.open_settings && keymap.open_settings.length > 0
         ? keymap.open_settings
         : defaultKeymap.open_settings,
+    open_search:
+      keymap?.open_search && keymap.open_search.length > 0
+        ? keymap.open_search
+        : defaultKeymap.open_search,
+    audio_play:
+      keymap?.audio_play && keymap.audio_play.length > 0
+        ? keymap.audio_play
+        : defaultKeymap.audio_play,
+    audio_toggle_pause:
+      keymap?.audio_toggle_pause && keymap.audio_toggle_pause.length > 0
+        ? keymap.audio_toggle_pause
+        : defaultKeymap.audio_toggle_pause,
+    audio_stop:
+      keymap?.audio_stop && keymap.audio_stop.length > 0
+        ? keymap.audio_stop
+        : defaultKeymap.audio_stop,
+    toggle_reading_mode:
+      keymap?.toggle_reading_mode && keymap.toggle_reading_mode.length > 0
+        ? keymap.toggle_reading_mode
+        : defaultKeymap.toggle_reading_mode,
   };
 };
 

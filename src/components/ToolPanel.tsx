@@ -17,6 +17,16 @@ type TakeNoteEventDetail = {
   docId?: string;
   paragraphId?: string;
   selectedText?: string;
+  noteText?: string;
+};
+
+type TranslateEventDetail = {
+  selectedText?: string;
+  autoRun?: boolean;
+};
+
+type ChatQuestionEventDetail = {
+  question?: string;
 };
 
 type ToolPanelProps = {
@@ -43,6 +53,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     docId?: string;
     paragraphId?: string;
     selectedText: string;
+    noteText?: string;
+  } | null>(null);
+  const [translateRequest, setTranslateRequest] = useState<{
+    id: number;
+    selectedText: string;
+    autoRun?: boolean;
   } | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
@@ -87,10 +103,11 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       const customEvent = event as CustomEvent<ExplainEventDetail>;
       const selectedText = customEvent.detail?.selectedText?.trim();
       if (!selectedText) return;
+      const question = `Please explain this selected content in the current reading context:\n\n"${selectedText}"`;
       setActiveTab('chat');
       setChatRequest({
         id: Date.now(),
-        question: `Please explain this selected content in the current reading context:\n\n"${selectedText}"`,
+        question,
       });
       if (collapsed) {
         onToggleCollapse();
@@ -107,7 +124,44 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
         docId: customEvent.detail?.docId,
         paragraphId: customEvent.detail?.paragraphId,
         selectedText,
+        noteText: customEvent.detail?.noteText,
       });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onTranslateSelection = (event: Event) => {
+      const customEvent = event as CustomEvent<TranslateEventDetail>;
+      const selectedText = customEvent.detail?.selectedText?.trim();
+      if (!selectedText) return;
+      setActiveTab('translate');
+      setTranslateRequest({
+        id: Date.now(),
+        selectedText,
+        autoRun: customEvent.detail?.autoRun ?? false,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onChatQuestion = (event: Event) => {
+      const customEvent = event as CustomEvent<ChatQuestionEventDetail>;
+      const question = customEvent.detail?.question?.trim();
+      if (!question) return;
+      setActiveTab('chat');
+      setChatRequest({
+        id: Date.now(),
+        question,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onOpenSearch = () => {
+      setActiveTab('search');
       if (collapsed) {
         onToggleCollapse();
       }
@@ -115,9 +169,15 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
 
     window.addEventListener('reader:chat-explain', onExplain as EventListener);
     window.addEventListener('reader:take-note', onTakeNote as EventListener);
+    window.addEventListener('reader:translate-selection', onTranslateSelection as EventListener);
+    window.addEventListener('reader:chat-question', onChatQuestion as EventListener);
+    window.addEventListener('reader:open-search', onOpenSearch as EventListener);
     return () => {
       window.removeEventListener('reader:chat-explain', onExplain as EventListener);
       window.removeEventListener('reader:take-note', onTakeNote as EventListener);
+      window.removeEventListener('reader:translate-selection', onTranslateSelection as EventListener);
+      window.removeEventListener('reader:chat-question', onChatQuestion as EventListener);
+      window.removeEventListener('reader:open-search', onOpenSearch as EventListener);
     };
   }, [collapsed, onToggleCollapse]);
 
@@ -192,15 +252,14 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
               </button>
             ))}
           </div>
-
           {/* Content */}
           <div className={activeTab === 'audiobook' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto'}>
-            {activeTab === 'search' && <SearchPanel />}
-            {activeTab === 'summary' && <SummaryPanel />}
-            {activeTab === 'translate' && <TranslatePanel />}
-            {activeTab === 'deep' && <DeepAnalysisPanel />}
-            {activeTab === 'chat' && <ChatPanel request={chatRequest} />}
-            {activeTab === 'notes' && <NotesPanel request={noteRequest} />}
+            <div className={activeTab === 'search' ? '' : 'hidden'}><SearchPanel /></div>
+            <div className={activeTab === 'summary' ? '' : 'hidden'}><SummaryPanel /></div>
+            <div className={activeTab === 'translate' ? '' : 'hidden'}><TranslatePanel request={translateRequest} /></div>
+            <div className={activeTab === 'deep' ? '' : 'hidden'}><DeepAnalysisPanel /></div>
+            <div className={activeTab === 'chat' ? '' : 'hidden'}><ChatPanel request={chatRequest} /></div>
+            <div className={activeTab === 'notes' ? '' : 'hidden'}><NotesPanel request={noteRequest} /></div>
           </div>
         </>
       )}

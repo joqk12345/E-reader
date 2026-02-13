@@ -9,6 +9,34 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Focused Reading Mode (new)**:
+  - one-click hide of header + TOC + right tool panel for distraction-free reading
+  - supports shortcut toggle (`Cmd/Ctrl+Shift+R`) and quick exit button
+- **Shortcut system expanded and configurable**:
+  - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`
+  - defaults now include:
+    - `Cmd/Ctrl+F` for search
+    - `Cmd/Ctrl+Shift+P` play, `Cmd/Ctrl+Shift+Space` pause/resume, `Cmd/Ctrl+Shift+S` stop
+  - all above bindings are editable in Settings and persisted in keymap config
+- **Selection action toolbar redesigned**:
+  - selecting text now opens a movable/resizable action popover near selection anchor
+  - actions include: `Ask`, `Play from here`, `Explain`, `Translate`, `Highlight`, `Note`
+  - action order can be drag-sorted and is persisted in local storage
+  - `Play from here` now has explicit confirmation dialog before TTS starts
+- **Selection-to-tool workflow upgrades**:
+  - `Ask` sends question to Chat tab directly from selection popover
+  - `Translate` switches to Translate tab and can auto-run on selected text
+  - `Note` supports saving both selected quote and optional note content into Notes tab
+  - `Cmd/Ctrl+F` now opens Search tab and auto-focuses the query input
+- **Tool panel behavior improvements**:
+  - Search/Summary/Translate/Deep/Chat/Notes tabs are kept mounted (hidden instead of unmounted) to reduce context loss on tab switch
+  - Chat panel now focuses on selection-driven Q&A flow and removes free-form input box
+- **TOC collapsed-state UX polish**:
+  - collapsed TOC sidebar now uses a dedicated centered expand button
+  - TOC content area is now independently scrollable in both expanded and collapsed layouts
+- **PDF parsed-flow component (preparation)**:
+  - added `PdfParsedFlow` component for page-grouped parsed rendering with figure/table/formula heuristics and page-visual fallback hooks
+
 - **Deep Analysis tool (new `Deep` tab in Reader)**:
   - one-click structured analysis pipeline for document/section/paragraph
   - output includes: bilingual concepts, definitions, concept relations, COT-style logic, facts vs opinions, FAQ, analogies, top quotes

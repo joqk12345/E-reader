@@ -4,7 +4,17 @@ import { useStore } from '../store/useStore';
 
 type TargetLang = 'zh' | 'en';
 
-export const TranslatePanel: React.FC = () => {
+type TranslateRequest = {
+  id: number;
+  selectedText: string;
+  autoRun?: boolean;
+} | null;
+
+type TranslatePanelProps = {
+  request?: TranslateRequest;
+};
+
+export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
   const { currentParagraph, translationMode } = useStore();
   const defaultTargetLang: TargetLang = useMemo(
     () => (translationMode === 'zh-en' ? 'en' : 'zh'),
@@ -29,8 +39,9 @@ export const TranslatePanel: React.FC = () => {
     return null;
   };
 
-  const handleTranslate = async () => {
-    const hasText = text.trim();
+  const runTranslate = async (inputText?: string) => {
+    const raw = inputText ?? text;
+    const hasText = raw.trim();
     const hasParagraph = currentParagraph;
 
     if (!hasText && !hasParagraph) {
@@ -45,7 +56,7 @@ export const TranslatePanel: React.FC = () => {
         ? (detectTargetLang(hasText) ?? targetLang)
         : targetLang;
       const result = await invoke<string>('translate', {
-        text: hasText ? text : undefined,
+        text: hasText ? hasText : undefined,
         paragraphId: hasParagraph && !hasText ? currentParagraph.id : undefined,
         targetLang: effectiveTarget,
       });
@@ -62,6 +73,20 @@ export const TranslatePanel: React.FC = () => {
     } finally {
       setIsTranslating(false);
     }
+  };
+
+  useEffect(() => {
+    const selectedText = request?.selectedText?.trim();
+    if (!selectedText) return;
+    setText(selectedText);
+    setTranslation('');
+    if (request?.autoRun) {
+      void runTranslate(selectedText);
+    }
+  }, [request?.id, request?.selectedText, request?.autoRun]);
+
+  const handleTranslate = async () => {
+    await runTranslate();
   };
 
   const useCurrentParagraph = () => {

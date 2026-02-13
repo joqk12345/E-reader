@@ -76,6 +76,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     next_page: formatShortcutListInput(config.keymap.next_page),
     prev_page: formatShortcutListInput(config.keymap.prev_page),
     open_settings: formatShortcutListInput(config.keymap.open_settings),
+    open_search: formatShortcutListInput(config.keymap.open_search),
+    audio_play: formatShortcutListInput(config.keymap.audio_play),
+    audio_toggle_pause: formatShortcutListInput(config.keymap.audio_toggle_pause),
+    audio_stop: formatShortcutListInput(config.keymap.audio_stop),
+    toggle_reading_mode: formatShortcutListInput(config.keymap.toggle_reading_mode),
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -109,6 +114,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         next_page: formatShortcutListInput(normalized.keymap.next_page),
         prev_page: formatShortcutListInput(normalized.keymap.prev_page),
         open_settings: formatShortcutListInput(normalized.keymap.open_settings),
+        open_search: formatShortcutListInput(normalized.keymap.open_search),
+        audio_play: formatShortcutListInput(normalized.keymap.audio_play),
+        audio_toggle_pause: formatShortcutListInput(normalized.keymap.audio_toggle_pause),
+        audio_stop: formatShortcutListInput(normalized.keymap.audio_stop),
+        toggle_reading_mode: formatShortcutListInput(normalized.keymap.toggle_reading_mode),
       });
       try {
         const status = await invoke<EmbeddingStatus>('get_embedding_profile_status', { docId: null });
@@ -469,6 +479,66 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 value={shortcutInput.open_settings}
                 onChange={handleShortcutChange('open_settings')}
                 placeholder="Cmd+,; Ctrl+,"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Open Search
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.open_search}
+                onChange={handleShortcutChange('open_search')}
+                placeholder="Cmd+F; Ctrl+F"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Audio Play
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.audio_play}
+                onChange={handleShortcutChange('audio_play')}
+                placeholder="Cmd+Shift+P; Ctrl+Shift+P"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Audio Pause / Resume
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.audio_toggle_pause}
+                onChange={handleShortcutChange('audio_toggle_pause')}
+                placeholder="Cmd+Shift+Space; Ctrl+Shift+Space"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Audio Stop
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.audio_stop}
+                onChange={handleShortcutChange('audio_stop')}
+                placeholder="Cmd+Shift+S; Ctrl+Shift+S"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Toggle Reading Mode
+              </label>
+              <input
+                type="text"
+                value={shortcutInput.toggle_reading_mode}
+                onChange={handleShortcutChange('toggle_reading_mode')}
+                placeholder="Cmd+Shift+R; Ctrl+Shift+R"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

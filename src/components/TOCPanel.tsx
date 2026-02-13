@@ -69,36 +69,56 @@ export function TOCPanel({
 
   return (
     <aside
-      className="relative bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
+      className="relative bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
-      <div className={`flex items-center justify-between border-b border-gray-200 ${collapsed ? 'p-2' : 'p-4'}`}>
-        {collapsed ? (
-          <span className="text-xs font-semibold text-gray-700">TOC</span>
-        ) : (
-          <h2 className="text-lg font-semibold text-gray-900">Table of Contents</h2>
-        )}
-        <button
-          onClick={onToggleCollapse}
-          className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg
-            viewBox="0 0 20 20"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+      {collapsed ? (
+        <div className="flex items-center justify-center border-b border-gray-200 p-2 flex-shrink-0">
+          <button
+            onClick={onToggleCollapse}
+            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-gray-100 text-gray-600"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
           >
-            {collapsed ? <path d="M8 4l6 6-6 6" /> : <path d="M12 4l-6 6 6 6" />}
-          </svg>
-        </button>
-      </div>
-      <nav className={collapsed ? 'p-1' : 'p-2'}>
+            <svg
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 4l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between border-b border-gray-200 p-4 flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">Table of Contents</h2>
+          <button
+            onClick={onToggleCollapse}
+            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4l-6 6 6 6" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'p-1' : 'p-2'}`}>
         {sections.length === 0 ? (
           <p className={`text-sm text-gray-500 text-center ${collapsed ? 'py-2' : 'py-4'}`}>
             No sections

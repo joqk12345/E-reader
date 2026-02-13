@@ -6,6 +6,7 @@ type NoteRequest = {
   docId?: string;
   paragraphId?: string;
   selectedText: string;
+  noteText?: string;
 } | null;
 
 type NoteItem = {
@@ -61,12 +62,12 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
       docId,
       paragraphId: request.paragraphId,
       selectedText: request.selectedText,
-      noteText: '',
+      noteText: request.noteText || '',
       createdAt: now,
       updatedAt: now,
     };
     setNotes((prev) => [newNote, ...prev]);
-  }, [request?.id, request?.docId, request?.paragraphId, request?.selectedText, selectedDocumentId]);
+  }, [request?.id, request?.docId, request?.paragraphId, request?.selectedText, request?.noteText, selectedDocumentId]);
 
   const currentDocNotes = useMemo(() => {
     if (!selectedDocumentId) return [];
@@ -200,7 +201,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
         )}
         {selectedDocumentId && currentDocNotes.length === 0 && (
           <div className="h-full flex items-center justify-center text-sm text-gray-500">
-            No notes yet. Select text in Reader and click “Take Notes”.
+            No notes yet. Select text in Reader and click “笔记” in the popup toolbar.
           </div>
         )}
         {currentDocNotes.map((note) => (

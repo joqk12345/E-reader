@@ -116,6 +116,7 @@ export const SearchPanel: React.FC = () => {
   const [indexProgress, setIndexProgress] = useState<{ phase: string; done: number; total: number } | null>(null);
   const [showModelDownloadHint, setShowModelDownloadHint] = useState(false);
   const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const queryInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -209,6 +210,16 @@ export const SearchPanel: React.FC = () => {
   useEffect(() => {
     void refreshStatus();
   }, [selectedDocumentId]);
+
+  useEffect(() => {
+    const onFocusSearch = () => {
+      window.setTimeout(() => {
+        queryInputRef.current?.focus();
+      }, 40);
+    };
+    window.addEventListener('reader:focus-search', onFocusSearch as EventListener);
+    return () => window.removeEventListener('reader:focus-search', onFocusSearch as EventListener);
+  }, []);
 
   const runKeywordFallbackSearch = async () => {
     setSearchMode('keyword-fallback');
@@ -396,6 +407,7 @@ export const SearchPanel: React.FC = () => {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-200">
         <textarea
+          ref={queryInputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}

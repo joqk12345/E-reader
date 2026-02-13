@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, type MouseEvent as ReactMouseEvent, Children, cloneElement, isValidElement } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +20,35 @@ type SelectionDraft = {
   selectedText: string;
   style: AnnotationStyle;
   note: string;
+};
+
+type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'highlight' | 'note';
+type SelectionActionMode = 'highlight' | 'note' | null;
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'highlight', 'note'];
+
+const selectionActionLabel: Record<SelectionAction, string> = {
+  ask: '提问',
+  play: '从此朗读',
+  explain: '解释',
+  translate: '翻译',
+  highlight: '划线',
+  note: '做笔记',
+};
+const selectionActionIcon: Record<SelectionAction, string> = {
+  ask: '✦',
+  play: '▶',
+  explain: '⌕',
+  translate: '⟲',
+  highlight: '＿',
+  note: '✎',
+};
+const DEFAULT_SELECTION_POPOVER_WIDTH = 540;
+
+const normalizeSelectionActionOrder = (input: SelectionAction[]): SelectionAction[] => {
+  const dedup = input.filter((item, index) => input.indexOf(item) === index);
+  const valid = dedup.filter((item): item is SelectionAction => ALL_SELECTION_ACTIONS.includes(item));
+  const missing = ALL_SELECTION_ACTIONS.filter((item) => !valid.includes(item));
+  return [...valid, ...missing];
 };
 
 type AudiobookStartEventDetail = {
@@ -190,6 +219,26 @@ export function ReaderContent() {
   const [translationErrors, setTranslationErrors] = useState<Record<string, string>>({});
   const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
+  const [selectionAnchor, setSelectionAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [selectionActionMode, setSelectionActionMode] = useState<SelectionActionMode>(null);
+  const [selectionQuestion, setSelectionQuestion] = useState('');
+  const [isQuestionInputExpanded, setIsQuestionInputExpanded] = useState(false);
+  const [isSelectionMenuOpen, setIsSelectionMenuOpen] = useState(false);
+  const [isSelectionReorderMode, setIsSelectionReorderMode] = useState(false);
+  const [selectionActionOrder, setSelectionActionOrder] = useState<SelectionAction[]>(() => {
+    try {
+      const raw = localStorage.getItem('reader_selection_action_order');
+      if (!raw) return ALL_SELECTION_ACTIONS;
+      const parsed = JSON.parse(raw) as SelectionAction[];
+      return normalizeSelectionActionOrder(parsed);
+    } catch {
+      return ALL_SELECTION_ACTIONS;
+    }
+  });
+  const [pointerSortAction, setPointerSortAction] = useState<SelectionAction | null>(null);
+  const [selectionPopoverOffset, setSelectionPopoverOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [selectionPopoverSize, setSelectionPopoverSize] = useState<{ width: number; height: number }>({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
+  const [ttsConfirmParagraphId, setTtsConfirmParagraphId] = useState<string | null>(null);
   const [isAnnotationPanelOpen, setIsAnnotationPanelOpen] = useState(false);
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
@@ -201,6 +250,9 @@ export function ReaderContent() {
   const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
   const matchedParagraphSet = useRef<Set<string>>(new Set());
+  const popoverDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const popoverResizeRef = useRef<{ startX: number; startY: number; originWidth: number; originHeight: number } | null>(null);
+  const selectionPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -243,33 +295,8 @@ export function ReaderContent() {
     return renderTextWithDecorations(text, effectiveQuery, paragraphAnnotations, keyPrefix);
   };
 
-  const hasActiveTextSelection = () => {
-    const selection = window.getSelection();
-    return Boolean(selection && selection.toString().trim());
-  };
-
-  const shouldIgnoreAudiobookStart = (target: EventTarget | null) => {
-    if (!(target instanceof HTMLElement)) return false;
-    return Boolean(
-      target.closest(
-        'button,a,input,textarea,select,label,[data-annotation-popover="true"],[data-no-audiobook-start="true"]'
-      )
-    );
-  };
-
   const dispatchAudiobookStart = (detail: AudiobookStartEventDetail) => {
     window.dispatchEvent(new CustomEvent<AudiobookStartEventDetail>('reader:audiobook-start', { detail }));
-  };
-
-  const handleStartFromParagraph = (paragraphId: string, event: ReactMouseEvent<HTMLElement>) => {
-    if (shouldIgnoreAudiobookStart(event.target) || hasActiveTextSelection()) return;
-    dispatchAudiobookStart({ paragraphId });
-  };
-
-  const handleStartFromSentence = (sentenceKey: string, event: ReactMouseEvent<HTMLElement>) => {
-    if (shouldIgnoreAudiobookStart(event.target) || hasActiveTextSelection()) return;
-    event.stopPropagation();
-    dispatchAudiobookStart({ sentenceKey });
   };
 
   const clearFlushTimer = () => {
@@ -424,26 +451,38 @@ export function ReaderContent() {
 
   const clearSelectionDraft = () => {
     setSelectionDraft(null);
+    setSelectionAnchor(null);
+    setSelectionActionMode(null);
+    setSelectionQuestion('');
+    setIsQuestionInputExpanded(false);
+    setIsSelectionMenuOpen(false);
+    setIsSelectionReorderMode(false);
+    setPointerSortAction(null);
+    setSelectionPopoverOffset({ x: 0, y: 0 });
+    setSelectionPopoverSize({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
     const selection = window.getSelection();
     selection?.removeAllRanges();
   };
 
   const handleSelectionEnd = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('[data-annotation-popover="true"]')) {
+    if (target?.closest('[data-annotation-popover="true"],[data-selection-popover="true"]')) {
       return;
     }
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
       setSelectionDraft(null);
+      setSelectionAnchor(null);
       return;
     }
     const selectedText = selection.toString().trim();
     if (!selectedText) {
       setSelectionDraft(null);
+      setSelectionAnchor(null);
       return;
     }
     const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
     const origin = range.commonAncestorContainer;
     const baseElement = origin.nodeType === Node.ELEMENT_NODE
       ? (origin as Element)
@@ -452,6 +491,7 @@ export function ReaderContent() {
     const paragraphId = paragraphEl?.getAttribute('data-paragraph-id');
     if (!paragraphId) {
       setSelectionDraft(null);
+      setSelectionAnchor(null);
       return;
     }
 
@@ -461,16 +501,28 @@ export function ReaderContent() {
       style: 'single_underline',
       note: '',
     });
+    setSelectionQuestion('');
+    setIsQuestionInputExpanded(false);
+    setSelectionActionMode(null);
+    setIsSelectionMenuOpen(false);
+    setIsSelectionReorderMode(false);
+    setPointerSortAction(null);
+    setSelectionPopoverOffset({ x: 0, y: 0 });
+    setSelectionPopoverSize({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
+    setSelectionAnchor({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10,
+    });
   };
 
-  const handleCreateAnnotation = async () => {
+  const handleCreateHighlightOnly = async () => {
     if (!selectionDraft) return;
     try {
       const created = await invoke<Annotation>('create_annotation', {
         paragraphId: selectionDraft.paragraphId,
         selectedText: selectionDraft.selectedText,
         style: selectionDraft.style,
-        note: selectionDraft.note,
+        note: '',
       });
       setAnnotationsByParagraph((prev) => {
         const list = prev[created.paragraph_id] || [];
@@ -481,7 +533,7 @@ export function ReaderContent() {
       });
       clearSelectionDraft();
     } catch (err) {
-      console.error('Failed to create annotation:', err);
+      console.error('Failed to create highlight:', err);
     }
   };
 
@@ -507,18 +559,132 @@ export function ReaderContent() {
     clearSelectionDraft();
   };
 
-  const handleTakeNoteSelection = () => {
+  const handleSaveNoteSelection = () => {
     if (!selectionDraft?.selectedText?.trim()) return;
     window.dispatchEvent(
-      new CustomEvent<{ docId?: string; paragraphId?: string; selectedText: string }>('reader:take-note', {
+      new CustomEvent<{ docId?: string; paragraphId?: string; selectedText: string; noteText?: string }>('reader:take-note', {
         detail: {
           docId: selectedDocumentId || undefined,
           paragraphId: selectionDraft.paragraphId,
           selectedText: selectionDraft.selectedText.trim(),
+          noteText: selectionDraft.note.trim() || undefined,
         },
       })
     );
     clearSelectionDraft();
+  };
+
+  const handleTranslateSelection = () => {
+    if (!selectionDraft?.selectedText?.trim()) return;
+    window.dispatchEvent(
+      new CustomEvent<{ selectedText: string; autoRun?: boolean }>('reader:translate-selection', {
+        detail: { selectedText: selectionDraft.selectedText.trim(), autoRun: true },
+      })
+    );
+    clearSelectionDraft();
+  };
+
+  const handleConfirmPlayFromSelection = () => {
+    if (!ttsConfirmParagraphId) return;
+    dispatchAudiobookStart({ paragraphId: ttsConfirmParagraphId });
+    setTtsConfirmParagraphId(null);
+    clearSelectionDraft();
+  };
+
+  const handleAskQuestionFromSelection = () => {
+    const question = selectionQuestion.trim();
+    if (!question) return;
+    window.dispatchEvent(
+      new CustomEvent<{ question: string }>('reader:chat-question', {
+        detail: { question },
+      })
+    );
+    clearSelectionDraft();
+  };
+
+  const handleSelectionAction = (action: SelectionAction) => {
+    if (!selectionDraft) return;
+    if (action === 'ask') {
+      setIsQuestionInputExpanded(true);
+      return;
+    }
+    if (action === 'play') {
+      setTtsConfirmParagraphId(selectionDraft.paragraphId);
+      return;
+    }
+    if (action === 'explain') {
+      handleExplainSelection();
+      return;
+    }
+    if (action === 'translate') {
+      handleTranslateSelection();
+      return;
+    }
+    if (action === 'highlight') {
+      setSelectionActionMode('highlight');
+      return;
+    }
+    if (action === 'note') {
+      setSelectionActionMode('note');
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem('reader_selection_action_order', JSON.stringify(selectionActionOrder));
+  }, [selectionActionOrder]);
+
+  useEffect(() => {
+    const normalized = normalizeSelectionActionOrder(selectionActionOrder);
+    if (normalized.join('|') !== selectionActionOrder.join('|')) {
+      setSelectionActionOrder(normalized);
+    }
+  }, [selectionActionOrder]);
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      if (popoverDragRef.current) {
+        const dx = event.clientX - popoverDragRef.current.startX;
+        const dy = event.clientY - popoverDragRef.current.startY;
+        setSelectionPopoverOffset({
+          x: popoverDragRef.current.originX + dx,
+          y: popoverDragRef.current.originY + dy,
+        });
+      }
+      if (popoverResizeRef.current) {
+        const dx = event.clientX - popoverResizeRef.current.startX;
+        const dy = event.clientY - popoverResizeRef.current.startY;
+        setSelectionPopoverSize({
+          width: Math.max(420, popoverResizeRef.current.originWidth + dx),
+          height: Math.max(180, popoverResizeRef.current.originHeight + dy),
+        });
+      }
+    };
+    const onPointerUp = () => {
+      popoverDragRef.current = null;
+      popoverResizeRef.current = null;
+      setPointerSortAction(null);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, []);
+
+  const reorderSelectionActions = (from: SelectionAction, to: SelectionAction) => {
+    if (from === to) return;
+    setSelectionActionOrder((prev) => {
+      const fromIndex = prev.indexOf(from);
+      const toIndex = prev.indexOf(to);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      const next = [...prev];
+      next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, from);
+      return next;
+    });
   };
 
   // 跟随当前朗读句子自动滚动
@@ -621,6 +787,7 @@ export function ReaderContent() {
               批注与划线 ({allAnnotations.length})
             </button>
           </div>
+          <div className="mb-3 text-xs text-slate-500">提示：选中文本后使用弹出操作栏触发“从此朗读”。</div>
           <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
             const sentences = splitIntoSentences(paragraph.text);
@@ -650,7 +817,6 @@ export function ReaderContent() {
                   ref={(el) => {
                     paragraphRefs.current[paragraph.id] = el;
                   }}
-                  onClick={(event) => handleStartFromParagraph(paragraph.id, event)}
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
                     focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
@@ -763,7 +929,6 @@ export function ReaderContent() {
                           ref={(el) => {
                             sentenceRefs.current[key] = el;
                           }}
-                          onClick={(event) => handleStartFromSentence(key, event)}
                           className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
                           style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
                         >
@@ -801,62 +966,268 @@ export function ReaderContent() {
         </>
         )}
       </div>
-      {selectionDraft && (
+      {selectionDraft && selectionAnchor && (
         <div
-          data-annotation-popover="true"
-          className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 shadow-xl"
+          ref={selectionPopoverRef}
+          data-selection-popover="true"
+          className="fixed z-50 -translate-x-1/2 rounded-xl border border-slate-300 bg-white p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
+          style={{
+            left: `${Math.max(36, Math.min(selectionAnchor.x + selectionPopoverOffset.x, window.innerWidth - 36))}px`,
+            top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
+            width: `${Math.min(selectionPopoverSize.width, Math.floor(window.innerWidth * 0.92))}px`,
+            height:
+              selectionPopoverSize.height > 0
+                ? `${Math.min(selectionPopoverSize.height, Math.floor(window.innerHeight * 0.72))}px`
+                : undefined,
+            maxHeight: '72vh',
+          }}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
         >
-          <p className="mb-2 line-clamp-2 text-xs text-gray-600">“{selectionDraft.selectedText}”</p>
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-50 to-zinc-50 px-2 py-1.5 shadow-sm backdrop-blur">
             <button
-              onClick={handleExplainSelection}
-              className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-800 hover:bg-gray-50"
+              className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100"
+              title="拖拽移动弹框"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                popoverDragRef.current = {
+                  startX: event.clientX,
+                  startY: event.clientY,
+                  originX: selectionPopoverOffset.x,
+                  originY: selectionPopoverOffset.y,
+                };
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'grabbing';
+              }}
             >
-              Explain
+              ⋮⋮
             </button>
-            <button
-              onClick={handleTakeNoteSelection}
-              className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-800 hover:bg-gray-50"
-            >
-              Take Notes
-            </button>
-          </div>
-          <div className="mb-2 flex items-center gap-2">
-            {annotationStyleOrder.map((style) => (
-              <button
-                key={style}
-                onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
-                className={`rounded border px-2 py-1 text-xs ${
-                  selectionDraft.style === style
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                }`}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            {selectionActionOrder.map((action) => (
+              <div
+                key={action}
+                className="shrink-0"
+                onPointerDown={(e) => {
+                  if (!isSelectionReorderMode || e.button !== 0) return;
+                  e.preventDefault();
+                  setPointerSortAction(action);
+                  document.body.style.userSelect = 'none';
+                }}
+                onPointerEnter={() => {
+                  if (!isSelectionReorderMode || !pointerSortAction) return;
+                  if (pointerSortAction === action) return;
+                  reorderSelectionActions(pointerSortAction, action);
+                  setPointerSortAction(action);
+                }}
               >
-                {annotationStyleLabel[style]}
-              </button>
+                {action === 'ask' && !isSelectionReorderMode && isQuestionInputExpanded ? (
+                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-slate-300 bg-white px-3">
+                    <input
+                      autoFocus
+                      value={selectionQuestion}
+                      onChange={(e) => setSelectionQuestion(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAskQuestionFromSelection();
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
+                      }}
+                      placeholder="输入问题后回车"
+                      className="w-full bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={handleAskQuestionFromSelection}
+                      disabled={!selectionQuestion.trim()}
+                      className="shrink-0 whitespace-nowrap rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-[12px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      提交
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (isSelectionReorderMode) return;
+                      handleSelectionAction(action);
+                    }}
+                    className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[12px] font-medium transition ${
+                      isSelectionReorderMode
+                        ? pointerSortAction === action
+                          ? 'cursor-grabbing border-slate-400 bg-slate-200 text-slate-800'
+                          : 'cursor-grab border-slate-300 bg-slate-100 text-slate-700'
+                        : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-1.5 align-middle">
+                      <span className="text-[11px] text-slate-500">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
+                      <span>{selectionActionLabel[action]}</span>
+                    </span>
+                  </button>
+                )}
+              </div>
             ))}
-          </div>
-          <textarea
-            value={selectionDraft.note}
-            onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
-            placeholder="批注内容（可选）"
-            rows={3}
-            className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <div className="flex justify-end gap-2">
-            <button onClick={clearSelectionDraft} className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700">
-              取消
-            </button>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
+                className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+                title="更多操作"
+              >
+                ▾
+              </button>
+              {isSelectionMenuOpen && (
+                <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-slate-300 bg-white p-1.5 shadow-lg">
+                  <button
+                    onClick={() => {
+                      setIsQuestionInputExpanded(false);
+                      setIsSelectionReorderMode((prev) => !prev);
+                      setIsSelectionMenuOpen(false);
+                    }}
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                  >
+                    {isSelectionReorderMode ? '完成调整顺序' : '调整顺序'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectionActionOrder(ALL_SELECTION_ACTIONS);
+                      setIsSelectionReorderMode(false);
+                      setIsSelectionMenuOpen(false);
+                    }}
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                  >
+                    恢复默认顺序
+                  </button>
+                </div>
+              )}
+            </div>
             <button
-              onClick={() => void handleCreateAnnotation()}
-              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+              onClick={clearSelectionDraft}
+              className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+              title="关闭"
             >
-              添加批注
+              ×
             </button>
+          </div>
+          {isSelectionReorderMode && (
+            <p className="mb-1.5 text-[10px] text-slate-500">排序模式：拖拽上方功能按钮调整顺序，点击菜单可完成。</p>
+          )}
+          <p className="mb-1.5 line-clamp-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
+            “{selectionDraft.selectedText}”
+          </p>
+          {selectionActionMode === 'highlight' && (
+            <>
+              <div className="mb-2 flex items-center gap-2 flex-wrap">
+                {annotationStyleOrder.map((style) => (
+                  <button
+                    key={style}
+                    onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
+                    className={`rounded border px-2 py-1 text-xs ${
+                      selectionDraft.style === style
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    {annotationStyleLabel[style]}
+                  </button>
+                ))}
+              </div>
+              <div className="mb-2 flex justify-end gap-2">
+                <button
+                  onClick={() => setSelectionActionMode(null)}
+                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                >
+                  返回
+                </button>
+                <button
+                  onClick={() => void handleCreateHighlightOnly()}
+                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                >
+                  保存划线
+                </button>
+              </div>
+            </>
+          )}
+          {selectionActionMode === 'note' && (
+            <>
+              <textarea
+                value={selectionDraft.note}
+                onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
+                placeholder="输入笔记内容（可选）"
+                rows={3}
+                className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="mb-2 flex justify-end gap-2">
+                <button
+                  onClick={() => setSelectionActionMode(null)}
+                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                >
+                  返回
+                </button>
+                <button
+                  onClick={handleSaveNoteSelection}
+                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                >
+                  保存笔记
+                </button>
+              </div>
+            </>
+          )}
+          <div
+            className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-slate-400"
+            title="拖拽拉伸弹框"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.stopPropagation();
+              const rect = selectionPopoverRef.current?.getBoundingClientRect();
+              popoverResizeRef.current = {
+                startX: event.clientX,
+                startY: event.clientY,
+                originWidth: rect?.width ?? selectionPopoverSize.width,
+                originHeight: rect?.height ?? 260,
+              };
+              document.body.style.userSelect = 'none';
+              document.body.style.cursor = 'nwse-resize';
+            }}
+          >
+            ◢
           </div>
         </div>
+      )}
+      {ttsConfirmParagraphId && (
+        <>
+          <div
+            data-selection-popover="true"
+            className="fixed inset-0 z-50 bg-black/30"
+            onClick={() => setTtsConfirmParagraphId(null)}
+          />
+          <div
+            data-selection-popover="true"
+            className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white p-4 shadow-2xl"
+          >
+            <h4 className="text-sm font-semibold text-gray-900">从这里开始朗读？</h4>
+            <p className="mt-2 text-xs text-gray-600">将从当前选中文本所在段落开始播放 TTS。</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setTtsConfirmParagraphId(null)}
+                className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmPlayFromSelection}
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+              >
+                开始朗读
+              </button>
+            </div>
+          </div>
+        </>
       )}
       {isAnnotationPanelOpen && (
         <>

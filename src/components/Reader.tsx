@@ -41,6 +41,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
   const [windowMaximized, setWindowMaximized] = useState(false);
   const [toolCollapsed, setToolCollapsed] = useState(false);
   const [toolWidth, setToolWidth] = useState(320);
+  const [readingMode, setReadingMode] = useState(false);
   const minTocWidth = 200;
   const maxTocWidth = 420;
   const minToolWidth = 280;
@@ -126,6 +127,28 @@ export function Reader({ onOpenSettings }: ReaderProps) {
       } else if (matchesAnyShortcut(event, keymap.prev_page)) {
         event.preventDefault();
         handleFlipPage('prev');
+      } else if (matchesAnyShortcut(event, keymap.toggle_reading_mode)) {
+        event.preventDefault();
+        setReadingMode((prev) => !prev);
+      } else if (matchesAnyShortcut(event, keymap.open_search)) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent('reader:open-search'));
+        window.dispatchEvent(new CustomEvent('reader:focus-search'));
+      } else if (matchesAnyShortcut(event, keymap.audio_play)) {
+        event.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('reader:audiobook-control', { detail: { action: 'play' } })
+        );
+      } else if (matchesAnyShortcut(event, keymap.audio_toggle_pause)) {
+        event.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('reader:audiobook-control', { detail: { action: 'toggle-pause' } })
+        );
+      } else if (matchesAnyShortcut(event, keymap.audio_stop)) {
+        event.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('reader:audiobook-control', { detail: { action: 'stop' } })
+        );
       }
     };
 
@@ -137,10 +160,12 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     const onNextPage = () => handleFlipPage('next');
     const onPrevPage = () => handleFlipPage('prev');
     const onToggleHeaderTools = () => setHeaderToolsCollapsed((prev) => !prev);
+    const onToggleReadingMode = () => setReadingMode((prev) => !prev);
 
     window.addEventListener('reader:next-page', onNextPage as EventListener);
     window.addEventListener('reader:prev-page', onPrevPage as EventListener);
     window.addEventListener('reader:toggle-header-tools', onToggleHeaderTools as EventListener);
+    window.addEventListener('reader:toggle-reading-mode', onToggleReadingMode as EventListener);
 
     return () => {
       window.removeEventListener('reader:next-page', onNextPage as EventListener);
@@ -148,6 +173,10 @@ export function Reader({ onOpenSettings }: ReaderProps) {
       window.removeEventListener(
         'reader:toggle-header-tools',
         onToggleHeaderTools as EventListener
+      );
+      window.removeEventListener(
+        'reader:toggle-reading-mode',
+        onToggleReadingMode as EventListener
       );
     };
   }, [handleFlipPage]);
@@ -196,6 +225,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
 
   return (
     <div className="h-screen flex flex-col bg-white">
+      {!readingMode && (
       <header
         className={`flex items-center justify-between px-6 border-b border-gray-200 bg-white transition-all ${headerPaddingClass}`}
       >
@@ -245,12 +275,22 @@ export function Reader({ onOpenSettings }: ReaderProps) {
           </button>
         </div>
       </header>
+      )}
       <div className="flex-1 flex overflow-hidden">
-        <TOCPanel {...tocPanelProps} />
+        {!readingMode && <TOCPanel {...tocPanelProps} />}
         <ReaderContent />
-        <ToolPanel {...toolPanelProps} />
+        {!readingMode && <ToolPanel {...toolPanelProps} />}
       </div>
       <FloatingAudiobookControl />
+      {readingMode && (
+        <button
+          onClick={() => setReadingMode(false)}
+          className="fixed top-3 right-3 z-40 rounded-full border border-gray-300 bg-white/90 px-3 py-1.5 text-xs text-gray-700 shadow hover:bg-white"
+          title="Exit reading mode"
+        >
+          Exit Reading Mode
+        </button>
+      )}
     </div>
   );
 }
