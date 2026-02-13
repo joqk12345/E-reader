@@ -12,6 +12,13 @@ type TtsAudioResponse = {
   provider: string;
 };
 
+type TtsVoice = {
+  provider: string;
+  language: string;
+  id: string;
+  name: string;
+};
+
 type AudiobookControlAction = 'play' | 'toggle-pause' | 'stop';
 
 type AudiobookControlEventDetail = {
@@ -58,6 +65,7 @@ export const AudiobookPanel: React.FC = () => {
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [readTarget, setReadTarget] = useState<ReadTarget>('source');
   const [voice, setVoice] = useState('');
+  const [voices, setVoices] = useState<TtsVoice[]>([]);
   const [rate, setRate] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -97,6 +105,52 @@ export const AudiobookPanel: React.FC = () => {
     sentences.forEach((item, index) => map.set(item.key, index));
     return map;
   }, [sentences]);
+
+  const dominantSourceLang = useMemo<TargetLang>(() => {
+    let zh = 0;
+    let en = 0;
+    for (const item of sentences) {
+      if (detectLang(item.sourceText) === 'zh') zh += 1;
+      else en += 1;
+    }
+    return zh > en ? 'zh' : 'en';
+  }, [sentences]);
+
+  const activeVoiceLang = useMemo<TargetLang>(() => {
+    if (readTarget === 'source') return dominantSourceLang;
+    if (translationMode === 'en-zh') return 'zh';
+    if (translationMode === 'zh-en') return 'en';
+    return dominantSourceLang === 'zh' ? 'en' : 'zh';
+  }, [readTarget, translationMode, dominantSourceLang]);
+
+  const voiceProvider = ttsProvider === 'auto' ? 'edge' : ttsProvider;
+
+  const voiceOptions = useMemo(() => {
+    return voices.filter((item) => item.provider === voiceProvider && item.language === activeVoiceLang);
+  }, [voices, voiceProvider, activeVoiceLang]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadVoices = async () => {
+      try {
+        const result = await invoke<TtsVoice[]>('list_tts_voices');
+        if (cancelled) return;
+        setVoices(result);
+      } catch (err) {
+        console.error('Failed to load TTS voices:', err);
+      }
+    };
+    void loadVoices();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!voice) return;
+    if (voiceOptions.some((item) => item.id === voice)) return;
+    setVoice('');
+  }, [voice, voiceOptions]);
 
   const stopPlayback = (invalidateSession = true) => {
     if (invalidateSession) {
@@ -409,14 +463,21 @@ export const AudiobookPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Voice (optional)</label>
-          <input
-            type="text"
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Voice ({activeVoiceLang === 'zh' ? '中文' : 'English'})
+          </label>
+          <select
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
-            placeholder="e.g. cosyvoice-default"
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
+          >
+            <option value="">Auto</option>
+            {voiceOptions.map((item) => (
+              <option key={`${item.provider}-${item.id}`} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

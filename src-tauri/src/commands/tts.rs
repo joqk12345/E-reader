@@ -31,26 +31,146 @@ pub struct TtsVoice {
 
 #[tauri::command]
 pub async fn list_tts_voices() -> Result<Vec<TtsVoice>> {
-    let mut voices = Vec::new();
-    voices.push(TtsVoice {
-        provider: "edge".to_string(),
-        language: "en".to_string(),
-        id: "en-US-AriaNeural".to_string(),
-        name: "Aria (English)".to_string(),
-    });
-    voices.push(TtsVoice {
-        provider: "edge".to_string(),
-        language: "zh".to_string(),
-        id: "zh-CN-XiaoxiaoNeural".to_string(),
-        name: "Xiaoxiao (中文)".to_string(),
-    });
-    voices.push(TtsVoice {
-        provider: "cosyvoice".to_string(),
-        language: "zh".to_string(),
-        id: "cosyvoice-default".to_string(),
-        name: "CosyVoice Default".to_string(),
-    });
-    Ok(voices)
+    Ok(vec![
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-AriaNeural".to_string(),
+            name: "Aria (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-GuyNeural".to_string(),
+            name: "Guy (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-JennyNeural".to_string(),
+            name: "Jenny (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-DavisNeural".to_string(),
+            name: "Davis (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-SaraNeural".to_string(),
+            name: "Sara (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-US-TonyNeural".to_string(),
+            name: "Tony (US)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-GB-SoniaNeural".to_string(),
+            name: "Sonia (UK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-GB-RyanNeural".to_string(),
+            name: "Ryan (UK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-GB-LibbyNeural".to_string(),
+            name: "Libby (UK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-GB-MaisieNeural".to_string(),
+            name: "Maisie (UK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-GB-ThomasNeural".to_string(),
+            name: "Thomas (UK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-AU-NatashaNeural".to_string(),
+            name: "Natasha (AU)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-AU-WilliamNeural".to_string(),
+            name: "William (AU)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-CA-ClaraNeural".to_string(),
+            name: "Clara (CA)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "en".to_string(),
+            id: "en-CA-LiamNeural".to_string(),
+            name: "Liam (CA)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-CN-XiaoxiaoNeural".to_string(),
+            name: "Xiaoxiao (CN)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-CN-YunxiNeural".to_string(),
+            name: "Yunxi (CN)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-CN-YunjianNeural".to_string(),
+            name: "Yunjian (CN)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-CN-XiaoyiNeural".to_string(),
+            name: "Xiaoyi (CN)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-CN-YunyangNeural".to_string(),
+            name: "Yunyang (CN)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-HK-HiuMaanNeural".to_string(),
+            name: "HiuMaan (HK)".to_string(),
+        },
+        TtsVoice {
+            provider: "edge".to_string(),
+            language: "zh".to_string(),
+            id: "zh-HK-WanLungNeural".to_string(),
+            name: "WanLung (HK)".to_string(),
+        },
+        TtsVoice {
+            provider: "cosyvoice".to_string(),
+            language: "zh".to_string(),
+            id: "cosyvoice-default".to_string(),
+            name: "CosyVoice Default".to_string(),
+        },
+    ])
 }
 
 #[tauri::command]

@@ -91,6 +91,8 @@
   - Edge TTS command stability fixes (`--file` input instead of direct `--text`)
   - optional Edge proxy setting (`edge_tts_proxy`)
   - better fallback/error handling for network/voice/no-audio scenarios
+  - Edge TTS voice dropdown in Audiobook panel with expanded presets (US/UK/AU/CA English + CN/HK Chinese)
+  - voice options are filtered by current reading language to reduce mismatch failures
   - reading highlight and auto-follow during playback
   - Markdown marker cleanup before TTS (avoid reading symbols like `*`).
   - CosyVoice supports custom `voice` + `speed` controls from Audiobook panel
@@ -236,7 +238,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - `Take Notes`: append selection to `Notes` tab under current document
 - **Text-to-Speech**: Use the Audiobook panel to listen to content
   - Click the **Audiobook** tab in the right sidebar
-  - Select provider, `voice` (optional), and playback speed
+  - Select provider, then choose voice from dropdown (`Auto` or specific accent/speaker), and playback speed
   - You can click sentence/paragraph text in Reader to start from that location
   - Click **Play** to start listening
   - Reader auto-scrolls and highlights currently reading content
