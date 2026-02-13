@@ -470,8 +470,45 @@ reader/
 │   │   ├── search/        # Semantic search
 │   │   └── mcp/           # MCP server implementation
 │   └── ...
+├── .claude/               # Claude Code project constraints & workflows
+│   ├── rules/             # Automatic loading hard constraints (coding standards, verification steps)
+│   ├── commands/          # Reusable slash command process templates
+│   └── settings.json      # Shared team preferences & permissions
 ├── .github/workflows/     # CI/CD configurations
-└── scripts/               # Utility scripts
+├── scripts/               # Utility scripts
+└── .mcp.json              # MCP (Model Context Protocol) server configuration
+```
+
+### Development Tools & Workflow
+
+#### Claude Code Integration
+
+Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程和约束：
+
+**Key Features:**
+- 内置开发流程模板（`.claude/commands/`）
+- 编码规范和验证步骤（`.claude/rules/`）
+- 项目级设置（`.claude/settings.json`）
+- 支持 MCP（Model Context Protocol）服务器
+
+**Usage:**
+```bash
+# 使用 Claude Code 进行开发约束检查
+# 自动遵循项目规则和最佳实践
+```
+
+#### MCP (Model Context Protocol)
+
+项目配置了 MCP 服务器，支持与外部 AI 助手集成：
+
+**Configured Servers:**
+- `tauri`: Tauri MCP 服务器，提供应用状态和操作访问
+- `codex`: Codex CLI 集成
+- `chrome-devtools`: Chrome DevTools 集成
+
+**Usage:**
+```bash
+# 启动 MCP 服务器（自动通过 .mcp.json 配置）
 ```
 
 ### Running Tests
