@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": []
+  },
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "enabledMcpjsonServers": [
+    "codex",
+    "tauri",
+    "chrome-devtools"
+  ],
+  "enableAllProjectMcpServers": true
+}
