@@ -187,6 +187,7 @@ export function ReaderContent() {
     searchMatchedParagraphIds,
   } = useStore();
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [translationErrors, setTranslationErrors] = useState<Record<string, string>>({});
   const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
   const [isAnnotationPanelOpen, setIsAnnotationPanelOpen] = useState(false);
@@ -200,6 +201,27 @@ export function ReaderContent() {
   const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
   const matchedParagraphSet = useRef<Set<string>>(new Set());
+
+  const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const invokeTranslateWithRetry = async (
+    text: string,
+    targetLang: 'zh' | 'en',
+    attempts = 2
+  ): Promise<string> => {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await invoke<string>('translate', { text, targetLang });
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) {
+          await delay(350 * attempt);
+        }
+      }
+    }
+    throw lastError;
+  };
 
   useEffect(() => {
     matchedParagraphSet.current = new Set(searchMatchedParagraphIds);
@@ -276,15 +298,20 @@ export function ReaderContent() {
     const targetLang = translationMode === 'zh-en' ? 'en' : 'zh';
     inFlightRef.current.add(key);
     try {
-      const result = await invoke<string>('translate', {
-        text: sentence,
-        targetLang,
-      });
+      const result = await invokeTranslateWithRetry(sentence, targetLang, 2);
       translationsRef.current[key] = result;
       pendingPatchRef.current[key] = result;
+      setTranslationErrors((prev) => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
       scheduleFlushTranslations();
     } catch (error) {
       console.error('Failed to translate sentence:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      setTranslationErrors((prev) => ({ ...prev, [key]: message }));
     } finally {
       inFlightRef.current.delete(key);
     }
@@ -294,6 +321,10 @@ export function ReaderContent() {
   const handleTranslateSentence = async (paragraphId: string, sentence: string, index: number) => {
     const key = `${paragraphId}_${index}`;
     await translateSentence(key, sentence);
+  };
+
+  const handleTranslateMarkdownParagraph = async (paragraphId: string, text: string) => {
+    await translateSentence(markdownTranslationKey(paragraphId), text);
   };
 
   // 自动翻译当前章节所有句子（开启双语时）
@@ -325,7 +356,7 @@ export function ReaderContent() {
 
     if (pending.length === 0) return;
 
-    const maxConcurrency = 3;
+    const maxConcurrency = currentDocumentType === 'markdown' ? 1 : 3;
     const runWorker = async () => {
       while (pending.length > 0 && !cancelled) {
         const item = pending.shift();
@@ -353,6 +384,7 @@ export function ReaderContent() {
     translationsRef.current = {};
     inFlightRef.current.clear();
     setTranslations({});
+    setTranslationErrors({});
   }, [currentSectionId, translationMode]);
 
   useEffect(() => {
@@ -690,7 +722,21 @@ export function ReaderContent() {
                               {translations[markdownTranslationKey(paragraph.id)]}
                             </ReactMarkdown>
                           </div>
-                        ) : null}
+                        ) : (
+                          <div className="flex items-center gap-2 py-1">
+                            <button
+                              onClick={() => void handleTranslateMarkdownParagraph(paragraph.id, paragraph.text)}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
+                            </button>
+                            {translationErrors[markdownTranslationKey(paragraph.id)] && (
+                              <span className="text-xs text-red-600">
+                                {translationErrors[markdownTranslationKey(paragraph.id)]}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

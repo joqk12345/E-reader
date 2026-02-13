@@ -32,6 +32,27 @@ type AudiobookStateEventDetail = {
   queueSize: number;
 };
 
+const toSpeakableText = (input: string): string => {
+  return sanitizeText(
+    input
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      .replace(/<https?:\/\/[^>\s]+>/gi, ' ')
+      .replace(/\bhttps?:\/\/[^\s)\]>]+/gi, ' ')
+      .replace(/\bwww\.[^\s)\]>]+/gi, ' ')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^\s{0,3}>\s?/gm, '')
+      .replace(/^\s*[-*+]\s+/gm, '')
+      .replace(/^\s*\d+\.\s+/gm, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      .replace(/[*_~|]/g, ' ')
+  );
+};
+
 export const AudiobookPanel: React.FC = () => {
   const { paragraphs, translationMode, setCurrentReadingSentenceKey } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
@@ -53,7 +74,7 @@ export const AudiobookPanel: React.FC = () => {
 
   const sentences = useMemo(() => {
     const isSpeakableSentence = (text: string): boolean => {
-      const t = text.trim();
+      const t = toSpeakableText(text).trim();
       if (!t) return false;
       return /[A-Za-z0-9\u4e00-\u9fff]/.test(t);
     };
@@ -120,24 +141,6 @@ export const AudiobookPanel: React.FC = () => {
     if (translationMode === 'en-zh') return 'zh';
     if (translationMode === 'zh-en') return 'en';
     return detectLang(sourceText) === 'zh' ? 'en' : 'zh';
-  };
-
-  const toSpeakableText = (input: string): string => {
-    return sanitizeText(
-      input
-      .replace(/```[\s\S]*?```/g, ' ')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^\s{0,3}>\s?/gm, '')
-      .replace(/^\s*[-*+]\s+/gm, '')
-      .replace(/^\s*\d+\.\s+/gm, '')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/__([^_]+)__/g, '$1')
-      .replace(/_([^_]+)_/g, '$1')
-      .replace(/[*_~|]/g, ' ')
-    );
   };
 
   const resolveSentenceForReading = async (sourceSentence: string): Promise<{ text: string; lang: TargetLang }> => {
