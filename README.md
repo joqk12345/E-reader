@@ -497,6 +497,35 @@ Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程
 # 自动遵循项目规则和最佳实践
 ```
 
+#### Hooks 开发助手
+
+项目配置了 Claude Code 开发钩子（Hooks），提供智能提示词优化功能：
+
+**prompt 优化钩子 (`refine_prompt.mjs`)**:
+- **功能**：自动优化用户输入的提示词，提高与 Claude Code 的协作效率
+- **触发方式**：在输入前添加前缀 `::` 或 `>>`（支持中文冒号）
+  - `:: 把这个函数改成异步的`
+  - `>> make the thing work better`
+- **优化逻辑**：
+  - 使用腾讯 Hunyuan-MT-7B 模型进行专业翻译
+  - 保留原始意图，不添加/删除需求
+  - 自动识别语言类型，避免语言混合问题
+  - 保留技术术语，保持原意的同时优化表达
+  - 使用祈使语气，明确范围
+  - 移除冗余词汇
+  - 支持中英文输入
+- **结果**：优化后的提示词会自动复制到剪贴板，粘贴后即可发送
+
+**翻译功能配置**：
+- 使用硅基流动 API：`https://api.siliconflow.cn/v1/chat/completions`
+- 模型：tencent/Hunyuan-MT-7B（专业翻译模型）
+- 支持环境变量配置：`SILICONFLOW_APPKEY`
+
+**工作原理**：
+- 钩子配置在 `.claude/settings.json` 中（UserPromptSubmit 类型）
+- 自动加载项目上下文（project-context.txt）提供领域知识
+- 使用 pbcopy 自动复制到剪贴板（支持 macOS）
+
 #### MCP (Model Context Protocol)
 
 项目配置了 MCP 服务器，支持与外部 AI 助手集成：
