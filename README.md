@@ -10,7 +10,8 @@
 ## 🆕 Recent Updates (2026-02)
 
 - **Focused Reading Mode (new)**:
-  - one-click hide of header + TOC + right tool panel for distraction-free reading
+  - one-click collapse of header tools + TOC + right tool panel for distraction-free reading
+  - exits reading mode by restoring the previous collapse/expand state
   - supports shortcut toggle (`Cmd/Ctrl+Shift+R`) and quick exit button
 - **Shortcut system expanded and configurable**:
   - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`
@@ -20,9 +21,13 @@
   - all above bindings are editable in Settings and persisted in keymap config
 - **Selection action toolbar redesigned**:
   - selecting text now opens a movable/resizable action popover near selection anchor
-  - actions include: `Ask`, `Play from here`, `Explain`, `Translate`, `Highlight`, `Note`
+  - actions include: `Ask`, `Play from here`, `Explain`, `Translate`, `Copy`, `Highlight`, `Note`
   - action order can be drag-sorted and is persisted in local storage
   - `Play from here` now has explicit confirmation dialog before TTS starts
+- **TTS sentence-follow accuracy improvements (Markdown)**:
+  - TTS sentence queue and UI sentence matching now use the same markdown-to-speakable normalization path
+  - sentence key parsing is hardened for paragraph ids containing underscores
+  - markdown reading highlight now uses DOM-range marking (`mark[data-reading-sentence]`) for better cross-node matching (including links)
 - **Selection-to-tool workflow upgrades**:
   - `Ask` sends question to Chat tab directly from selection popover
   - `Translate` switches to Translate tab and can auto-run on selected text

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useStore } from '../store/useStore';
 import { matchesAnyShortcut } from '../utils/shortcuts';
@@ -42,6 +42,11 @@ export function Reader({ onOpenSettings }: ReaderProps) {
   const [toolCollapsed, setToolCollapsed] = useState(false);
   const [toolWidth, setToolWidth] = useState(320);
   const [readingMode, setReadingMode] = useState(false);
+  const readingModeSnapshotRef = useRef<{
+    headerToolsCollapsed: boolean;
+    tocCollapsed: boolean;
+    toolCollapsed: boolean;
+  } | null>(null);
   const minTocWidth = 200;
   const maxTocWidth = 420;
   const minToolWidth = 280;
@@ -118,6 +123,37 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     ]
   );
 
+  const applyReadingMode = useCallback(
+    (enabled: boolean) => {
+      if (enabled) {
+        if (!readingModeSnapshotRef.current) {
+          readingModeSnapshotRef.current = {
+            headerToolsCollapsed,
+            tocCollapsed,
+            toolCollapsed,
+          };
+        }
+        setHeaderToolsCollapsed(true);
+        setTocCollapsed(true);
+        setToolCollapsed(true);
+      } else {
+        const snapshot = readingModeSnapshotRef.current;
+        if (snapshot) {
+          setHeaderToolsCollapsed(snapshot.headerToolsCollapsed);
+          setTocCollapsed(snapshot.tocCollapsed);
+          setToolCollapsed(snapshot.toolCollapsed);
+          readingModeSnapshotRef.current = null;
+        }
+      }
+      setReadingMode(enabled);
+    },
+    [headerToolsCollapsed, tocCollapsed, toolCollapsed]
+  );
+
+  const toggleReadingMode = useCallback(() => {
+    applyReadingMode(!readingMode);
+  }, [applyReadingMode, readingMode]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
@@ -129,7 +165,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
         handleFlipPage('prev');
       } else if (matchesAnyShortcut(event, keymap.toggle_reading_mode)) {
         event.preventDefault();
-        setReadingMode((prev) => !prev);
+        toggleReadingMode();
       } else if (matchesAnyShortcut(event, keymap.open_search)) {
         event.preventDefault();
         window.dispatchEvent(new CustomEvent('reader:open-search'));
@@ -154,13 +190,13 @@ export function Reader({ onOpenSettings }: ReaderProps) {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [handleFlipPage, keymap]);
+  }, [handleFlipPage, keymap, toggleReadingMode]);
 
   useEffect(() => {
     const onNextPage = () => handleFlipPage('next');
     const onPrevPage = () => handleFlipPage('prev');
     const onToggleHeaderTools = () => setHeaderToolsCollapsed((prev) => !prev);
-    const onToggleReadingMode = () => setReadingMode((prev) => !prev);
+    const onToggleReadingMode = () => toggleReadingMode();
 
     window.addEventListener('reader:next-page', onNextPage as EventListener);
     window.addEventListener('reader:prev-page', onPrevPage as EventListener);
@@ -179,7 +215,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
         onToggleReadingMode as EventListener
       );
     };
-  }, [handleFlipPage]);
+  }, [handleFlipPage, toggleReadingMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,7 +261,6 @@ export function Reader({ onOpenSettings }: ReaderProps) {
 
   return (
     <div className="h-screen flex flex-col bg-white">
-      {!readingMode && (
       <header
         className={`flex items-center justify-between px-6 border-b border-gray-200 bg-white transition-all ${headerPaddingClass}`}
       >
@@ -275,16 +310,15 @@ export function Reader({ onOpenSettings }: ReaderProps) {
           </button>
         </div>
       </header>
-      )}
       <div className="flex-1 flex overflow-hidden">
-        {!readingMode && <TOCPanel {...tocPanelProps} />}
+        <TOCPanel {...tocPanelProps} />
         <ReaderContent />
-        {!readingMode && <ToolPanel {...toolPanelProps} />}
+        <ToolPanel {...toolPanelProps} />
       </div>
       <FloatingAudiobookControl />
       {readingMode && (
         <button
-          onClick={() => setReadingMode(false)}
+          onClick={() => applyReadingMode(false)}
           className="fixed top-3 right-3 z-40 rounded-full border border-gray-300 bg-white/90 px-3 py-1.5 text-xs text-gray-700 shadow hover:bg-white"
           title="Exit reading mode"
         >

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
-import { detectLang, sanitizeText, splitIntoSentences, type TargetLang } from '../utils/sentences';
+import { detectLang, splitIntoSentences, toSpeakableText, type TargetLang } from '../utils/sentences';
 
 type TtsProvider = 'auto' | 'edge' | 'cosyvoice';
 type ReadTarget = 'source' | 'translation';
@@ -39,29 +39,8 @@ type AudiobookStateEventDetail = {
   queueSize: number;
 };
 
-const toSpeakableText = (input: string): string => {
-  return sanitizeText(
-    input
-      .replace(/```[\s\S]*?```/g, ' ')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-      .replace(/<https?:\/\/[^>\s]+>/gi, ' ')
-      .replace(/\bhttps?:\/\/[^\s)\]>]+/gi, ' ')
-      .replace(/\bwww\.[^\s)\]>]+/gi, ' ')
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^\s{0,3}>\s?/gm, '')
-      .replace(/^\s*[-*+]\s+/gm, '')
-      .replace(/^\s*\d+\.\s+/gm, '')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/__([^_]+)__/g, '$1')
-      .replace(/_([^_]+)_/g, '$1')
-      .replace(/[*_~|]/g, ' ')
-  );
-};
-
 export const AudiobookPanel: React.FC = () => {
-  const { paragraphs, translationMode, setCurrentReadingSentenceKey } = useStore();
+  const { paragraphs, translationMode, currentDocumentType, setCurrentReadingSentenceKey } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [readTarget, setReadTarget] = useState<ReadTarget>('source');
   const [voice, setVoice] = useState('');
@@ -89,7 +68,10 @@ export const AudiobookPanel: React.FC = () => {
 
     const list: Array<{ key: string; sourceText: string }> = [];
     for (const paragraph of paragraphs) {
-      splitIntoSentences(paragraph.text).forEach((sentence, index) => {
+      const sourceText = toSpeakableText(paragraph.text, {
+        markdown: currentDocumentType === 'markdown',
+      });
+      splitIntoSentences(sourceText).forEach((sentence, index) => {
         if (!isSpeakableSentence(sentence)) return;
         list.push({
           key: `${paragraph.id}_${index}`,
@@ -98,7 +80,7 @@ export const AudiobookPanel: React.FC = () => {
       });
     }
     return list;
-  }, [paragraphs]);
+  }, [currentDocumentType, paragraphs]);
 
   const sentenceIndexByKey = useMemo(() => {
     const map = new Map<string, number>();

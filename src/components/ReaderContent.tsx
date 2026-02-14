@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { splitIntoSentences } from '../utils/sentences';
+import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/sentences';
 import type { Annotation, AnnotationStyle } from '../types';
 import {
   READER_THEMES,
@@ -28,15 +28,16 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'highlight' | 'note';
+type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'copy' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'copy', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   ask: 'Ask',
   play: 'Read Aloud',
   explain: 'Explain',
   translate: 'Translate',
+  copy: 'Copy',
   highlight: 'Highlight',
   note: 'Take Note',
 };
@@ -45,6 +46,7 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   play: '▶',
   explain: '⌕',
   translate: '⟲',
+  copy: '⧉',
   highlight: '＿',
   note: '✎',
 };
@@ -187,6 +189,108 @@ const renderMarkdownChildren = (children: ReactNode, query: string, annotations:
   const keyword = query.trim();
   if (!keyword && annotations.length === 0) return children;
   return Children.map(children, (child, idx) => highlightMarkdownNode(child, keyword, annotations, `${keyPrefix}-${idx}`));
+};
+
+const normalizeTextWithMap = (input: string): { normalized: string; map: number[] } => {
+  const normalizedChars: string[] = [];
+  const map: number[] = [];
+  let previousWasSpace = false;
+
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i];
+    if (/\s/.test(ch)) {
+      if (previousWasSpace) continue;
+      normalizedChars.push(' ');
+      map.push(i);
+      previousWasSpace = true;
+      continue;
+    }
+    normalizedChars.push(ch.toLowerCase());
+    map.push(i);
+    previousWasSpace = false;
+  }
+
+  return {
+    normalized: normalizedChars.join(''),
+    map,
+  };
+};
+
+const READING_MARK_SELECTOR = 'mark[data-reading-sentence="true"]';
+
+const clearReadingSentenceMarks = (root: ParentNode) => {
+  const marks = root.querySelectorAll<HTMLElement>(READING_MARK_SELECTOR);
+  marks.forEach((mark) => {
+    const parent = mark.parentNode;
+    if (!parent) return;
+    while (mark.firstChild) {
+      parent.insertBefore(mark.firstChild, mark);
+    }
+    parent.removeChild(mark);
+    parent.normalize();
+  });
+};
+
+const collectTextNodes = (root: Node): Text[] => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let current = walker.nextNode();
+  while (current) {
+    if (current.nodeValue && current.nodeValue.length > 0) {
+      nodes.push(current as Text);
+    }
+    current = walker.nextNode();
+  }
+  return nodes;
+};
+
+const locateTextOffset = (
+  textNodes: Text[],
+  absoluteOffset: number
+): { node: Text; offset: number } | null => {
+  let consumed = 0;
+  for (const node of textNodes) {
+    const length = node.data.length;
+    if (absoluteOffset <= consumed + length) {
+      return { node, offset: Math.max(0, absoluteOffset - consumed) };
+    }
+    consumed += length;
+  }
+  const last = textNodes[textNodes.length - 1];
+  return last ? { node: last, offset: last.data.length } : null;
+};
+
+const highlightSentenceInElement = (element: HTMLElement, sentence: string): HTMLElement | null => {
+  const sentenceNorm = normalizeTextWithMap(sentence).normalized.trim();
+  if (!sentenceNorm) return null;
+
+  const textNodes = collectTextNodes(element);
+  if (textNodes.length === 0) return null;
+  const mergedText = textNodes.map((item) => item.data).join('');
+  const mergedNorm = normalizeTextWithMap(mergedText);
+  const at = mergedNorm.normalized.toLowerCase().indexOf(sentenceNorm.toLowerCase());
+  if (at < 0) return null;
+
+  const startIndex = mergedNorm.map[at];
+  const endIndex = mergedNorm.map[at + sentenceNorm.length - 1];
+  if (startIndex === undefined || endIndex === undefined) return null;
+
+  const startLoc = locateTextOffset(textNodes, startIndex);
+  const endLoc = locateTextOffset(textNodes, endIndex + 1);
+  if (!startLoc || !endLoc) return null;
+
+  const range = document.createRange();
+  range.setStart(startLoc.node, startLoc.offset);
+  range.setEnd(endLoc.node, endLoc.offset);
+  if (range.collapsed) return null;
+
+  const mark = document.createElement('mark');
+  mark.setAttribute('data-reading-sentence', 'true');
+  mark.className = 'rounded bg-amber-100 px-0.5 text-inherit ring-1 ring-amber-300';
+  const fragment = range.extractContents();
+  mark.appendChild(fragment);
+  range.insertNode(mark);
+  return mark;
 };
 
 const parsePdfImageMarker = (text: string): string | null => {
@@ -635,6 +739,32 @@ export function ReaderContent() {
     clearSelectionDraft();
   };
 
+  const handleCopySelection = async () => {
+    const selectedNow = window.getSelection()?.toString().trim() || '';
+    const textToCopy = selectedNow || selectionDraft?.selectedText?.trim() || '';
+    if (!textToCopy) return;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      clearSelectionDraft();
+      return;
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textArea);
+      }
+      clearSelectionDraft();
+    }
+  };
+
   const handleConfirmPlayFromSelection = () => {
     if (!ttsConfirmParagraphId) return;
     dispatchAudiobookStart({ paragraphId: ttsConfirmParagraphId });
@@ -669,6 +799,10 @@ export function ReaderContent() {
     }
     if (action === 'translate') {
       handleTranslateSelection();
+      return;
+    }
+    if (action === 'copy') {
+      void handleCopySelection();
       return;
     }
     if (action === 'highlight') {
@@ -746,12 +880,39 @@ export function ReaderContent() {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    const paragraphId = currentReadingSentenceKey.split('_')[0];
-    if (!paragraphId) return;
+    const parsed = parseSentenceKey(currentReadingSentenceKey);
+    if (!parsed) return;
+    const paragraphId = parsed.paragraphId;
     const paragraphEl = paragraphRefs.current[paragraphId];
     if (!paragraphEl) return;
     paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [currentReadingSentenceKey]);
+
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    clearReadingSentenceMarks(container);
+    if (currentDocumentType !== 'markdown' || !currentReadingSentenceKey) return;
+
+    const parsed = parseSentenceKey(currentReadingSentenceKey);
+    if (!parsed) return;
+    const paragraphEl = paragraphRefs.current[parsed.paragraphId];
+    if (!paragraphEl) return;
+    const markdownEl = paragraphEl.querySelector<HTMLElement>('.markdown-content');
+    if (!markdownEl) return;
+
+    const paragraph = paragraphs.find((item) => item.id === parsed.paragraphId);
+    if (!paragraph) return;
+    const sentences = splitIntoSentences(toSpeakableText(paragraph.text, { markdown: true }));
+    const sentence = sentences[parsed.sentenceIndex];
+    if (!sentence) return;
+
+    const mark = highlightSentenceInElement(markdownEl, sentence);
+    if (mark) {
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentDocumentType, currentReadingSentenceKey, paragraphs]);
 
   useEffect(() => {
     if (!focusedParagraphId) return;
@@ -844,6 +1005,7 @@ export function ReaderContent() {
           <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>Tip: Select text to use the pop-up toolbar for "Read Aloud".</div>
           <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
+            const isMarkdownParagraph = currentDocumentType === 'markdown';
             const sentences = splitIntoSentences(paragraph.text);
             const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
             const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
@@ -872,17 +1034,8 @@ export function ReaderContent() {
                     focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
                   } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''}`}
                 >
-                {currentDocumentType === 'markdown' ? (
+                {isMarkdownParagraph ? (
                   <div className="space-y-2">
-                    {/* Show currently reading sentence for markdown */}
-                    {currentReadingSentenceKey?.startsWith(`${paragraph.id}_`) && (
-                      <div className="mb-2 rounded px-3 py-2 border border-amber-300 bg-amber-100">
-                        <span className="text-xs text-amber-800 font-medium">Now reading: </span>
-                        <span className="text-sm text-amber-900">
-                          {sentences[parseInt(currentReadingSentenceKey.split('_')[1], 10)]}
-                        </span>
-                      </div>
-                    )}
                     <div
                       className="markdown-content"
                       style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
@@ -979,7 +1132,7 @@ export function ReaderContent() {
                     const key = `${paragraph.id}_${index}`;
                     const isReading = currentReadingSentenceKey === key;
                     return (
-                      <div key={index} className="mb-2">
+                      <div key={key} className="mb-2">
                         <p
                           ref={(el) => {
                             sentenceRefs.current[key] = el;
