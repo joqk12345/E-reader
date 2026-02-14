@@ -24,6 +24,16 @@ pub struct KeymapConfig {
     pub prev_page: Vec<String>,
     #[serde(default = "default_keymap_open_settings")]
     pub open_settings: Vec<String>,
+    #[serde(default = "default_keymap_toggle_window_maximize")]
+    pub toggle_window_maximize: Vec<String>,
+    #[serde(default = "default_keymap_toggle_header_tools")]
+    pub toggle_header_tools: Vec<String>,
+    #[serde(default = "default_keymap_font_increase")]
+    pub font_increase: Vec<String>,
+    #[serde(default = "default_keymap_font_decrease")]
+    pub font_decrease: Vec<String>,
+    #[serde(default = "default_keymap_font_reset")]
+    pub font_reset: Vec<String>,
     #[serde(default = "default_keymap_open_search")]
     pub open_search: Vec<String>,
     #[serde(default = "default_keymap_audio_play")]
@@ -42,6 +52,11 @@ impl Default for KeymapConfig {
             next_page: default_keymap_next_page(),
             prev_page: default_keymap_prev_page(),
             open_settings: default_keymap_open_settings(),
+            toggle_window_maximize: default_keymap_toggle_window_maximize(),
+            toggle_header_tools: default_keymap_toggle_header_tools(),
+            font_increase: default_keymap_font_increase(),
+            font_decrease: default_keymap_font_decrease(),
+            font_reset: default_keymap_font_reset(),
             open_search: default_keymap_open_search(),
             audio_play: default_keymap_audio_play(),
             audio_toggle_pause: default_keymap_audio_toggle_pause(),
@@ -158,6 +173,26 @@ fn default_keymap_prev_page() -> Vec<String> {
 
 fn default_keymap_open_settings() -> Vec<String> {
     vec!["Cmd+,".to_string(), "Ctrl+,".to_string()]
+}
+
+fn default_keymap_toggle_window_maximize() -> Vec<String> {
+    vec!["Cmd+Shift+M".to_string(), "Ctrl+Shift+M".to_string()]
+}
+
+fn default_keymap_toggle_header_tools() -> Vec<String> {
+    vec!["Cmd+Shift+T".to_string(), "Ctrl+Shift+T".to_string()]
+}
+
+fn default_keymap_font_increase() -> Vec<String> {
+    vec!["Cmd+=".to_string(), "Ctrl+=".to_string()]
+}
+
+fn default_keymap_font_decrease() -> Vec<String> {
+    vec!["Cmd+-".to_string(), "Ctrl+-".to_string()]
+}
+
+fn default_keymap_font_reset() -> Vec<String> {
+    vec!["Cmd+0".to_string(), "Ctrl+0".to_string()]
 }
 
 fn default_keymap_open_search() -> Vec<String> {

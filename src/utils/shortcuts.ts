@@ -2,6 +2,11 @@ export type Keymap = {
   next_page: string[];
   prev_page: string[];
   open_settings: string[];
+  toggle_window_maximize: string[];
+  toggle_header_tools: string[];
+  font_increase: string[];
+  font_decrease: string[];
+  font_reset: string[];
   open_search: string[];
   audio_play: string[];
   audio_toggle_pause: string[];
@@ -13,6 +18,11 @@ export const defaultKeymap: Keymap = {
   next_page: ['PageDown', 'Space', 'J'],
   prev_page: ['PageUp', 'Shift+Space', 'K'],
   open_settings: ['Cmd+,', 'Ctrl+,'],
+  toggle_window_maximize: ['Cmd+Shift+M', 'Ctrl+Shift+M'],
+  toggle_header_tools: ['Cmd+Shift+T', 'Ctrl+Shift+T'],
+  font_increase: ['Cmd+=', 'Ctrl+='],
+  font_decrease: ['Cmd+-', 'Ctrl+-'],
+  font_reset: ['Cmd+0', 'Ctrl+0'],
   open_search: ['Cmd+F', 'Ctrl+F'],
   audio_play: ['Cmd+Shift+P', 'Ctrl+Shift+P'],
   audio_toggle_pause: ['Cmd+Shift+Space', 'Ctrl+Shift+Space'],
@@ -89,6 +99,26 @@ export const normalizeKeymap = (keymap?: Partial<Keymap> | null): Keymap => {
       keymap?.open_settings && keymap.open_settings.length > 0
         ? keymap.open_settings
         : defaultKeymap.open_settings,
+    toggle_window_maximize:
+      keymap?.toggle_window_maximize && keymap.toggle_window_maximize.length > 0
+        ? keymap.toggle_window_maximize
+        : defaultKeymap.toggle_window_maximize,
+    toggle_header_tools:
+      keymap?.toggle_header_tools && keymap.toggle_header_tools.length > 0
+        ? keymap.toggle_header_tools
+        : defaultKeymap.toggle_header_tools,
+    font_increase:
+      keymap?.font_increase && keymap.font_increase.length > 0
+        ? keymap.font_increase
+        : defaultKeymap.font_increase,
+    font_decrease:
+      keymap?.font_decrease && keymap.font_decrease.length > 0
+        ? keymap.font_decrease
+        : defaultKeymap.font_decrease,
+    font_reset:
+      keymap?.font_reset && keymap.font_reset.length > 0
+        ? keymap.font_reset
+        : defaultKeymap.font_reset,
     open_search:
       keymap?.open_search && keymap.open_search.length > 0
         ? keymap.open_search
