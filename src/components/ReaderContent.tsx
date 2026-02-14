@@ -5,6 +5,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { splitIntoSentences } from '../utils/sentences';
 import type { Annotation, AnnotationStyle } from '../types';
+import {
+  READER_THEMES,
+  VIEW_SETTINGS_KEY,
+  loadReaderViewSettings,
+  type ReaderViewSettings,
+} from './readerTheme';
 
 const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
@@ -207,8 +213,8 @@ export function ReaderContent() {
     currentSectionId,
     currentDocumentType,
     translationMode,
-    readerBackgroundColor,
     readerFontSize,
+    setReaderFontSize,
     currentReadingSentenceKey,
     focusedParagraphId,
     setFocusedParagraphId,
@@ -241,6 +247,9 @@ export function ReaderContent() {
   const [ttsConfirmParagraphId, setTtsConfirmParagraphId] = useState<string | null>(null);
   const [isAnnotationPanelOpen, setIsAnnotationPanelOpen] = useState(false);
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
+  const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
+    loadReaderViewSettings(readerFontSize)
+  );
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -253,6 +262,11 @@ export function ReaderContent() {
   const popoverDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const popoverResizeRef = useRef<{ startX: number; startY: number; originWidth: number; originHeight: number } | null>(null);
   const selectionPopoverRef = useRef<HTMLDivElement | null>(null);
+
+  const currentTheme = READER_THEMES[viewSettings.theme] || READER_THEMES.paper;
+  const paragraphLineHeight = viewSettings.lineHeight;
+  const translationLineHeight = Math.max(1.35, viewSettings.lineHeight - 0.1);
+  const cjkLetterSpacing = viewSettings.cjkLetterSpacingEnabled ? `${viewSettings.cjkLetterSpacing}em` : 'normal';
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -278,6 +292,43 @@ export function ReaderContent() {
   useEffect(() => {
     matchedParagraphSet.current = new Set(searchMatchedParagraphIds);
   }, [searchMatchedParagraphIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(viewSettings));
+    } catch (error) {
+      console.warn('Failed to persist reader view settings:', error);
+    }
+  }, [viewSettings]);
+
+  useEffect(() => {
+    const refresh = () => {
+      setViewSettings(loadReaderViewSettings(readerFontSize));
+    };
+    window.addEventListener('reader:view-settings-updated', refresh as EventListener);
+    return () => {
+      window.removeEventListener('reader:view-settings-updated', refresh as EventListener);
+    };
+  }, [readerFontSize]);
+
+  useEffect(() => {
+    if (viewSettings.fontSize !== readerFontSize) {
+      setReaderFontSize(viewSettings.fontSize);
+    }
+  }, [readerFontSize, setReaderFontSize, viewSettings.fontSize]);
+
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+    const details = container.querySelectorAll('details');
+    details.forEach((item) => {
+      if (viewSettings.expandDetails) {
+        item.setAttribute('open', '');
+      } else {
+        item.removeAttribute('open');
+      }
+    });
+  }, [paragraphs, viewSettings.expandDetails, currentDocumentType]);
 
   const allAnnotations = useMemo(
     () =>
@@ -715,10 +766,10 @@ export function ReaderContent() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: readerBackgroundColor }}>
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading content...</p>
+          <p className="mt-2 text-sm" style={{ color: currentTheme.isDark ? '#9ca3af' : '#4b5563' }}>Loading content...</p>
         </div>
       </div>
     );
@@ -726,8 +777,8 @@ export function ReaderContent() {
 
   if (paragraphs.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: readerBackgroundColor }}>
-        <p className="text-gray-500">
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
+        <p style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}>
           {currentSectionId
             ? 'No content extracted for this section. The parser may have failed.'
             : 'Select a section from the table of contents'}
@@ -740,36 +791,38 @@ export function ReaderContent() {
     <div
       ref={contentRef}
       className="flex-1 overflow-y-auto"
-      style={{ backgroundColor: readerBackgroundColor }}
+      style={{ backgroundColor: currentTheme.background, color: currentTheme.foreground }}
       onMouseUp={handleSelectionEnd}
     >
-      <div className="max-w-4xl mx-auto px-8 py-12">
+      <div className="mx-auto px-8 py-12" style={{ maxWidth: `${viewSettings.contentWidth}em` }}>
         {currentDocumentType === 'pdf' && (
           <div className="mb-4 flex items-center justify-end gap-2">
             <button
               onClick={() => setPdfDisplayMode('text')}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${
+              className="rounded-lg border px-3 py-1.5 text-sm"
+              style={
                 pdfDisplayMode === 'text'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-slate-300 bg-white text-slate-700'
-              }`}
+                  ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
+                  : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
+              }
             >
               文本解析
             </button>
             <button
               onClick={() => setPdfDisplayMode('original')}
-              className={`rounded-lg border px-3 py-1.5 text-sm ${
+              className="rounded-lg border px-3 py-1.5 text-sm"
+              style={
                 pdfDisplayMode === 'original'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-slate-300 bg-white text-slate-700'
-              }`}
+                  ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
+                  : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
+              }
             >
               PDF原文
             </button>
           </div>
         )}
         {currentDocumentType === 'pdf' && pdfDisplayMode === 'original' && currentPdfPath ? (
-          <section className="rounded-lg border border-slate-200 bg-white p-2">
+          <section className="rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
             <iframe
               title="PDF Original Viewer"
               src={convertFileSrc(currentPdfPath)}
@@ -778,16 +831,17 @@ export function ReaderContent() {
           </section>
         ) : (
         <>
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-end items-start gap-2">
             <button
               data-annotation-popover="true"
               onClick={() => setIsAnnotationPanelOpen(true)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+              className="rounded-lg border px-3 py-1.5 text-sm"
+              style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary, color: currentTheme.foreground }}
             >
               批注与划线 ({allAnnotations.length})
             </button>
           </div>
-          <div className="mb-3 text-xs text-slate-500">提示：选中文本后使用弹出操作栏触发“从此朗读”。</div>
+          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>提示：选中文本后使用弹出操作栏触发“从此朗读”。</div>
           <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
             const sentences = splitIntoSentences(paragraph.text);
@@ -804,8 +858,8 @@ export function ReaderContent() {
             return (
               <div key={paragraph.id}>
                 {shouldShowPdfPreview && (
-                  <section className="mb-3 rounded-lg border border-slate-200 bg-white p-2">
-                    <div className="mb-2 text-xs text-slate-500">Page {currentPage}</div>
+                  <section className="mb-3 rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
+                    <div className="mb-2 text-xs" style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}>Page {currentPage}</div>
                     <iframe
                       title={`PDF Page ${currentPage}`}
                       src={`${convertFileSrc(currentPdfPath)}#page=${currentPage}&zoom=page-width`}
@@ -829,49 +883,49 @@ export function ReaderContent() {
                 {currentDocumentType === 'markdown' ? (
                   <div className="space-y-2">
                     <div
-                      className="markdown-content text-gray-800"
-                      style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
+                      className="markdown-content"
+                      style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                     >
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
-                          h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
-                          h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
-                          h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
-                          h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
-                          h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold text-gray-900">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
-                          p: ({ children }) => <p className="my-2 text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
+                          h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
+                          h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
+                          h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
+                          h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
+                          h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
+                          h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
+                          p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
                           ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
                           ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
                           li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
-                          blockquote: ({ children }) => <blockquote className="my-3 border-l-4 border-gray-300 pl-4 italic text-gray-700">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
+                          blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
                           code: ({ children }) => (
-                            <code className="rounded bg-gray-200 px-1 py-0.5 text-gray-900">
+                            <code className="rounded px-1 py-0.5" style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
                               {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
                             </code>
                           ),
                           pre: ({ children }) => (
                             <pre
-                              className="my-3 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 text-gray-800"
-                              style={{ fontSize: `${Math.max(readerFontSize - 2, 12)}px` }}
+                              className="my-3 overflow-x-auto rounded border p-3"
+                              style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
                             >
                               {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `pre-${paragraph.id}`)}
                             </pre>
                           ),
                           a: ({ href, children }) => (
-                            <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                            <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: currentTheme.link }}>
                               {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}
                             </a>
                           ),
                           table: ({ children }) => (
                             <div className="my-3 overflow-x-auto">
-                              <table className="min-w-full border border-gray-200 text-left">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `table-${paragraph.id}`)}</table>
+                              <table className="min-w-full border text-left" style={{ borderColor: currentTheme.border }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `table-${paragraph.id}`)}</table>
                             </div>
                           ),
-                          thead: ({ children }) => <thead className="bg-gray-100">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `thead-${paragraph.id}`)}</thead>,
-                          th: ({ children }) => <th className="border border-gray-200 px-3 py-2 font-semibold text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `th-${paragraph.id}`)}</th>,
-                          td: ({ children }) => <td className="border border-gray-200 px-3 py-2 text-gray-800">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `td-${paragraph.id}`)}</td>,
+                          thead: ({ children }) => <thead style={{ backgroundColor: currentTheme.secondary }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `thead-${paragraph.id}`)}</thead>,
+                          th: ({ children }) => <th className="border px-3 py-2 font-semibold" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `th-${paragraph.id}`)}</th>,
+                          td: ({ children }) => <td className="border px-3 py-2" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `td-${paragraph.id}`)}</td>,
                         }}
                       >
                         {paragraph.text}
@@ -881,8 +935,8 @@ export function ReaderContent() {
                       <div className="ml-4 rounded border-l-2 border-blue-200 pl-3">
                         {translations[markdownTranslationKey(paragraph.id)] ? (
                           <div
-                            className="markdown-content text-blue-700"
-                            style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+                            className="markdown-content"
+                            style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.link }}
                           >
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {translations[markdownTranslationKey(paragraph.id)]}
@@ -929,8 +983,8 @@ export function ReaderContent() {
                           ref={(el) => {
                             sentenceRefs.current[key] = el;
                           }}
-                          className={isReading ? 'text-gray-900 rounded px-2 py-1 bg-amber-100 border border-amber-300' : 'text-gray-800'}
-                          style={{ fontSize: `${readerFontSize}px`, lineHeight: 1.85 }}
+                          className={isReading ? 'rounded px-2 py-1 border border-amber-300 bg-amber-100' : ''}
+                          style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                         >
                           {renderWithSearchHighlight(sentence, isSearchMatchedParagraph, paragraphAnnotations, `${paragraph.id}-${index}`)}
                         </p>
@@ -938,8 +992,7 @@ export function ReaderContent() {
                           <div className="flex items-center gap-2 ml-4">
                             {translations[key] ? (
                               <p
-                                className="text-blue-600"
-                                style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+                                style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.link }}
                               >
                                 {translations[key]}
                               </p>
