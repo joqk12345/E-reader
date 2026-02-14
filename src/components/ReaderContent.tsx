@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { splitIntoSentences } from '../utils/sentences';
+import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/sentences';
 import type { Annotation, AnnotationStyle } from '../types';
 import {
   READER_THEMES,
@@ -16,9 +16,9 @@ const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const annotationStyleOrder: AnnotationStyle[] = ['single_underline', 'double_underline', 'wavy_strikethrough'];
 const annotationStyleLabel: Record<AnnotationStyle, string> = {
-  single_underline: '单下划线',
-  double_underline: '双下划线',
-  wavy_strikethrough: '波浪删除线',
+  single_underline: 'Single Underline',
+  double_underline: 'Double Underline',
+  wavy_strikethrough: 'Wavy Strikethrough',
 };
 
 type SelectionDraft = {
@@ -28,23 +28,25 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'highlight' | 'note';
+type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'copy' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'copy', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
-  ask: '提问',
-  play: '从此朗读',
-  explain: '解释',
-  translate: '翻译',
-  highlight: '划线',
-  note: '做笔记',
+  ask: 'Ask',
+  play: 'Read Aloud',
+  explain: 'Explain',
+  translate: 'Translate',
+  copy: 'Copy',
+  highlight: 'Highlight',
+  note: 'Take Note',
 };
 const selectionActionIcon: Record<SelectionAction, string> = {
   ask: '✦',
   play: '▶',
   explain: '⌕',
   translate: '⟲',
+  copy: '⧉',
   highlight: '＿',
   note: '✎',
 };
@@ -187,6 +189,108 @@ const renderMarkdownChildren = (children: ReactNode, query: string, annotations:
   const keyword = query.trim();
   if (!keyword && annotations.length === 0) return children;
   return Children.map(children, (child, idx) => highlightMarkdownNode(child, keyword, annotations, `${keyPrefix}-${idx}`));
+};
+
+const normalizeTextWithMap = (input: string): { normalized: string; map: number[] } => {
+  const normalizedChars: string[] = [];
+  const map: number[] = [];
+  let previousWasSpace = false;
+
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i];
+    if (/\s/.test(ch)) {
+      if (previousWasSpace) continue;
+      normalizedChars.push(' ');
+      map.push(i);
+      previousWasSpace = true;
+      continue;
+    }
+    normalizedChars.push(ch.toLowerCase());
+    map.push(i);
+    previousWasSpace = false;
+  }
+
+  return {
+    normalized: normalizedChars.join(''),
+    map,
+  };
+};
+
+const READING_MARK_SELECTOR = 'mark[data-reading-sentence="true"]';
+
+const clearReadingSentenceMarks = (root: ParentNode) => {
+  const marks = root.querySelectorAll<HTMLElement>(READING_MARK_SELECTOR);
+  marks.forEach((mark) => {
+    const parent = mark.parentNode;
+    if (!parent) return;
+    while (mark.firstChild) {
+      parent.insertBefore(mark.firstChild, mark);
+    }
+    parent.removeChild(mark);
+    parent.normalize();
+  });
+};
+
+const collectTextNodes = (root: Node): Text[] => {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let current = walker.nextNode();
+  while (current) {
+    if (current.nodeValue && current.nodeValue.length > 0) {
+      nodes.push(current as Text);
+    }
+    current = walker.nextNode();
+  }
+  return nodes;
+};
+
+const locateTextOffset = (
+  textNodes: Text[],
+  absoluteOffset: number
+): { node: Text; offset: number } | null => {
+  let consumed = 0;
+  for (const node of textNodes) {
+    const length = node.data.length;
+    if (absoluteOffset <= consumed + length) {
+      return { node, offset: Math.max(0, absoluteOffset - consumed) };
+    }
+    consumed += length;
+  }
+  const last = textNodes[textNodes.length - 1];
+  return last ? { node: last, offset: last.data.length } : null;
+};
+
+const highlightSentenceInElement = (element: HTMLElement, sentence: string): HTMLElement | null => {
+  const sentenceNorm = normalizeTextWithMap(sentence).normalized.trim();
+  if (!sentenceNorm) return null;
+
+  const textNodes = collectTextNodes(element);
+  if (textNodes.length === 0) return null;
+  const mergedText = textNodes.map((item) => item.data).join('');
+  const mergedNorm = normalizeTextWithMap(mergedText);
+  const at = mergedNorm.normalized.toLowerCase().indexOf(sentenceNorm.toLowerCase());
+  if (at < 0) return null;
+
+  const startIndex = mergedNorm.map[at];
+  const endIndex = mergedNorm.map[at + sentenceNorm.length - 1];
+  if (startIndex === undefined || endIndex === undefined) return null;
+
+  const startLoc = locateTextOffset(textNodes, startIndex);
+  const endLoc = locateTextOffset(textNodes, endIndex + 1);
+  if (!startLoc || !endLoc) return null;
+
+  const range = document.createRange();
+  range.setStart(startLoc.node, startLoc.offset);
+  range.setEnd(endLoc.node, endLoc.offset);
+  if (range.collapsed) return null;
+
+  const mark = document.createElement('mark');
+  mark.setAttribute('data-reading-sentence', 'true');
+  mark.className = 'rounded bg-amber-100 px-0.5 text-inherit ring-1 ring-amber-300';
+  const fragment = range.extractContents();
+  mark.appendChild(fragment);
+  range.insertNode(mark);
+  return mark;
 };
 
 const parsePdfImageMarker = (text: string): string | null => {
@@ -635,6 +739,32 @@ export function ReaderContent() {
     clearSelectionDraft();
   };
 
+  const handleCopySelection = async () => {
+    const selectedNow = window.getSelection()?.toString().trim() || '';
+    const textToCopy = selectedNow || selectionDraft?.selectedText?.trim() || '';
+    if (!textToCopy) return;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      clearSelectionDraft();
+      return;
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textArea);
+      }
+      clearSelectionDraft();
+    }
+  };
+
   const handleConfirmPlayFromSelection = () => {
     if (!ttsConfirmParagraphId) return;
     dispatchAudiobookStart({ paragraphId: ttsConfirmParagraphId });
@@ -669,6 +799,10 @@ export function ReaderContent() {
     }
     if (action === 'translate') {
       handleTranslateSelection();
+      return;
+    }
+    if (action === 'copy') {
+      void handleCopySelection();
       return;
     }
     if (action === 'highlight') {
@@ -746,12 +880,39 @@ export function ReaderContent() {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    const paragraphId = currentReadingSentenceKey.split('_')[0];
-    if (!paragraphId) return;
+    const parsed = parseSentenceKey(currentReadingSentenceKey);
+    if (!parsed) return;
+    const paragraphId = parsed.paragraphId;
     const paragraphEl = paragraphRefs.current[paragraphId];
     if (!paragraphEl) return;
     paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [currentReadingSentenceKey]);
+
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    clearReadingSentenceMarks(container);
+    if (currentDocumentType !== 'markdown' || !currentReadingSentenceKey) return;
+
+    const parsed = parseSentenceKey(currentReadingSentenceKey);
+    if (!parsed) return;
+    const paragraphEl = paragraphRefs.current[parsed.paragraphId];
+    if (!paragraphEl) return;
+    const markdownEl = paragraphEl.querySelector<HTMLElement>('.markdown-content');
+    if (!markdownEl) return;
+
+    const paragraph = paragraphs.find((item) => item.id === parsed.paragraphId);
+    if (!paragraph) return;
+    const sentences = splitIntoSentences(toSpeakableText(paragraph.text, { markdown: true }));
+    const sentence = sentences[parsed.sentenceIndex];
+    if (!sentence) return;
+
+    const mark = highlightSentenceInElement(markdownEl, sentence);
+    if (mark) {
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentDocumentType, currentReadingSentenceKey, paragraphs]);
 
   useEffect(() => {
     if (!focusedParagraphId) return;
@@ -806,7 +967,7 @@ export function ReaderContent() {
                   : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
               }
             >
-              文本解析
+              Text View
             </button>
             <button
               onClick={() => setPdfDisplayMode('original')}
@@ -817,7 +978,7 @@ export function ReaderContent() {
                   : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
               }
             >
-              PDF原文
+              PDF Original
             </button>
           </div>
         )}
@@ -838,22 +999,19 @@ export function ReaderContent() {
               className="rounded-lg border px-3 py-1.5 text-sm"
               style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary, color: currentTheme.foreground }}
             >
-              批注与划线 ({allAnnotations.length})
+              Annotations & Highlights ({allAnnotations.length})
             </button>
           </div>
-          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>提示：选中文本后使用弹出操作栏触发“从此朗读”。</div>
+          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>Tip: Select text to use the pop-up toolbar for "Read Aloud".</div>
           <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
+            const isMarkdownParagraph = currentDocumentType === 'markdown';
             const sentences = splitIntoSentences(paragraph.text);
             const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
             const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
             const paragraphAnnotations = annotationsByParagraph[paragraph.id] || [];
             const currentPage = parsePdfPageFromLocation(paragraph.location);
             const shouldShowPdfPreview = false;
-            const isReadingParagraph = Boolean(
-              currentReadingSentenceKey &&
-                currentReadingSentenceKey.startsWith(`${paragraph.id}_`)
-            );
 
             return (
               <div key={paragraph.id}>
@@ -874,13 +1032,9 @@ export function ReaderContent() {
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
                     focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
-                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''} ${
-                    currentDocumentType === 'markdown' && isReadingParagraph
-                      ? 'bg-amber-100/80 ring-1 ring-amber-300'
-                      : ''
-                  }`}
+                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''}`}
                 >
-                {currentDocumentType === 'markdown' ? (
+                {isMarkdownParagraph ? (
                   <div className="space-y-2">
                     <div
                       className="markdown-content"
@@ -978,7 +1132,7 @@ export function ReaderContent() {
                     const key = `${paragraph.id}_${index}`;
                     const isReading = currentReadingSentenceKey === key;
                     return (
-                      <div key={index} className="mb-2">
+                      <div key={key} className="mb-2">
                         <p
                           ref={(el) => {
                             sentenceRefs.current[key] = el;
@@ -1040,7 +1194,7 @@ export function ReaderContent() {
           <div className="mb-2 flex items-center gap-1 rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-50 to-zinc-50 px-2 py-1.5 shadow-sm backdrop-blur">
             <button
               className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100"
-              title="拖拽移动弹框"
+              title="Drag to move panel"
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
                 popoverDragRef.current = {
@@ -1092,7 +1246,7 @@ export function ReaderContent() {
                       onBlur={() => {
                         if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
                       }}
-                      placeholder="输入问题后回车"
+                      placeholder="Type your question and press Enter"
                       className="w-full bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none"
                     />
                     <button
@@ -1100,7 +1254,7 @@ export function ReaderContent() {
                       disabled={!selectionQuestion.trim()}
                       className="shrink-0 whitespace-nowrap rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-[12px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      提交
+                      Submit
                     </button>
                   </div>
                 ) : (
@@ -1130,7 +1284,7 @@ export function ReaderContent() {
               <button
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
                 className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
-                title="更多操作"
+                title="More actions"
               >
                 ▾
               </button>
@@ -1144,7 +1298,7 @@ export function ReaderContent() {
                     }}
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
                   >
-                    {isSelectionReorderMode ? '完成调整顺序' : '调整顺序'}
+                    {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
                   </button>
                   <button
                     onClick={() => {
@@ -1154,7 +1308,7 @@ export function ReaderContent() {
                     }}
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
                   >
-                    恢复默认顺序
+                    Reset to Default
                   </button>
                 </div>
               )}
@@ -1162,13 +1316,13 @@ export function ReaderContent() {
             <button
               onClick={clearSelectionDraft}
               className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
-              title="关闭"
+              title="Close"
             >
               ×
             </button>
           </div>
           {isSelectionReorderMode && (
-            <p className="mb-1.5 text-[10px] text-slate-500">排序模式：拖拽上方功能按钮调整顺序，点击菜单可完成。</p>
+            <p className="mb-1.5 text-[10px] text-slate-500">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
           )}
           <p className="mb-1.5 line-clamp-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
             “{selectionDraft.selectedText}”
@@ -1195,13 +1349,13 @@ export function ReaderContent() {
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
                 >
-                  返回
+                  Back
                 </button>
                 <button
                   onClick={() => void handleCreateHighlightOnly()}
                   className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                 >
-                  保存划线
+                  Save Highlight
                 </button>
               </div>
             </>
@@ -1211,7 +1365,7 @@ export function ReaderContent() {
               <textarea
                 value={selectionDraft.note}
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
-                placeholder="输入笔记内容（可选）"
+                placeholder="Enter note content (optional)"
                 rows={3}
                 className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -1220,20 +1374,20 @@ export function ReaderContent() {
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
                 >
-                  返回
+                  Back
                 </button>
                 <button
                   onClick={handleSaveNoteSelection}
                   className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                 >
-                  保存笔记
+                  Save Note
                 </button>
               </div>
             </>
           )}
           <div
             className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-slate-400"
-            title="拖拽拉伸弹框"
+            title="Drag to resize panel"
             onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.stopPropagation();
@@ -1263,20 +1417,20 @@ export function ReaderContent() {
             data-selection-popover="true"
             className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white p-4 shadow-2xl"
           >
-            <h4 className="text-sm font-semibold text-gray-900">从这里开始朗读？</h4>
-            <p className="mt-2 text-xs text-gray-600">将从当前选中文本所在段落开始播放 TTS。</p>
+            <h4 className="text-sm font-semibold text-gray-900">Start reading from here?</h4>
+            <p className="mt-2 text-xs text-gray-600">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setTtsConfirmParagraphId(null)}
                 className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={handleConfirmPlayFromSelection}
                 className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
               >
-                开始朗读
+                Start Reading
               </button>
             </div>
           </div>
@@ -1296,16 +1450,16 @@ export function ReaderContent() {
             onMouseUp={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center">
-              <h3 className="text-base font-semibold text-slate-800">批注与划线 ({allAnnotations.length})</h3>
+              <h3 className="text-base font-semibold text-slate-800">Annotations & Highlights ({allAnnotations.length})</h3>
               <button
                 onClick={() => setIsAnnotationPanelOpen(false)}
                 className="ml-auto rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
               >
-                关闭
+                Close
               </button>
             </div>
             {allAnnotations.length === 0 ? (
-              <p className="text-sm text-slate-500">暂无批注。选中文本后可创建。</p>
+              <p className="text-sm text-slate-500">No annotations yet. Select text to create one.</p>
             ) : (
               <div className="h-[calc(100%-3rem)] space-y-2 overflow-y-auto pr-1">
                 {allAnnotations.map((item) => (
@@ -1321,18 +1475,18 @@ export function ReaderContent() {
                         }}
                         className="text-xs text-blue-600 underline-offset-2 hover:underline"
                       >
-                        跳转定位
+                        Go to Location
                       </button>
                       <button
                         onClick={() => void handleDeleteAnnotation(item.id, item.paragraph_id)}
                         className="ml-auto text-xs text-rose-600 underline-offset-2 hover:underline"
                       >
-                        删除
+                        Delete
                       </button>
                     </div>
-                    <p className="text-sm text-slate-800">“{item.selected_text}”</p>
+                    <p className="text-sm text-slate-800">"{item.selected_text}"</p>
                     {item.note && item.note.trim().length > 0 && (
-                      <p className="mt-1 text-xs text-amber-800">批注: {item.note}</p>
+                      <p className="mt-1 text-xs text-amber-800">Note: {item.note}</p>
                     )}
                   </div>
                 ))}
