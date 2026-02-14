@@ -874,6 +874,15 @@ export function ReaderContent() {
                 >
                 {currentDocumentType === 'markdown' ? (
                   <div className="space-y-2">
+                    {/* Show currently reading sentence for markdown */}
+                    {currentReadingSentenceKey?.startsWith(`${paragraph.id}_`) && (
+                      <div className="mb-2 rounded px-3 py-2 border border-amber-300 bg-amber-100">
+                        <span className="text-xs text-amber-800 font-medium">Now reading: </span>
+                        <span className="text-sm text-amber-900">
+                          {sentences[parseInt(currentReadingSentenceKey.split('_')[1], 10)]}
+                        </span>
+                      </div>
+                    )}
                     <div
                       className="markdown-content"
                       style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
