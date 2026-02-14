@@ -850,10 +850,6 @@ export function ReaderContent() {
             const paragraphAnnotations = annotationsByParagraph[paragraph.id] || [];
             const currentPage = parsePdfPageFromLocation(paragraph.location);
             const shouldShowPdfPreview = false;
-            const isReadingParagraph = Boolean(
-              currentReadingSentenceKey &&
-                currentReadingSentenceKey.startsWith(`${paragraph.id}_`)
-            );
 
             return (
               <div key={paragraph.id}>
@@ -874,11 +870,7 @@ export function ReaderContent() {
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
                     focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
-                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''} ${
-                    currentDocumentType === 'markdown' && isReadingParagraph
-                      ? 'bg-amber-100/80 ring-1 ring-amber-300'
-                      : ''
-                  }`}
+                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''}`}
                 >
                 {currentDocumentType === 'markdown' ? (
                   <div className="space-y-2">
