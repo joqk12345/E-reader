@@ -4,5 +4,18 @@
   },
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/refine_prompt.mjs",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }
