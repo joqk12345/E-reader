@@ -16,9 +16,9 @@ const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const annotationStyleOrder: AnnotationStyle[] = ['single_underline', 'double_underline', 'wavy_strikethrough'];
 const annotationStyleLabel: Record<AnnotationStyle, string> = {
-  single_underline: '单下划线',
-  double_underline: '双下划线',
-  wavy_strikethrough: '波浪删除线',
+  single_underline: 'Single Underline',
+  double_underline: 'Double Underline',
+  wavy_strikethrough: 'Wavy Strikethrough',
 };
 
 type SelectionDraft = {
@@ -33,12 +33,12 @@ type SelectionActionMode = 'highlight' | 'note' | null;
 const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
-  ask: '提问',
-  play: '从此朗读',
-  explain: '解释',
-  translate: '翻译',
-  highlight: '划线',
-  note: '做笔记',
+  ask: 'Ask',
+  play: 'Read Aloud',
+  explain: 'Explain',
+  translate: 'Translate',
+  highlight: 'Highlight',
+  note: 'Take Note',
 };
 const selectionActionIcon: Record<SelectionAction, string> = {
   ask: '✦',
@@ -806,7 +806,7 @@ export function ReaderContent() {
                   : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
               }
             >
-              文本解析
+              Text View
             </button>
             <button
               onClick={() => setPdfDisplayMode('original')}
@@ -817,7 +817,7 @@ export function ReaderContent() {
                   : { borderColor: currentTheme.border, backgroundColor: currentTheme.background, color: currentTheme.foreground }
               }
             >
-              PDF原文
+              PDF Original
             </button>
           </div>
         )}
@@ -838,10 +838,10 @@ export function ReaderContent() {
               className="rounded-lg border px-3 py-1.5 text-sm"
               style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary, color: currentTheme.foreground }}
             >
-              批注与划线 ({allAnnotations.length})
+              Annotations & Highlights ({allAnnotations.length})
             </button>
           </div>
-          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>提示：选中文本后使用弹出操作栏触发“从此朗读”。</div>
+          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>Tip: Select text to use the pop-up toolbar for "Read Aloud".</div>
           <article className="prose max-w-none">
           {paragraphs.map((paragraph) => {
             const sentences = splitIntoSentences(paragraph.text);
@@ -1040,7 +1040,7 @@ export function ReaderContent() {
           <div className="mb-2 flex items-center gap-1 rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-50 to-zinc-50 px-2 py-1.5 shadow-sm backdrop-blur">
             <button
               className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100"
-              title="拖拽移动弹框"
+              title="Drag to move panel"
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
                 popoverDragRef.current = {
@@ -1092,7 +1092,7 @@ export function ReaderContent() {
                       onBlur={() => {
                         if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
                       }}
-                      placeholder="输入问题后回车"
+                      placeholder="Type your question and press Enter"
                       className="w-full bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none"
                     />
                     <button
@@ -1100,7 +1100,7 @@ export function ReaderContent() {
                       disabled={!selectionQuestion.trim()}
                       className="shrink-0 whitespace-nowrap rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-[12px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      提交
+                      Submit
                     </button>
                   </div>
                 ) : (
@@ -1130,7 +1130,7 @@ export function ReaderContent() {
               <button
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
                 className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
-                title="更多操作"
+                title="More actions"
               >
                 ▾
               </button>
@@ -1144,7 +1144,7 @@ export function ReaderContent() {
                     }}
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
                   >
-                    {isSelectionReorderMode ? '完成调整顺序' : '调整顺序'}
+                    {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
                   </button>
                   <button
                     onClick={() => {
@@ -1154,7 +1154,7 @@ export function ReaderContent() {
                     }}
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
                   >
-                    恢复默认顺序
+                    Reset to Default
                   </button>
                 </div>
               )}
@@ -1162,13 +1162,13 @@ export function ReaderContent() {
             <button
               onClick={clearSelectionDraft}
               className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
-              title="关闭"
+              title="Close"
             >
               ×
             </button>
           </div>
           {isSelectionReorderMode && (
-            <p className="mb-1.5 text-[10px] text-slate-500">排序模式：拖拽上方功能按钮调整顺序，点击菜单可完成。</p>
+            <p className="mb-1.5 text-[10px] text-slate-500">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
           )}
           <p className="mb-1.5 line-clamp-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
             “{selectionDraft.selectedText}”
@@ -1195,13 +1195,13 @@ export function ReaderContent() {
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
                 >
-                  返回
+                  Back
                 </button>
                 <button
                   onClick={() => void handleCreateHighlightOnly()}
                   className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                 >
-                  保存划线
+                  Save Highlight
                 </button>
               </div>
             </>
@@ -1211,7 +1211,7 @@ export function ReaderContent() {
               <textarea
                 value={selectionDraft.note}
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
-                placeholder="输入笔记内容（可选）"
+                placeholder="Enter note content (optional)"
                 rows={3}
                 className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -1220,20 +1220,20 @@ export function ReaderContent() {
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
                 >
-                  返回
+                  Back
                 </button>
                 <button
                   onClick={handleSaveNoteSelection}
                   className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
                 >
-                  保存笔记
+                  Save Note
                 </button>
               </div>
             </>
           )}
           <div
             className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-slate-400"
-            title="拖拽拉伸弹框"
+            title="Drag to resize panel"
             onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.stopPropagation();
@@ -1263,20 +1263,20 @@ export function ReaderContent() {
             data-selection-popover="true"
             className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white p-4 shadow-2xl"
           >
-            <h4 className="text-sm font-semibold text-gray-900">从这里开始朗读？</h4>
-            <p className="mt-2 text-xs text-gray-600">将从当前选中文本所在段落开始播放 TTS。</p>
+            <h4 className="text-sm font-semibold text-gray-900">Start reading from here?</h4>
+            <p className="mt-2 text-xs text-gray-600">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setTtsConfirmParagraphId(null)}
                 className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={handleConfirmPlayFromSelection}
                 className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
               >
-                开始朗读
+                Start Reading
               </button>
             </div>
           </div>
@@ -1296,16 +1296,16 @@ export function ReaderContent() {
             onMouseUp={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center">
-              <h3 className="text-base font-semibold text-slate-800">批注与划线 ({allAnnotations.length})</h3>
+              <h3 className="text-base font-semibold text-slate-800">Annotations & Highlights ({allAnnotations.length})</h3>
               <button
                 onClick={() => setIsAnnotationPanelOpen(false)}
                 className="ml-auto rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
               >
-                关闭
+                Close
               </button>
             </div>
             {allAnnotations.length === 0 ? (
-              <p className="text-sm text-slate-500">暂无批注。选中文本后可创建。</p>
+              <p className="text-sm text-slate-500">No annotations yet. Select text to create one.</p>
             ) : (
               <div className="h-[calc(100%-3rem)] space-y-2 overflow-y-auto pr-1">
                 {allAnnotations.map((item) => (
@@ -1321,18 +1321,18 @@ export function ReaderContent() {
                         }}
                         className="text-xs text-blue-600 underline-offset-2 hover:underline"
                       >
-                        跳转定位
+                        Go to Location
                       </button>
                       <button
                         onClick={() => void handleDeleteAnnotation(item.id, item.paragraph_id)}
                         className="ml-auto text-xs text-rose-600 underline-offset-2 hover:underline"
                       >
-                        删除
+                        Delete
                       </button>
                     </div>
-                    <p className="text-sm text-slate-800">“{item.selected_text}”</p>
+                    <p className="text-sm text-slate-800">"{item.selected_text}"</p>
                     {item.note && item.note.trim().length > 0 && (
-                      <p className="mt-1 text-xs text-amber-800">批注: {item.note}</p>
+                      <p className="mt-1 text-xs text-amber-800">Note: {item.note}</p>
                     )}
                   </div>
                 ))}
