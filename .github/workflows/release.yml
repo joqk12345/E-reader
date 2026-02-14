@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     permissions:
-      contents: write
+      contents: read
 
     strategy:
       fail-fast: false
@@ -98,10 +98,40 @@ jobs:
           # List artifacts for debugging
           ls -lh release/
 
-      - name: Upload artifacts to release
+      - name: Upload artifacts to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.name }}
+          path: release/*
+
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Prepare release files
+        run: |
+          mkdir -p final_release
+          for dir in release/*; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir"/* final_release/
+            fi
+          done
+          ls -lh final_release/
+
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: final_release/*
           draft: false
           prerelease: false
           generate_release_notes: true
