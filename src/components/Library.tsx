@@ -10,6 +10,7 @@ import type { Document as ReaderDocument } from '../types';
 
 type LibraryProps = {
   onOpenSettings?: () => void;
+  statusBar?: React.ReactNode;
 };
 
 type DocumentPreview = {
@@ -20,6 +21,15 @@ type DocumentPreview = {
 type DocumentInsight = {
   category: string;
   tags: string[];
+};
+
+const normalizeFileType = (fileType: string): 'epub' | 'pdf' | 'markdown' => {
+  const normalized = fileType.trim().toLowerCase();
+  if (normalized === 'md') return 'markdown';
+  if (normalized === 'epub' || normalized === 'pdf' || normalized === 'markdown') {
+    return normalized;
+  }
+  return 'markdown';
 };
 
 const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
@@ -74,7 +84,7 @@ const inferDocumentInsight = (doc: ReaderDocument, preview: string): DocumentIns
   };
 };
 
-export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
+export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) => {
   const DEFAULT_CATEGORY_VISIBLE_COUNT = 8;
   const DEFAULT_EXPANDED_CATEGORY_COUNT = 2;
   const { documents, isLoading, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
@@ -91,6 +101,9 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [expandedCategoryItems, setExpandedCategoryItems] = useState<Record<string, boolean>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(248);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const normalizeUrl = (input: string) => {
     const trimmed = input.trim();
@@ -371,7 +384,8 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
   const displayedDocuments = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     const filtered = documents.filter((doc) => {
-      if (typeFilter !== 'all' && doc.file_type !== typeFilter) return false;
+      const docType = normalizeFileType(doc.file_type);
+      if (typeFilter !== 'all' && docType !== typeFilter) return false;
       if (categoryFilter !== 'all' && (documentInsights[doc.id]?.category || '其他') !== categoryFilter) {
         return false;
       }
@@ -388,10 +402,24 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
     } else if (sortBy === 'title') {
       sorted.sort((a, b) => a.title.localeCompare(b.title));
     } else {
-      sorted.sort((a, b) => a.file_type.localeCompare(b.file_type) || a.title.localeCompare(b.title));
+      sorted.sort((a, b) => normalizeFileType(a.file_type).localeCompare(normalizeFileType(b.file_type)) || a.title.localeCompare(b.title));
     }
     return sorted;
   }, [categoryFilter, documentInsights, documents, searchText, sortBy, typeFilter]);
+
+  const searchableDocuments = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return documents.filter((doc) => {
+      if (categoryFilter !== 'all' && (documentInsights[doc.id]?.category || '其他') !== categoryFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const title = doc.title.toLowerCase();
+      const author = (doc.author || '').toLowerCase();
+      const filePath = doc.file_path.toLowerCase();
+      return title.includes(q) || author.includes(q) || filePath.includes(q);
+    });
+  }, [categoryFilter, documentInsights, documents, searchText]);
 
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();
@@ -410,6 +438,18 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
     return Object.entries(grouped).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   }, [displayedDocuments, documentInsights]);
 
+  const typeSummaries = useMemo(() => {
+    const markdownCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
+    const pdfCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'pdf').length;
+    const epubCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'epub').length;
+    return [
+      { key: 'all' as const, label: 'All', count: searchableDocuments.length, hint: 'All formats' },
+      { key: 'markdown' as const, label: 'Markdown', count: markdownCount, hint: 'Notes & articles' },
+      { key: 'pdf' as const, label: 'PDF', count: pdfCount, hint: 'Documents' },
+      { key: 'epub' as const, label: 'EPUB', count: epubCount, hint: 'Books' },
+    ];
+  }, [searchableDocuments]);
+
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
   };
@@ -417,6 +457,23 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
   const toggleCategoryExpandedItems = (category: string) => {
     setExpandedCategoryItems((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
   };
+
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+
+    const handleMove = (event: PointerEvent) => {
+      const next = Math.min(360, Math.max(200, event.clientX));
+      setSidebarWidth(next);
+    };
+    const handleUp = () => setIsResizingSidebar(false);
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [isResizingSidebar]);
 
   return (
     <>
@@ -446,11 +503,84 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
         </div>
       )}
 
-      <div className="h-full flex flex-col bg-gray-50">
+      <div className="h-full flex bg-gray-50">
+        <aside
+          className="relative shrink-0 border-r border-gray-200 bg-[#f4f5f7] p-2.5"
+          style={{ width: sidebarCollapsed ? '42px' : `${sidebarWidth}px` }}
+        >
+          <button
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            className="mb-2 flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? '›' : '‹'}
+          </button>
+
+          {!sidebarCollapsed && (
+            <>
+              <div className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 shadow-sm">
+                <input
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Search library..."
+                  className="w-full bg-transparent text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="mt-4">
+                <h3 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Formats</h3>
+                <div className="space-y-1">
+                  {typeSummaries.map((item) => {
+                    const active = typeFilter === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => setTypeFilter(item.key)}
+                        className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+                          active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200/70'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium">{item.label}</span>
+                          <span className={`text-[11px] ${active ? 'text-gray-200' : 'text-gray-500'}`}>{item.count}</span>
+                        </div>
+                        <p className={`mt-0.5 text-[10px] ${active ? 'text-gray-300' : 'text-gray-500'}`}>{item.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-gray-200 bg-white px-2.5 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-gray-500">Summary</p>
+                <p className="mt-0.5 text-xl font-semibold text-gray-900">{documents.length}</p>
+                <p className="text-[11px] text-gray-500">Total documents</p>
+              </div>
+            </>
+          )}
+
+          {!sidebarCollapsed && (
+            <div
+              role="separator"
+              aria-label="Resize sidebar"
+              className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize transition-colors ${
+                isResizingSidebar ? 'bg-blue-300/70' : 'bg-transparent hover:bg-blue-200/60'
+              }`}
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                setIsResizingSidebar(true);
+              }}
+            />
+          )}
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-5 py-3">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Library</h1>
+            <h1 className="text-xl font-bold text-gray-900">Library</h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 w-[420px] max-w-[42vw]">
@@ -464,12 +594,12 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
                       }
                     }}
                     placeholder="Paste article URL..."
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     onClick={() => void handleImportUrl()}
                     disabled={isImportingUrl || !urlInput.trim()}
-                    className="h-10 px-4 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:bg-gray-400 transition-colors"
+                    className="h-8 px-3 text-xs bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:bg-gray-400 transition-colors"
                   >
                     {isImportingUrl ? 'Importing...' : 'Import URL'}
                   </button>
@@ -477,33 +607,26 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
                 <button
                   onClick={handleImport}
                   disabled={isLoading}
-                  className="h-10 px-4 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                  className="h-8 px-3 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
                 >
                   {isLoading ? 'Importing...' : 'Import Document'}
                 </button>
               </div>
               <button
                 onClick={onOpenSettings}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
               >
                 ⚙️ Settings
               </button>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Filter by title, author, or path..."
-              className="w-72 max-w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
               {(['grid', 'list', 'compact'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`px-2.5 py-1.5 text-xs capitalize ${
+                  className={`px-2 py-1 text-xs capitalize ${
                     viewMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
@@ -512,24 +635,10 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
               ))}
             </div>
 
-            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
-              {(['all', 'epub', 'pdf', 'markdown'] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setTypeFilter(type)}
-                  className={`px-2.5 py-1.5 text-xs uppercase ${
-                    typeFilter === type ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Category: All</option>
               {categoryOptions.map((category) => (
@@ -541,7 +650,7 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
 
             <button
               onClick={() => setGroupByCategory((prev) => !prev)}
-              className={`px-2.5 py-1.5 text-xs rounded-md border ${
+              className={`px-2 py-1 text-xs rounded-md border ${
                 groupByCategory
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
@@ -557,7 +666,7 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'type')}
-              className="ml-auto px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="ml-auto px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="recent">Sort: Recent</option>
               <option value="title">Sort: Title</option>
@@ -675,6 +784,12 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings }) => {
           </div>
         )}
       </div>
+      {statusBar && (
+        <div className="h-7 border-t border-gray-200 bg-white px-3 text-[11px] text-gray-600 flex items-center overflow-x-auto whitespace-nowrap">
+          {statusBar}
+        </div>
+      )}
+    </div>
     </div>
     </>
   );
