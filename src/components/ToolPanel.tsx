@@ -6,8 +6,10 @@ import { AudiobookPanel } from './AudiobookPanel';
 import { DeepAnalysisPanel } from './DeepAnalysisPanel';
 import { ChatPanel } from './ChatPanel';
 import { NotesPanel } from './NotesPanel';
+import { AnnotationPanel } from './AnnotationPanel';
+import { DictPanel } from './DictPanel';
 
-type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'chat' | 'notes' | 'audiobook';
+type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'chat' | 'notes' | 'annotations' | 'dict' | 'audiobook';
 
 type ExplainEventDetail = {
   selectedText?: string;
@@ -27,6 +29,13 @@ type TranslateEventDetail = {
 
 type ChatQuestionEventDetail = {
   question?: string;
+};
+
+type DictOpenEventDetail = {
+  mode?: 'dict' | 'sentence';
+  selectedText?: string;
+  sentence?: string;
+  paragraphId?: string;
 };
 
 type ToolPanelProps = {
@@ -60,15 +69,24 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     selectedText: string;
     autoRun?: boolean;
   } | null>(null);
+  const [dictRequest, setDictRequest] = useState<{
+    id: number;
+    mode: 'dict' | 'sentence';
+    selectedText: string;
+    sentence: string;
+    paragraphId?: string;
+  } | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'search', label: 'Search', icon: '🔍' },
     { key: 'summary', label: 'Summary', icon: '📝' },
+    { key: 'dict', label: 'Dict', icon: '📘' },
     { key: 'translate', label: 'Translate', icon: '🌐' },
     { key: 'deep', label: 'Deep', icon: '🧠' },
     { key: 'chat', label: 'Chat', icon: '💬' },
     { key: 'notes', label: 'Notes', icon: '📒' },
+    { key: 'annotations', label: 'Marks', icon: '🖍️' },
     { key: 'audiobook', label: 'Audio', icon: '🎧' },
   ];
 
@@ -167,17 +185,47 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       }
     };
 
+    const onOpenAnnotations = () => {
+      setActiveTab('annotations');
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onOpenDict = (event: Event) => {
+      const customEvent = event as CustomEvent<DictOpenEventDetail>;
+      const selectedText = customEvent.detail?.selectedText?.trim();
+      if (!selectedText) return;
+      const sentence = customEvent.detail?.sentence?.trim() || selectedText;
+      const mode = customEvent.detail?.mode === 'sentence' ? 'sentence' : 'dict';
+      setActiveTab('dict');
+      setDictRequest({
+        id: Date.now(),
+        mode,
+        selectedText,
+        sentence,
+        paragraphId: customEvent.detail?.paragraphId,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
     window.addEventListener('reader:chat-explain', onExplain as EventListener);
     window.addEventListener('reader:take-note', onTakeNote as EventListener);
     window.addEventListener('reader:translate-selection', onTranslateSelection as EventListener);
     window.addEventListener('reader:chat-question', onChatQuestion as EventListener);
     window.addEventListener('reader:open-search', onOpenSearch as EventListener);
+    window.addEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
+    window.addEventListener('reader:open-dict', onOpenDict as EventListener);
     return () => {
       window.removeEventListener('reader:chat-explain', onExplain as EventListener);
       window.removeEventListener('reader:take-note', onTakeNote as EventListener);
       window.removeEventListener('reader:translate-selection', onTranslateSelection as EventListener);
       window.removeEventListener('reader:chat-question', onChatQuestion as EventListener);
       window.removeEventListener('reader:open-search', onOpenSearch as EventListener);
+      window.removeEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
+      window.removeEventListener('reader:open-dict', onOpenDict as EventListener);
     };
   }, [collapsed, onToggleCollapse]);
 
@@ -260,6 +308,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             <div className={activeTab === 'deep' ? '' : 'hidden'}><DeepAnalysisPanel /></div>
             <div className={activeTab === 'chat' ? '' : 'hidden'}><ChatPanel request={chatRequest} /></div>
             <div className={activeTab === 'notes' ? '' : 'hidden'}><NotesPanel request={noteRequest} /></div>
+            <div className={activeTab === 'annotations' ? '' : 'hidden'}><AnnotationPanel /></div>
+            <div className={activeTab === 'dict' ? '' : 'hidden'}><DictPanel request={dictRequest} /></div>
           </div>
         </>
       )}

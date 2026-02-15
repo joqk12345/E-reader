@@ -5,6 +5,8 @@ export type ReaderViewSettings = {
   lineHeight: number;
   contentWidth: number;
   theme: ReaderThemeId;
+  layoutMode: 'single' | 'double';
+  bilingualViewMode: 'both' | 'source' | 'translation';
   cjkLetterSpacingEnabled: boolean;
   cjkLetterSpacing: number;
   expandDetails: boolean;
@@ -82,6 +84,8 @@ export const DEFAULT_VIEW_SETTINGS: ReaderViewSettings = {
   lineHeight: 1.8,
   contentWidth: 56,
   theme: 'paper',
+  layoutMode: 'single',
+  bilingualViewMode: 'both',
   cjkLetterSpacingEnabled: true,
   cjkLetterSpacing: 0.05,
   expandDetails: false,
@@ -127,6 +131,16 @@ export const loadReaderViewSettings = (readerFontSize: number): ReaderViewSettin
         parsed.theme === 'night'
           ? parsed.theme
           : DEFAULT_VIEW_SETTINGS.theme,
+      layoutMode:
+        parsed.layoutMode === 'single' || parsed.layoutMode === 'double'
+          ? parsed.layoutMode
+          : DEFAULT_VIEW_SETTINGS.layoutMode,
+      bilingualViewMode:
+        parsed.bilingualViewMode === 'both' ||
+        parsed.bilingualViewMode === 'source' ||
+        parsed.bilingualViewMode === 'translation'
+          ? parsed.bilingualViewMode
+          : DEFAULT_VIEW_SETTINGS.bilingualViewMode,
     };
   } catch {
     return {

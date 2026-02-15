@@ -110,11 +110,19 @@ impl MarkdownParser {
 fn split_paragraphs(lines: &[String]) -> Vec<String> {
     let mut paragraphs = Vec::new();
     let mut current: Vec<String> = Vec::new();
+    let mut in_fenced_block = false;
 
     for line in lines {
         let trimmed = line.trim();
+        let is_fence = trimmed.starts_with("```") || trimmed.starts_with("~~~");
 
-        if trimmed.is_empty() {
+        if is_fence {
+            current.push(line.to_string());
+            in_fenced_block = !in_fenced_block;
+            continue;
+        }
+
+        if trimmed.is_empty() && !in_fenced_block {
             if !current.is_empty() {
                 let block = current.join("\n").trim().to_string();
                 if !block.is_empty() {
