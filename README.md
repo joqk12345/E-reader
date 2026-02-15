@@ -9,15 +9,22 @@
 
 ## 🆕 Recent Updates (2026-02)
 
-- **Focused Reading Mode (new)**:
+- **Reader Theme System (new)**:
+  - 5 built-in reading themes: `White`, `Paper` (default), `Mint`, `Sepia`, `Night`
+  - customizable font size (12-30px), line height (1.2-2.4), content width (36-84em)
+  - CJK letter spacing option for better Chinese/Japanese/Korean readability
+  - theme preferences persisted in local storage
+- **Focused Reading Mode (improved)**:
   - one-click collapse of header tools + TOC + right tool panel for distraction-free reading
   - exits reading mode by restoring the previous collapse/expand state
   - supports shortcut toggle (`Cmd/Ctrl+Shift+R`) and quick exit button
 - **Shortcut system expanded and configurable**:
-  - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`
+  - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`, `Toggle Header Tools`, `Toggle Window Maximize`, `Font Increase/Decrease/Reset`
   - defaults now include:
     - `Cmd/Ctrl+F` for search
     - `Cmd/Ctrl+Shift+P` play, `Cmd/Ctrl+Shift+Space` pause/resume, `Cmd/Ctrl+Shift+S` stop
+    - `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0` for font size
+    - `PageDown/Space/J` / `PageUp/Shift+Space/K` for navigation
   - all above bindings are editable in Settings and persisted in keymap config
 - **Selection action toolbar redesigned**:
   - selecting text now opens a movable/resizable action popover near selection anchor
@@ -276,6 +283,14 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - Click **Play** to start listening
   - Reader auto-scrolls and highlights currently reading content
   - Use the floating mini player for global playback control when not in the Audio tab
+- **Reader Themes & View Settings**:
+  - Click the **Settings** button in the reader header to customize reading experience
+  - **Themes**: Choose from 5 presets - White, Paper, Mint, Sepia, Night
+  - **Font Size**: Adjust from 12px to 30px (shortcut: `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0`)
+  - **Line Height**: Adjust from 1.2 to 2.4
+  - **Content Width**: Adjust from 36em to 84em
+  - **CJK Letter Spacing**: Optional extra spacing for Chinese/Japanese/Korean text
+  - All settings are persisted automatically
 
 ### AI Features Setup
 
