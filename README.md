@@ -9,6 +9,15 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Library Sidebar + Runtime Status Bar (new)**:
+  - left sidebar now supports `All / Markdown / PDF / EPUB` grouped filtering with linked search counts
+  - sidebar is resizable by drag, and can be collapsed/expanded (default expanded)
+  - compact visual style for denser browsing layout
+  - bottom runtime status bar (content area only) shows:
+    - Chat model / status / local-or-http mode
+    - Embedding model / status / local-or-http mode
+    - embedding index count (`indexed/total`)
+    - TTS provider/voice / status / local-or-http mode (Edge TTS marked as remote/http)
 - **Reader Theme System (new)**:
   - 5 built-in reading themes: `White`, `Paper` (default), `Mint`, `Sepia`, `Night`
   - customizable font size (12-30px), line height (1.2-2.4), content width (36-84em)

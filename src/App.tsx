@@ -11,11 +11,26 @@ import { matchesAnyShortcut } from './utils/shortcuts';
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
 type Config = {
+  provider?: 'lmstudio' | 'openai';
+  lm_studio_url?: string;
+  chat_model?: string;
+  openai_api_key?: string;
+  openai_base_url?: string;
   embedding_provider?: 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
   embedding_model?: string;
   embedding_dimension?: number;
   embedding_auto_reindex?: boolean;
+  embedding_ollama_url?: string;
   embedding_local_model_path?: string;
+  tts_provider?: 'auto' | 'edge' | 'cosyvoice';
+  edge_tts_voice?: string;
+  cosyvoice_base_url?: string;
+};
+
+type EmbeddingStatus = {
+  indexed: number;
+  total: number;
+  stale: number;
 };
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -23,6 +38,19 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   const tag = target.tagName.toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
   return target.isContentEditable;
+};
+
+const normalizeEndpointMode = (url?: string): 'local' | 'http' => {
+  const raw = (url || '').trim().toLowerCase();
+  if (!raw) return 'local';
+  if (raw.includes('localhost') || raw.includes('127.0.0.1') || raw.includes('0.0.0.0')) return 'local';
+  return 'http';
+};
+
+const statusToneClass = (status: string): string => {
+  if (status === 'ok') return 'text-emerald-700';
+  if (status === 'warn') return 'text-amber-700';
+  return 'text-rose-700';
 };
 
 function App() {
@@ -36,10 +64,44 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts'>('reading');
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
+  const [runtimeConfig, setRuntimeConfig] = useState<Config | null>(null);
+  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
 
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshRuntimeStatus = async () => {
+      try {
+        const config = await invoke<Config>('get_config');
+        if (cancelled) return;
+        setRuntimeConfig(config);
+        try {
+          const status = await invoke<EmbeddingStatus>('get_embedding_profile_status', { docId: null });
+          if (!cancelled) setEmbeddingStatus(status);
+        } catch {
+          if (!cancelled) setEmbeddingStatus(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setRuntimeConfig(null);
+          setEmbeddingStatus(null);
+        }
+      }
+    };
+
+    void refreshRuntimeStatus();
+    const timer = window.setInterval(() => {
+      void refreshRuntimeStatus();
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedDocumentId) return;
@@ -149,22 +211,81 @@ function App() {
         />
       )}
 
-      <div className="h-screen w-screen bg-gray-50">
-        {selectedDocumentId ? (
-          <Reader
-            onOpenSettings={() => {
-              setSettingsSection('reading');
-              setShowSettings(true);
-            }}
-          />
-        ) : (
+      <div className="h-screen w-screen bg-gray-50 flex flex-col">
+        <div className="flex-1 min-h-0">
+          {selectedDocumentId ? (
+            <Reader
+              onOpenSettings={() => {
+                setSettingsSection('reading');
+                setShowSettings(true);
+              }}
+            />
+          ) : (
           <Library
             onOpenSettings={() => {
               setSettingsSection('reading');
               setShowSettings(true);
             }}
+            statusBar={
+              <div className="flex items-center gap-4">
+                <span className="font-semibold text-gray-700">Runtime</span>
+                <span>
+                  Chat: <span className="text-gray-800">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
+                  <span className="uppercase">{runtimeConfig?.provider === 'openai' ? 'http' : normalizeEndpointMode(runtimeConfig?.lm_studio_url)}</span> ·{' '}
+                  <span className={statusToneClass(
+                    runtimeConfig?.provider === 'openai'
+                      ? (runtimeConfig?.openai_api_key ? 'ok' : 'warn')
+                      : (runtimeConfig?.chat_model ? 'ok' : 'warn')
+                  )}>
+                    {runtimeConfig?.provider === 'openai'
+                      ? (runtimeConfig?.openai_api_key ? 'ok' : 'missing key')
+                      : (runtimeConfig?.chat_model ? 'ok' : 'not set')}
+                  </span>
+                </span>
+                <span>
+                  Embedding: <span className="text-gray-800">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
+                  <span className="uppercase">{runtimeConfig?.embedding_provider === 'local_transformers'
+                    ? 'local'
+                    : runtimeConfig?.embedding_provider === 'ollama'
+                      ? normalizeEndpointMode(runtimeConfig?.embedding_ollama_url)
+                      : runtimeConfig?.embedding_provider === 'lmstudio'
+                        ? normalizeEndpointMode(runtimeConfig?.lm_studio_url)
+                        : normalizeEndpointMode(runtimeConfig?.openai_base_url)}</span> ·{' '}
+                  <span className={statusToneClass(
+                    embeddingStatus ? (embeddingStatus.stale > 0 ? 'warn' : 'ok') : 'warn'
+                  )}>
+                    {embeddingStatus ? (embeddingStatus.stale > 0 ? 'stale' : 'ok') : 'unknown'}
+                  </span>
+                </span>
+                <span>
+                  Index: <span className="text-gray-800">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
+                </span>
+                <span>
+                  TTS: <span className="text-gray-800">
+                    {runtimeConfig?.tts_provider === 'cosyvoice'
+                      ? 'CosyVoice'
+                      : runtimeConfig?.edge_tts_voice || 'Edge TTS'}
+                  </span> ·{' '}
+                  <span className="uppercase">
+                    {runtimeConfig?.tts_provider === 'cosyvoice'
+                      ? normalizeEndpointMode(runtimeConfig?.cosyvoice_base_url)
+                      : 'http'}
+                  </span> ·{' '}
+                  <span className={statusToneClass(
+                    runtimeConfig?.tts_provider === 'cosyvoice'
+                      ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'warn')
+                      : 'ok'
+                  )}>
+                    {runtimeConfig?.tts_provider === 'cosyvoice'
+                      ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'missing url')
+                      : 'ok'}
+                  </span>
+                </span>
+              </div>
+            }
           />
         )}
+        </div>
       </div>
     </>
   );
