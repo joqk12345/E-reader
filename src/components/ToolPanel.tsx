@@ -234,32 +234,52 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       className="relative h-full min-h-0 flex flex-col bg-white border-l border-gray-200 flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
-      <div className={`flex items-center justify-between border-b border-gray-200 ${collapsed ? 'p-2' : 'px-3 py-2.5'}`}>
-        {collapsed ? (
-          <span className="text-[11px] font-semibold text-gray-700">Tools</span>
-        ) : (
-          <span className="text-sm font-semibold text-gray-800">Tools</span>
-        )}
-        <button
-          onClick={onToggleCollapse}
-          className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
-          title={collapsed ? 'Expand tools' : 'Collapse tools'}
-          aria-label={collapsed ? 'Expand tools' : 'Collapse tools'}
-        >
-          <svg
-            viewBox="0 0 20 20"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+      {collapsed ? (
+        <div className="flex items-center justify-center border-b border-gray-200 p-2 flex-shrink-0">
+          <button
+            onClick={onToggleCollapse}
+            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-gray-100 text-gray-600"
+            title="Expand tools"
+            aria-label="Expand tools"
           >
-            {collapsed ? <path d="M12 4l-6 6 6 6" /> : <path d="M8 4l6 6-6 6" />}
-          </svg>
-        </button>
-      </div>
+            <svg
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4l-6 6 6 6" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2.5">
+          <span className="text-sm font-semibold text-gray-800">Tools</span>
+          <button
+            onClick={onToggleCollapse}
+            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
+            title="Collapse tools"
+            aria-label="Collapse tools"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 4l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {collapsed ? (
         <div className="flex-1 min-h-0 py-2 space-y-1 overflow-y-auto">

@@ -53,6 +53,134 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   note: '✎',
 };
 const DEFAULT_SELECTION_POPOVER_WIDTH = 540;
+const DOUBLE_COLUMN_PAGE_SIZE = 12;
+
+type CodeRule = {
+  regex: RegExp;
+  color: string;
+};
+
+const inferCodeLanguage = (className?: string): string => {
+  if (!className) return '';
+  const matched = className.match(/language-([\w-]+)/i);
+  return matched?.[1]?.toLowerCase() || '';
+};
+
+const toCodeText = (value: ReactNode): string =>
+  typeof value === 'string' ? value : String(value ?? '');
+
+const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
+  const baseText = isDark ? '#d6d9de' : '#1f2937';
+  const keyword = isDark ? '#f38ba8' : '#8b1d1d';
+  const stringColor = isDark ? '#a6e3a1' : '#166534';
+  const numberColor = isDark ? '#f9e2af' : '#7c3aed';
+  const commentColor = isDark ? '#94a3b8' : '#64748b';
+  const functionColor = isDark ? '#89b4fa' : '#1d4ed8';
+  const propertyColor = isDark ? '#94e2d5' : '#0f766e';
+  const boolColor = isDark ? '#fab387' : '#b45309';
+
+  if (language === 'json') {
+    return [
+      { regex: /"(?:\\.|[^"\\])*"(?=\s*:)/g, color: propertyColor },
+      { regex: /"(?:\\.|[^"\\])*"/g, color: stringColor },
+      { regex: /\b-?\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi, color: numberColor },
+      { regex: /\b(?:true|false|null)\b/g, color: boolColor },
+    ];
+  }
+
+  if (language === 'python' || language === 'py') {
+    return [
+      { regex: /#.*/g, color: commentColor },
+      { regex: /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, color: stringColor },
+      { regex: /\b(?:def|class|return|if|elif|else|for|while|in|try|except|finally|with|as|import|from|pass|break|continue|lambda|yield|async|await|raise|and|or|not|is)\b/g, color: keyword },
+      { regex: /\b-?\d+(?:\.\d+)?\b/g, color: numberColor },
+      { regex: /\b(?:True|False|None)\b/g, color: boolColor },
+      { regex: /\b([A-Za-z_][A-Za-z0-9_]*)(?=\s*\()/g, color: functionColor },
+    ];
+  }
+
+  if (language === 'css' || language === 'scss' || language === 'less') {
+    return [
+      { regex: /\/\*[\s\S]*?\*\//g, color: commentColor },
+      { regex: /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, color: stringColor },
+      { regex: /\b(?:@media|@supports|@keyframes|@import|@font-face|@layer)\b/g, color: keyword },
+      { regex: /\b[a-z-]+(?=\s*:)/gi, color: propertyColor },
+      { regex: /#[0-9a-f]{3,8}\b/gi, color: numberColor },
+      { regex: /\b\d+(?:\.\d+)?(?:px|em|rem|vh|vw|%)?\b/g, color: numberColor },
+    ];
+  }
+
+  if (language === 'html' || language === 'xml') {
+    return [
+      { regex: /<!--[\s\S]*?-->/g, color: commentColor },
+      { regex: /<\/?[A-Za-z][\w:-]*/g, color: keyword },
+      { regex: /\s[A-Za-z_:][\w:.-]*(?==)/g, color: propertyColor },
+      { regex: /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, color: stringColor },
+    ];
+  }
+
+  return [
+    { regex: /\/\/.*|\/\*[\s\S]*?\*\//g, color: commentColor },
+    { regex: /`(?:\\.|[^`\\])*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, color: stringColor },
+    {
+      regex: /\b(?:const|let|var|function|return|if|else|for|while|switch|case|break|continue|class|extends|new|import|from|export|default|async|await|try|catch|finally|throw|interface|type|enum|implements|public|private|protected|readonly|static)\b/g,
+      color: keyword,
+    },
+    { regex: /\b-?\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi, color: numberColor },
+    { regex: /\b(?:true|false|null|undefined)\b/g, color: boolColor },
+    { regex: /\b([A-Za-z_$][\w$]*)(?=\s*\()/g, color: functionColor },
+    { regex: /\bthis\b/g, color: baseText },
+  ];
+};
+
+const renderHighlightedCode = (code: string, language: string, isDark: boolean): ReactNode => {
+  const rules = buildCodeRules(language, isDark);
+  if (rules.length === 0 || !code) return code;
+
+  const tokens: Array<{ start: number; end: number; color: string; priority: number }> = [];
+  rules.forEach((rule, priority) => {
+    const regex = new RegExp(rule.regex.source, rule.regex.flags.includes('g') ? rule.regex.flags : `${rule.regex.flags}g`);
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(code)) !== null) {
+      const text = match[0];
+      if (!text) {
+        regex.lastIndex += 1;
+        continue;
+      }
+      tokens.push({
+        start: match.index,
+        end: match.index + text.length,
+        color: rule.color,
+        priority,
+      });
+    }
+  });
+
+  tokens.sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start;
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return b.end - a.end;
+  });
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  tokens.forEach((token, idx) => {
+    if (token.start < cursor) return;
+    if (token.start > cursor) {
+      nodes.push(<span key={`plain-${idx}-${cursor}`}>{code.slice(cursor, token.start)}</span>);
+    }
+    nodes.push(
+      <span key={`tok-${idx}-${token.start}`} style={{ color: token.color }}>
+        {code.slice(token.start, token.end)}
+      </span>
+    );
+    cursor = token.end;
+  });
+  if (cursor < code.length) {
+    nodes.push(<span key={`plain-tail-${cursor}`}>{code.slice(cursor)}</span>);
+  }
+  return nodes;
+};
 
 const normalizeSelectionActionOrder = (input: SelectionAction[]): SelectionAction[] => {
   const dedup = input.filter((item, index) => input.indexOf(item) === index);
@@ -400,6 +528,7 @@ export function ReaderContent() {
   const [ttsConfirmParagraphId, setTtsConfirmParagraphId] = useState<string | null>(null);
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
   const [annotationRefreshTick, setAnnotationRefreshTick] = useState(0);
+  const [columnPageIndex, setColumnPageIndex] = useState(0);
   const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
     loadReaderViewSettings(readerFontSize)
   );
@@ -436,6 +565,15 @@ export function ReaderContent() {
       ),
     [translations]
   );
+  const totalColumnPages = useMemo(() => {
+    if (!isTwoColumnLayout) return 1;
+    return Math.max(1, Math.ceil(paragraphs.length / DOUBLE_COLUMN_PAGE_SIZE));
+  }, [isTwoColumnLayout, paragraphs.length]);
+  const displayedParagraphs = useMemo(() => {
+    if (!isTwoColumnLayout) return paragraphs;
+    const start = columnPageIndex * DOUBLE_COLUMN_PAGE_SIZE;
+    return paragraphs.slice(start, start + DOUBLE_COLUMN_PAGE_SIZE);
+  }, [isTwoColumnLayout, paragraphs, columnPageIndex]);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -511,10 +649,60 @@ export function ReaderContent() {
           sourceWords: sourceWordCount,
           translatedWords: translatedWordCount,
           paragraphCount: paragraphs.length,
+          currentPage: isTwoColumnLayout ? columnPageIndex + 1 : 1,
+          totalPages: isTwoColumnLayout ? totalColumnPages : 1,
         },
       })
     );
-  }, [paragraphs.length, sourceWordCount, translatedWordCount]);
+  }, [
+    columnPageIndex,
+    isTwoColumnLayout,
+    paragraphs.length,
+    sourceWordCount,
+    totalColumnPages,
+    translatedWordCount,
+  ]);
+
+  useEffect(() => {
+    if (!isTwoColumnLayout) {
+      setColumnPageIndex(0);
+      return;
+    }
+    setColumnPageIndex((prev) => Math.min(prev, Math.max(0, totalColumnPages - 1)));
+  }, [isTwoColumnLayout, totalColumnPages]);
+
+  useEffect(() => {
+    setColumnPageIndex(0);
+  }, [selectedDocumentId, currentSectionId]);
+
+  useEffect(() => {
+    if (!isTwoColumnLayout || !focusedParagraphId) return;
+    const idx = paragraphs.findIndex((item) => item.id === focusedParagraphId);
+    if (idx < 0) return;
+    const page = Math.floor(idx / DOUBLE_COLUMN_PAGE_SIZE);
+    setColumnPageIndex(page);
+  }, [focusedParagraphId, isTwoColumnLayout, paragraphs]);
+
+  useEffect(() => {
+    const onFlipRequest = (event: Event) => {
+      const flipEvent = event as CustomEvent<{ direction?: 'prev' | 'next' }>;
+      if (!isTwoColumnLayout) return;
+      const direction = flipEvent.detail?.direction;
+      if (direction !== 'prev' && direction !== 'next') return;
+
+      if (direction === 'next' && columnPageIndex < totalColumnPages - 1) {
+        setColumnPageIndex((prev) => Math.min(totalColumnPages - 1, prev + 1));
+        flipEvent.preventDefault();
+      } else if (direction === 'prev' && columnPageIndex > 0) {
+        setColumnPageIndex((prev) => Math.max(0, prev - 1));
+        flipEvent.preventDefault();
+      }
+    };
+
+    window.addEventListener('reader:request-flip-page', onFlipRequest as EventListener);
+    return () =>
+      window.removeEventListener('reader:request-flip-page', onFlipRequest as EventListener);
+  }, [columnPageIndex, isTwoColumnLayout, totalColumnPages]);
 
   useEffect(() => {
     if (viewSettings.fontSize !== readerFontSize) {
@@ -979,6 +1167,16 @@ export function ReaderContent() {
     });
   };
 
+  useEffect(() => {
+    if (!isTwoColumnLayout || !currentReadingSentenceKey) return;
+    const parsed = parseSentenceKey(currentReadingSentenceKey);
+    if (!parsed) return;
+    const idx = paragraphs.findIndex((item) => item.id === parsed.paragraphId);
+    if (idx < 0) return;
+    const page = Math.floor(idx / DOUBLE_COLUMN_PAGE_SIZE);
+    setColumnPageIndex(page);
+  }, [currentReadingSentenceKey, isTwoColumnLayout, paragraphs]);
+
   // 跟随当前朗读句子自动滚动
   useEffect(() => {
     if (!currentReadingSentenceKey) return;
@@ -993,7 +1191,7 @@ export function ReaderContent() {
     const paragraphEl = paragraphRefs.current[paragraphId];
     if (!paragraphEl) return;
     paragraphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [currentReadingSentenceKey]);
+  }, [columnPageIndex, currentReadingSentenceKey]);
 
   useEffect(() => {
     const container = contentRef.current;
@@ -1030,7 +1228,7 @@ export function ReaderContent() {
       setFocusedParagraphId(null);
     }, 1600);
     return () => window.clearTimeout(timer);
-  }, [focusedParagraphId, setFocusedParagraphId]);
+  }, [columnPageIndex, focusedParagraphId, setFocusedParagraphId]);
 
   if (isLoading) {
     return (
@@ -1058,7 +1256,7 @@ export function ReaderContent() {
   return (
     <div
       ref={contentRef}
-      className="flex-1 overflow-y-auto"
+      className="relative flex-1 overflow-y-auto"
       style={{ backgroundColor: currentTheme.background, color: currentTheme.foreground }}
       onMouseUp={handleSelectionEnd}
     >
@@ -1110,7 +1308,7 @@ export function ReaderContent() {
                 : undefined
             }
           >
-          {paragraphs.map((paragraph) => {
+          {displayedParagraphs.map((paragraph) => {
             const isMarkdownParagraph = currentDocumentType === 'markdown';
             const normalizedMarkdownText = isMarkdownParagraph
               ? normalizeMarkdownForReader(paragraph.text)
@@ -1167,19 +1365,37 @@ export function ReaderContent() {
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
                             li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
                             blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
-                            code: ({ children }) => (
-                              <code className="rounded px-1 py-0.5" style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
+                            code: ({ className, children }) => (
+                              <code className={className ? `${className} rounded px-1 py-0.5` : 'rounded px-1 py-0.5'} style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
                                 {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
                               </code>
                             ),
-                            pre: ({ children }) => (
-                              <pre
-                                className="my-3 overflow-x-auto rounded border p-3"
-                                style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
-                              >
-                                {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `pre-${paragraph.id}`)}
-                              </pre>
-                            ),
+                            pre: ({ children }) => {
+                              const codeNode = Children.toArray(children)[0];
+                              if (isValidElement(codeNode)) {
+                                const props = codeNode.props as { className?: string; children?: ReactNode };
+                                const rawCode = toCodeText(props.children).replace(/\n$/, '');
+                                const language = inferCodeLanguage(props.className);
+                                return (
+                                  <pre
+                                    className="my-3 overflow-x-auto rounded border p-3"
+                                    style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
+                                  >
+                                    <code className={props.className || 'block'} style={{ backgroundColor: 'transparent', color: currentTheme.codeText }}>
+                                      {renderHighlightedCode(rawCode, language, currentTheme.isDark)}
+                                    </code>
+                                  </pre>
+                                );
+                              }
+                              return (
+                                <pre
+                                  className="my-3 overflow-x-auto rounded border p-3"
+                                  style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
+                                >
+                                  {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `pre-${paragraph.id}`)}
+                                </pre>
+                              );
+                            },
                             a: ({ href, children }) => (
                               <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: currentTheme.link }}>
                                 {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}

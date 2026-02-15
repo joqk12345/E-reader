@@ -48,6 +48,8 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     sourceWords: 0,
     translatedWords: 0,
     paragraphCount: 0,
+    currentPage: 1,
+    totalPages: 1,
   });
   const [bilingualViewMode, setBilingualViewMode] = useState<'both' | 'source' | 'translation'>(
     () => loadReaderViewSettings(readerFontSize).bilingualViewMode
@@ -103,6 +105,18 @@ export function Reader({ onOpenSettings }: ReaderProps) {
 
   const handleFlipPage = useCallback(
     (direction: 'prev' | 'next') => {
+      const pageFlipRequest = new CustomEvent<{ direction: 'prev' | 'next' }>(
+        'reader:request-flip-page',
+        {
+          detail: { direction },
+          cancelable: true,
+        }
+      );
+      const shouldContinueSectionFlip = window.dispatchEvent(pageFlipRequest);
+      if (!shouldContinueSectionFlip) {
+        return;
+      }
+
       if (sections.length === 0) return;
       const currentIndex = Math.max(
         0,
@@ -280,12 +294,16 @@ export function Reader({ onOpenSettings }: ReaderProps) {
         sourceWords?: number;
         translatedWords?: number;
         paragraphCount?: number;
+        currentPage?: number;
+        totalPages?: number;
       }>
     ) => {
       setContentStats({
         sourceWords: event.detail?.sourceWords || 0,
         translatedWords: event.detail?.translatedWords || 0,
         paragraphCount: event.detail?.paragraphCount || 0,
+        currentPage: event.detail?.currentPage || 1,
+        totalPages: event.detail?.totalPages || 1,
       });
     };
     window.addEventListener('reader:content-stats', onContentStats as EventListener);
@@ -442,7 +460,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
           {!readingMode && (
             <div className="h-7 border-t border-gray-200 bg-white px-3 text-[11px] text-gray-600 flex items-center justify-end overflow-x-auto whitespace-nowrap">
               <span>
-                Word Stats: Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount}
+                Word Stats: Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount} · Page {contentStats.currentPage}/{contentStats.totalPages}
               </span>
             </div>
           )}

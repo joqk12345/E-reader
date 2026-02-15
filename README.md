@@ -26,6 +26,13 @@
     - confined to center reading pane (does not occupy left/right sidebars)
     - hidden automatically in focused reading mode
     - English copy + word-count based stats: `Word Stats: Source / Translation / Paragraphs`
+    - in two-column mode, status bar now also shows pagination: `Page current/total`
+  - Two-column pagination behavior refinement:
+    - no longer applies flow-columns across full content at once
+    - now paginates by current reading window and supports keyboard page flip
+    - removed floating pagination overlay to avoid text occlusion
+  - Markdown code block rendering:
+    - added syntax highlighting in reader mode for fenced code blocks
   - Markdown rendering robustness:
     - fixed fenced code block paragraph splitting in markdown parser (prevents broken/partial tree-structure rendering)
     - improved tree-structure text rendering fallback in reader/dict markdown display
@@ -72,7 +79,8 @@
   - `Cmd/Ctrl+F` now opens Search tab and auto-focuses the query input
 - **Tool panel behavior improvements**:
   - Search/Summary/Translate/Deep/Chat/Notes tabs are kept mounted (hidden instead of unmounted) to reduce context loss on tab switch
-  - Chat panel now focuses on selection-driven Q&A flow and removes free-form input box
+  - right tool panel collapsed state now has a dedicated top-centered expand arrow (aligned with TOC behavior)
+  - Chat panel supports direct free-form questions via built-in input (Enter to send), while keeping selection-triggered questions
 - **TOC collapsed-state UX polish**:
   - collapsed TOC sidebar now uses a dedicated centered expand button
   - TOC content area is now independently scrollable in both expanded and collapsed layouts

@@ -30,6 +30,7 @@ const stripThinking = (text: string) => text.replace(/<think>[\s\S]*?<\/think>/g
 export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
   const { selectedDocumentId, currentSectionId, currentParagraph } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [questionInput, setQuestionInput] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -65,11 +66,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
   };
 
   const ask = async (overrideQuestion?: string) => {
-    const question = (overrideQuestion ?? '').trim();
+    const question = (overrideQuestion ?? questionInput).trim();
     if (!question || isAsking || !canAsk) return;
 
     setError(null);
     setIsAsking(true);
+    setQuestionInput('');
 
     const userMessage: ChatMessage = {
       id: makeId(),
@@ -174,7 +176,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="h-full flex items-center justify-center text-sm text-gray-500">
-            请在阅读区选中文本后，在弹出栏输入问题并提问。
+            Ask directly here, or select text in the reader to trigger a contextual question.
           </div>
         )}
         {messages.map((m) => (
@@ -197,6 +199,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="border-t border-gray-200 p-3">
+        <div className="flex items-end">
+          <textarea
+            value={questionInput}
+            onChange={(event) => setQuestionInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                void ask();
+              }
+            }}
+            disabled={!canAsk || isAsking}
+            placeholder={canAsk ? 'Ask anything about current context...' : 'Select a document first'}
+            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+          />
+        </div>
       </div>
     </div>
   );
