@@ -18,11 +18,11 @@ use commands::{
     get_document_paragraphs, get_document_sections, get_embedding_profile_status,
     get_document_previews, get_paragraph_context, get_section_paragraphs, get_summary_cache,
     import_epub, import_markdown, import_markdown_content, import_pdf, import_url,
-    index_document, list_annotations, list_documents, list_tts_voices, mcp_request, search,
+    index_document, list_annotations, list_documents, list_tts_voices, get_mcp_status, mcp_request, set_mcp_reader_enabled, search,
     search_by_embedding, summarize, translate, tts_synthesize, update_config,
     upsert_embeddings_batch, validate_local_embedding_model_path,
 };
-use tauri::{menu::Menu, Manager};
+use tauri::menu::Menu;
 
 fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     Menu::default(app)
@@ -36,7 +36,6 @@ pub fn run() {
         .setup(|app| {
             logger::init_logging();
             database::init_db(app.handle())?;
-            app.manage(commands::McpState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -74,6 +73,8 @@ pub fn run() {
             list_tts_voices,
             get_config,
             update_config,
+            get_mcp_status,
+            set_mcp_reader_enabled,
             mcp_request,
         ])
         .run(tauri::generate_context!())

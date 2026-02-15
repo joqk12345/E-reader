@@ -1,0 +1,13 @@
+{
+  "name": "@reader/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server for Reader business tools",
+  "bin": {
+    "reader-mcp-server": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "mkdir -p dist && cp src/cli.mjs dist/cli.js"
+  }
+}

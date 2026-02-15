@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import {
@@ -28,7 +28,7 @@ import {
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
-type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts';
+type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations';
 
 interface Config {
   provider: AiProvider;
@@ -66,6 +66,53 @@ interface EmbeddingStatus {
   stale: number;
 }
 
+interface McpStatus {
+  project_root: string;
+  config_path: string;
+  config_exists: boolean;
+  launcher_path: string;
+  launcher_exists: boolean;
+  reader_configured: boolean;
+  configured_command: string | null;
+  configured_args: string[];
+  tool_names: string[];
+  tools_available: number;
+  resources_available: number;
+  connected_clients: number | null;
+  transport: string;
+  server_version: string | null;
+  test_ok: boolean;
+  test_error: string | null;
+  checked_at: number;
+}
+
+const MCP_SETUP_DOCS_URL = 'https://vmark.app/guide/mcp-setup.html';
+const MCP_UI_PREFS_KEY = 'reader-mcp-ui-prefs';
+
+interface McpUiPrefs {
+  startOnLaunch: boolean;
+  autoApproveEdits: boolean;
+}
+
+const defaultMcpUiPrefs: McpUiPrefs = {
+  startOnLaunch: true,
+  autoApproveEdits: false,
+};
+
+const loadMcpUiPrefs = (): McpUiPrefs => {
+  try {
+    const raw = localStorage.getItem(MCP_UI_PREFS_KEY);
+    if (!raw) return defaultMcpUiPrefs;
+    const parsed = JSON.parse(raw) as Partial<McpUiPrefs>;
+    return {
+      startOnLaunch: parsed.startOnLaunch ?? defaultMcpUiPrefs.startOnLaunch,
+      autoApproveEdits: parsed.autoApproveEdits ?? defaultMcpUiPrefs.autoApproveEdits,
+    };
+  } catch {
+    return defaultMcpUiPrefs;
+  }
+};
+
 const themeOrder: ReaderThemeId[] = ['white', 'paper', 'mint', 'sepia', 'night'];
 
 function SidebarIcon({ type }: { type: SettingsSection }) {
@@ -99,6 +146,15 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M4 6h8M8 6v2M6 8l4 6M14 6h6M17 6v10" />
         <path d="M13 16h8M15 12l2 4 2-4" />
+      </svg>
+    );
+  }
+  if (type === 'integrations') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M8 7V5a2 2 0 1 1 4 0v2" />
+        <path d="M12 17v2a2 2 0 1 0 4 0v-2" />
+        <path d="M6 9h10a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" />
       </svg>
     );
   }
@@ -160,6 +216,10 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
+  const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null);
+  const [isTestingMcp, setIsTestingMcp] = useState(false);
+  const [isTogglingMcp, setIsTogglingMcp] = useState(false);
+  const [mcpUiPrefs, setMcpUiPrefs] = useState<McpUiPrefs>(() => loadMcpUiPrefs());
 
   useEffect(() => {
     void loadConfig();
@@ -185,6 +245,91 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
+
+  const loadMcpStatus = useCallback(async (checkConnection = false) => {
+    if (checkConnection) setIsTestingMcp(true);
+    try {
+      const status = await invoke<McpStatus>('get_mcp_status', { checkConnection });
+      setMcpStatus(status);
+      if (checkConnection) {
+        if (status.test_ok) {
+          setMessage({ type: 'success', text: 'Reader MCP server is reachable.' });
+        } else {
+          setMessage({
+            type: 'error',
+            text: status.test_error || 'Reader MCP server check failed.',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load MCP status:', error);
+      if (checkConnection) {
+        setMessage({ type: 'error', text: 'Failed to test MCP server connection.' });
+      }
+    } finally {
+      if (checkConnection) setIsTestingMcp(false);
+    }
+  }, []);
+
+  const handleCopy = async (text: string, successMessage: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage({ type: 'success', text: successMessage });
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to copy to clipboard.' });
+    }
+  };
+
+  const updateMcpUiPrefs = (patch: Partial<McpUiPrefs>) => {
+    setMcpUiPrefs((prev) => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(MCP_UI_PREFS_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.warn('Failed to persist MCP UI preferences:', error);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleMcpEnabled = async (enabled: boolean) => {
+    setIsTogglingMcp(true);
+    try {
+      const status = await invoke<McpStatus>('set_mcp_reader_enabled', { enabled });
+      setMcpStatus(status);
+      setMessage({
+        type: 'success',
+        text: enabled ? 'Reader MCP server enabled in .mcp.json.' : 'Reader MCP server disabled in .mcp.json.',
+      });
+      if (enabled) {
+        await loadMcpStatus(true);
+      }
+    } catch (error) {
+      console.error('Failed to update MCP config:', error);
+      setMessage({ type: 'error', text: 'Failed to update MCP configuration.' });
+    } finally {
+      setIsTogglingMcp(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection !== 'integrations') return;
+    let cancelled = false;
+    const refresh = async () => {
+      if (cancelled || isTestingMcp || isTogglingMcp) return;
+      await loadMcpStatus(false);
+    };
+
+    void refresh();
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeSection, isTestingMcp, isTogglingMcp, loadMcpStatus]);
 
   const loadConfig = async () => {
     setIsLoading(true);
@@ -217,6 +362,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       } catch (e) {
         console.warn('Failed to load embedding status:', e);
       }
+      await loadMcpStatus(false);
     } catch (error) {
       console.error('Failed to load config:', error);
       setMessage({ type: 'error', text: 'Failed to load configuration' });
@@ -299,6 +445,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     { id: 'ai', label: 'AI & Embedding' },
     { id: 'audio', label: 'Audio' },
     { id: 'shortcuts', label: 'Shortcuts' },
+    { id: 'integrations', label: 'Integrations' },
   ];
 
   const lmDisabled = config.provider !== 'lmstudio';
@@ -307,6 +454,38 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const ollamaEmbeddingDisabled = config.embedding_provider !== 'ollama';
   const edgeDisabled = config.tts_provider === 'cosyvoice';
   const cosyDisabled = config.tts_provider === 'edge';
+  const mcpEnabled = Boolean(mcpStatus?.reader_configured);
+  const mcpConnectedClients = mcpStatus?.connected_clients ?? 0;
+  const mcpRunning = Boolean(mcpStatus?.test_ok) || mcpConnectedClients > 0;
+  const mcpConnectionText = isTestingMcp
+    ? 'Checking'
+    : mcpRunning
+      ? 'Running'
+      : mcpEnabled
+        ? 'Enabled'
+        : 'Stopped';
+  const mcpCheckedAt = mcpStatus?.checked_at
+    ? new Date(mcpStatus.checked_at).toLocaleString()
+    : '—';
+  const mcpVersion = mcpStatus?.server_version || '0.1.0';
+  const mcpLaunchCommand = [
+    mcpStatus?.configured_command || mcpStatus?.launcher_path || '',
+    ...(mcpStatus?.configured_args || []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const listeningLabel = mcpStatus?.transport === 'stdio' ? 'stdio' : mcpStatus?.transport || '—';
+  const mcpSnippet = JSON.stringify(
+    {
+      mcpServers: {
+        reader: {
+          command: mcpStatus?.launcher_path || './mcp-server/bin/reader-mcp-server.sh',
+        },
+      },
+    },
+    null,
+    2
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-[1px]" onClick={onClose}>
@@ -344,6 +523,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
               {activeSection === 'ai' && 'AI & Embedding'}
               {activeSection === 'audio' && 'Audio'}
               {activeSection === 'shortcuts' && 'Shortcuts'}
+              {activeSection === 'integrations' && 'Integrations'}
             </h2>
 
             {message && (
@@ -704,6 +884,148 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingRow title="Audio Stop" description="Stop playback" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_stop} onChange={handleShortcutChange('audio_stop')} />} />
                 <SettingRow title="Toggle Reading Mode" description="Enter/exit minimal reader mode" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_reading_mode} onChange={handleShortcutChange('toggle_reading_mode')} />} />
               </SettingsCard>
+            )}
+
+            {activeSection === 'integrations' && (
+              <div className="space-y-4">
+                <SettingsCard>
+                  <SettingRow
+                    title="Enable MCP Server"
+                    description="Allow AI assistants to access Reader business tools"
+                    right={
+                      <>
+                        <StatusDot success={mcpRunning || mcpEnabled} text={mcpConnectionText} />
+                        <ToggleSwitch
+                          checked={mcpEnabled}
+                          disabled={isTogglingMcp}
+                          onChange={(next) => void handleToggleMcpEnabled(next)}
+                        />
+                      </>
+                    }
+                  />
+                  <SettingRow
+                    title="Start on launch"
+                    description="Auto-load Reader MCP configuration when Reader opens"
+                    right={
+                      <ToggleSwitch
+                        checked={mcpUiPrefs.startOnLaunch}
+                        onChange={(next) => updateMcpUiPrefs({ startOnLaunch: next })}
+                      />
+                    }
+                  />
+                  <SettingRow
+                    title="Auto-approve edits"
+                    description="Apply MCP-driven edits without confirmation (use with caution)"
+                    right={
+                      <ToggleSwitch
+                        checked={mcpUiPrefs.autoApproveEdits}
+                        onChange={(next) => updateMcpUiPrefs({ autoApproveEdits: next })}
+                      />
+                    }
+                  />
+                  <SettingsDivider />
+                  <div className="px-1 py-2">
+                    <p className="flex items-center gap-2 text-[13px] text-slate-500">
+                      <span>Listening on</span>
+                      <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[12px] text-slate-700">{listeningLabel}</code>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopy(mcpLaunchCommand || mcpSnippet, 'MCP command copied.')}
+                        className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50"
+                      >
+                        Copy
+                      </button>
+                    </p>
+                    <p className="mt-2 text-[12px] text-slate-500">
+                      Project-level stdio MCP server. AI clients discover it via <code>.mcp.json</code>.
+                    </p>
+                  </div>
+                  <SettingsDivider />
+                  <div className="flex items-center gap-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => void loadMcpStatus(true)}
+                      disabled={isTestingMcp}
+                      className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-[13px] text-slate-700 shadow-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isTestingMcp ? 'Checking...' : 'Test Connection'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadMcpStatus(false)}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-700 hover:bg-slate-50"
+                    >
+                      Refresh Status
+                    </button>
+                  </div>
+                </SettingsCard>
+
+                <SettingsCard>
+                  <KVInfo
+                    rows={[
+                      {
+                        key: 'Version',
+                        value: <span className="font-mono text-[11px] text-slate-700">{mcpVersion}</span>,
+                      },
+                      {
+                        key: 'Tools Available',
+                        value: (
+                          <span className="font-medium text-blue-600">{mcpStatus?.tools_available ?? '—'} tools</span>
+                        ),
+                      },
+                      {
+                        key: 'Resources Available',
+                        value: <span className="font-medium text-slate-700">{mcpStatus?.resources_available ?? 0}</span>,
+                      },
+                      {
+                        key: 'Connected Clients',
+                        value: <span className="font-medium text-emerald-600">{mcpConnectedClients}</span>,
+                      },
+                      {
+                        key: 'Last Checked',
+                        value: <span className="text-slate-700">{mcpCheckedAt}</span>,
+                      },
+                      {
+                        key: 'Config',
+                        value: (
+                          <span className="font-mono text-[11px] text-slate-700">
+                            {mcpStatus?.config_exists ? 'loaded' : 'missing'}
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                  {mcpStatus?.test_error ? (
+                    <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                      {mcpStatus.test_error}
+                    </div>
+                  ) : null}
+                </SettingsCard>
+
+                <SettingsCard>
+                  <div className="space-y-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[14px] font-semibold text-slate-900">Install MCP Configuration</div>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopy(mcpSnippet, 'MCP snippet copied.')}
+                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[12px] text-slate-700 hover:bg-slate-50"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <pre className="overflow-x-auto rounded-lg bg-slate-900 p-3 text-[12px] text-slate-100">{mcpSnippet}</pre>
+                    <a
+                      href={MCP_SETUP_DOCS_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[13px] text-blue-600 hover:underline"
+                    >
+                      MCP Setup Guide ↗
+                    </a>
+                  </div>
+                </SettingsCard>
+              </div>
             )}
           </main>
 

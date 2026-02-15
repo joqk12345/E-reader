@@ -62,7 +62,7 @@ function App() {
     keymap,
   } = useStore();
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts'>('reading');
+  const [settingsSection, setSettingsSection] = useState<'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations'>('reading');
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
   const [runtimeConfig, setRuntimeConfig] = useState<Config | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);

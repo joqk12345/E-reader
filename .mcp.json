@@ -1,19 +1,30 @@
 {
   "mcpServers": {
+    "reader": {
+      "command": "/Users/mac/Documents/workspace/Data/01_Work/Projects/reader/mcp-server/bin/reader-mcp-server.sh"
+    },
     "tauri": {
       "command": "npx",
-      "args": ["-y", "@hypothesi/tauri-mcp-server"],
+      "args": [
+        "-y",
+        "@hypothesi/tauri-mcp-server"
+      ],
       "env": {
         "TAURI_MCP_URL": "ws://localhost:9324"
       }
     },
     "codex": {
       "command": "codex",
-      "args": ["mcp-server"]
+      "args": [
+        "mcp-server"
+      ]
     },
     "chrome-devtools": {
       "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest"]
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
     }
   }
 }

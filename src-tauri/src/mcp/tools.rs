@@ -2,49 +2,107 @@ use crate::config::load_config;
 use crate::database;
 use crate::error::{ReaderError, Result};
 use crate::llm::LmStudioClient;
-use crate::search::{SearchOptions, SearchResult};
-use serde::{Deserialize, Serialize};
+use crate::search::SearchOptions;
+use serde::Deserialize;
 use serde_json::Value;
 use tauri::AppHandle;
 
-// MCP Tool Schemas (from mcp_schemas/reader-tools.schema.json)
-const TOOLS: &[(&str, &str, &str)] = &[
-    (
-        "reader.search",
-        "Search documents using semantic search",
-        "Search",
-    ),
-    ("reader.get_section", "Get a section's content", "Read"),
+const TOOLS: &[(&str, &str)] = &[
+    ("reader.search", "Search documents using semantic search"),
+    ("reader.get_section", "Get a section's content"),
     (
         "reader.summarize",
         "Summarize a document, section, or paragraph",
-        "Analyze",
     ),
-    (
-        "reader.translate",
-        "Translate text or a paragraph",
-        "Transform",
-    ),
-    (
-        "reader.bilingual_view",
-        "Get bilingual view of a paragraph",
-        "Read",
-    ),
-    (
-        "reader.open_location",
-        "Open reader at a specific location",
-        "Navigate",
-    ),
+    ("reader.translate", "Translate text or a paragraph"),
+    ("reader.bilingual_view", "Get bilingual view of a paragraph"),
+    ("reader.open_location", "Open reader at a specific location"),
 ];
+
+fn tool_input_schema(name: &str) -> Value {
+    match name {
+        "reader.search" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "query": { "type": "string", "minLength": 1 },
+                "top_k": { "type": "integer", "minimum": 1, "maximum": 200, "default": 10 },
+                "doc_id": { "type": "string" },
+                "section_id": { "type": "string" }
+            },
+            "required": ["query"],
+            "additionalProperties": false
+        }),
+        "reader.get_section" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "doc_id": { "type": "string", "minLength": 1 },
+                "section_id": { "type": "string", "minLength": 1 }
+            },
+            "required": ["doc_id", "section_id"],
+            "additionalProperties": false
+        }),
+        "reader.summarize" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "doc_id": { "type": "string" },
+                "section_id": { "type": "string" },
+                "paragraph_id": { "type": "string" },
+                "style": {
+                    "type": "string",
+                    "enum": ["brief", "detailed", "bullet"],
+                    "default": "brief"
+                }
+            },
+            "anyOf": [
+                { "required": ["doc_id"] },
+                { "required": ["section_id"] },
+                { "required": ["paragraph_id"] }
+            ],
+            "additionalProperties": false
+        }),
+        "reader.translate" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "text": { "type": "string" },
+                "paragraph_id": { "type": "string" },
+                "target_lang": { "type": "string", "enum": ["zh", "en"] }
+            },
+            "required": ["target_lang"],
+            "anyOf": [
+                { "required": ["text"] },
+                { "required": ["paragraph_id"] }
+            ],
+            "additionalProperties": false
+        }),
+        "reader.bilingual_view" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "paragraph_id": { "type": "string", "minLength": 1 }
+            },
+            "required": ["paragraph_id"],
+            "additionalProperties": false
+        }),
+        "reader.open_location" => serde_json::json!({
+            "type": "object",
+            "properties": {
+                "doc_id": { "type": "string", "minLength": 1 },
+                "location": { "type": "string", "minLength": 1 }
+            },
+            "required": ["doc_id", "location"],
+            "additionalProperties": false
+        }),
+        _ => serde_json::json!({ "type": "object", "additionalProperties": true }),
+    }
+}
 
 pub fn get_tools_list() -> Value {
     let tools: Vec<Value> = TOOLS
         .iter()
-        .map(|(name, desc, category)| {
+        .map(|(name, desc)| {
             serde_json::json!({
                 "name": name,
                 "description": desc,
-                "category": category,
+                "inputSchema": tool_input_schema(name),
             })
         })
         .collect();

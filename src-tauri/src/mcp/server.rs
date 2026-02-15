@@ -65,6 +65,17 @@ impl McpServer {
             .cloned()
             .unwrap_or(serde_json::json!({}));
 
-        handle_tool_call(&self.app_handle, tool_name, arguments).await
+        let structured = handle_tool_call(&self.app_handle, tool_name, arguments).await?;
+        Ok(serde_json::json!({
+            "content": [
+                {
+                    "type": "text",
+                    "text": serde_json::to_string(&structured)
+                        .unwrap_or_else(|_| "{\"error\":\"failed to serialize tool output\"}".to_string()),
+                }
+            ],
+            "structuredContent": structured,
+            "isError": false
+        }))
     }
 }
