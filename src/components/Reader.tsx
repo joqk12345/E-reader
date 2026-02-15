@@ -6,6 +6,7 @@ import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
 import { ToolPanel } from './ToolPanel';
 import { FloatingAudiobookControl } from './FloatingAudiobookControl';
+import { loadReaderViewSettings } from './readerTheme';
 
 type ReaderProps = {
   onOpenSettings?: () => void;
@@ -34,6 +35,7 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     translationMode,
     cycleTranslationMode,
     keymap,
+    readerFontSize,
   } = useStore();
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [tocWidth, setTocWidth] = useState(256);
@@ -42,6 +44,16 @@ export function Reader({ onOpenSettings }: ReaderProps) {
   const [toolCollapsed, setToolCollapsed] = useState(false);
   const [toolWidth, setToolWidth] = useState(320);
   const [readingMode, setReadingMode] = useState(false);
+  const [contentStats, setContentStats] = useState({
+    sourceWords: 0,
+    translatedWords: 0,
+    paragraphCount: 0,
+  });
+  const [bilingualViewMode, setBilingualViewMode] = useState<'both' | 'source' | 'translation'>(
+    () => loadReaderViewSettings(readerFontSize).bilingualViewMode
+  );
+  const [readingViewMenuOpen, setReadingViewMenuOpen] = useState(false);
+  const readingViewMenuRef = useRef<HTMLDivElement | null>(null);
   const readingModeSnapshotRef = useRef<{
     headerToolsCollapsed: boolean;
     tocCollapsed: boolean;
@@ -146,6 +158,11 @@ export function Reader({ onOpenSettings }: ReaderProps) {
         }
       }
       setReadingMode(enabled);
+      window.dispatchEvent(
+        new CustomEvent('reader:reading-mode-changed', {
+          detail: { enabled },
+        })
+      );
     },
     [headerToolsCollapsed, tocCollapsed, toolCollapsed]
   );
@@ -257,6 +274,56 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const onContentStats = (
+      event: CustomEvent<{
+        sourceWords?: number;
+        translatedWords?: number;
+        paragraphCount?: number;
+      }>
+    ) => {
+      setContentStats({
+        sourceWords: event.detail?.sourceWords || 0,
+        translatedWords: event.detail?.translatedWords || 0,
+        paragraphCount: event.detail?.paragraphCount || 0,
+      });
+    };
+    window.addEventListener('reader:content-stats', onContentStats as EventListener);
+    return () => window.removeEventListener('reader:content-stats', onContentStats as EventListener);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      const settings = loadReaderViewSettings(readerFontSize);
+      setBilingualViewMode(settings.bilingualViewMode);
+    };
+    refresh();
+    window.addEventListener('reader:view-settings-updated', refresh as EventListener);
+    return () => window.removeEventListener('reader:view-settings-updated', refresh as EventListener);
+  }, [readerFontSize]);
+
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!readingViewMenuRef.current || !target) return;
+      if (!readingViewMenuRef.current.contains(target)) {
+        setReadingViewMenuOpen(false);
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, []);
+
+  const setBilingualModeFromHeader = (mode: 'both' | 'source' | 'translation') => {
+    window.dispatchEvent(
+      new CustomEvent('reader:set-bilingual-view-mode', {
+        detail: { mode },
+      })
+    );
+    setBilingualViewMode(mode);
+    setReadingViewMenuOpen(false);
+  };
+
   const headerPaddingClass = windowMaximized ? 'py-0' : headerToolsCollapsed ? 'py-2' : 'py-4';
 
   return (
@@ -287,6 +354,64 @@ export function Reader({ onOpenSettings }: ReaderProps) {
                     ? '🌐 Translation: EN→ZH'
                     : '🌐 Translation: ZH→EN'}
               </button>
+              <div className="relative" ref={readingViewMenuRef}>
+                <button
+                  onClick={() => setReadingViewMenuOpen((prev) => !prev)}
+                  className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Reading View ▾
+                </button>
+                {readingViewMenuOpen && (
+                  <div className="absolute left-0 top-11 z-40 min-w-[220px] rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                    <button
+                      onClick={() => setBilingualModeFromHeader('source')}
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                        bilingualViewMode === 'source'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Source Only</span>
+                      <span>{bilingualViewMode === 'source' ? '✓' : ''}</span>
+                    </button>
+                    <button
+                      onClick={() => setBilingualModeFromHeader('translation')}
+                      disabled={translationMode === 'off'}
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                        bilingualViewMode === 'translation'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Translation Only</span>
+                      <span>{bilingualViewMode === 'translation' ? '✓' : ''}</span>
+                    </button>
+                    <button
+                      onClick={() => setBilingualModeFromHeader('both')}
+                      disabled={translationMode === 'off'}
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                        bilingualViewMode === 'both'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Source + Translation</span>
+                      <span>{bilingualViewMode === 'both' ? '✓' : ''}</span>
+                    </button>
+                    <div className="my-1 h-px bg-gray-200" />
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('reader:open-annotations'));
+                        setReadingViewMenuOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <span>Open Annotations</span>
+                      <span>→</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -312,19 +437,19 @@ export function Reader({ onOpenSettings }: ReaderProps) {
       </header>
       <div className="flex-1 flex overflow-hidden">
         <TOCPanel {...tocPanelProps} />
-        <ReaderContent />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <ReaderContent />
+          {!readingMode && (
+            <div className="h-7 border-t border-gray-200 bg-white px-3 text-[11px] text-gray-600 flex items-center justify-end overflow-x-auto whitespace-nowrap">
+              <span>
+                Word Stats: Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount}
+              </span>
+            </div>
+          )}
+        </div>
         <ToolPanel {...toolPanelProps} />
       </div>
       <FloatingAudiobookControl />
-      {readingMode && (
-        <button
-          onClick={() => applyReadingMode(false)}
-          className="fixed top-3 right-3 z-40 rounded-full border border-gray-300 bg-white/90 px-3 py-1.5 text-xs text-gray-700 shadow hover:bg-white"
-          title="Exit reading mode"
-        >
-          Exit Reading Mode
-        </button>
-      )}
     </div>
   );
 }

@@ -9,6 +9,27 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Reader UX + Layout refresh (2026-02-15)**:
+  - Reading appearance settings now include:
+    - `Column Layout`: `Single Column` / `Two Columns`
+    - `Bilingual View`: `Source + Translation` / `Source Only` / `Translation Only`
+  - Reader top toolbar now uses a compact `Reading View` dropdown instead of flat button rows.
+  - `Annotations & Highlights` moved into right `ToolPanel` as a dedicated `Marks` tab.
+  - new `Dict` tab in right `ToolPanel`:
+    - selection toolbar adds `Dict` and `Sentence` actions
+    - `Dict`: context-aware meaning, IPA display, pronunciation via configured TTS engine, sentence translation
+    - `Sentence`: sentence-structure analysis with markdown-marked components + Chinese translation
+  - selection toolbar simplified:
+    - removed duplicate `Translate` quick action (translation remains in right `Translate` tab)
+  - Reader bottom stats bar updated:
+    - style aligned with library status bar
+    - confined to center reading pane (does not occupy left/right sidebars)
+    - hidden automatically in focused reading mode
+    - English copy + word-count based stats: `Word Stats: Source / Translation / Paragraphs`
+  - Markdown rendering robustness:
+    - fixed fenced code block paragraph splitting in markdown parser (prevents broken/partial tree-structure rendering)
+    - improved tree-structure text rendering fallback in reader/dict markdown display
+
 - **Library Sidebar + Runtime Status Bar (new)**:
   - left sidebar now supports `All / Markdown / PDF / EPUB` grouped filtering with linked search counts
   - sidebar is resizable by drag, and can be collapsed/expanded (default expanded)
@@ -26,7 +47,7 @@
 - **Focused Reading Mode (improved)**:
   - one-click collapse of header tools + TOC + right tool panel for distraction-free reading
   - exits reading mode by restoring the previous collapse/expand state
-  - supports shortcut toggle (`Cmd/Ctrl+Shift+R`) and quick exit button
+  - supports shortcut toggle (`Cmd/Ctrl+Shift+R`)
 - **Shortcut system expanded and configurable**:
   - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`, `Toggle Header Tools`, `Toggle Window Maximize`, `Font Increase/Decrease/Reset`
   - defaults now include:
@@ -37,7 +58,7 @@
   - all above bindings are editable in Settings and persisted in keymap config
 - **Selection action toolbar redesigned**:
   - selecting text now opens a movable/resizable action popover near selection anchor
-  - actions include: `Ask`, `Play from here`, `Explain`, `Translate`, `Copy`, `Highlight`, `Note`
+  - actions include: `Ask`, `Play from here`, `Explain`, `Dict`, `Sentence`, `Copy`, `Highlight`, `Note`
   - action order can be drag-sorted and is persisted in local storage
   - `Play from here` now has explicit confirmation dialog before TTS starts
 - **TTS sentence-follow accuracy improvements (Markdown)**:

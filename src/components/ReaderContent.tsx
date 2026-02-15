@@ -28,15 +28,16 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'ask' | 'play' | 'explain' | 'translate' | 'copy' | 'highlight' | 'note';
+type SelectionAction = 'ask' | 'play' | 'explain' | 'dict' | 'sentence' | 'copy' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'translate', 'copy', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'dict', 'sentence', 'copy', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   ask: 'Ask',
   play: 'Read Aloud',
   explain: 'Explain',
-  translate: 'Translate',
+  dict: 'Dict',
+  sentence: 'Sentence',
   copy: 'Copy',
   highlight: 'Highlight',
   note: 'Take Note',
@@ -45,7 +46,8 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   ask: '✦',
   play: '▶',
   explain: '⌕',
-  translate: '⟲',
+  dict: '📘',
+  sentence: '∑',
   copy: '⧉',
   highlight: '＿',
   note: '✎',
@@ -61,6 +63,13 @@ const normalizeSelectionActionOrder = (input: SelectionAction[]): SelectionActio
 
 type AudiobookStartEventDetail = {
   sentenceKey?: string;
+  paragraphId?: string;
+};
+
+type DictRequestEventDetail = {
+  mode: 'dict' | 'sentence';
+  selectedText: string;
+  sentence: string;
   paragraphId?: string;
 };
 
@@ -308,6 +317,46 @@ const parsePdfPageFromLocation = (location?: string): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
+const treeLineRe = /(~\/|├──|└──|│\s|^\s{2,}\S)/;
+const normalizeMarkdownForReader = (text: string): string => {
+  const source = text.trim();
+  if (!source) return source;
+  if (source.includes('```')) return source;
+
+  const lines = source.split('\n');
+  const out: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i] || '';
+    if (treeLineRe.test(line)) {
+      const block: string[] = [];
+      while (i < lines.length && (treeLineRe.test(lines[i] || '') || !(lines[i] || '').trim())) {
+        block.push(lines[i] || '');
+        i += 1;
+      }
+      out.push('```text');
+      out.push(...block);
+      out.push('```');
+      continue;
+    }
+    out.push(line);
+    i += 1;
+  }
+
+  return out.join('\n');
+};
+
+const countWords = (input: string): number => {
+  const trimmed = input.trim();
+  if (!trimmed) return 0;
+  const cjkChars = (trimmed.match(/[\u4e00-\u9fff]/g) || []).length;
+  const latinWords = trimmed
+    .replace(/[\u4e00-\u9fff]/g, ' ')
+    .match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g);
+  return cjkChars + (latinWords ? latinWords.length : 0);
+};
+
 export function ReaderContent() {
   const {
     documents,
@@ -349,8 +398,8 @@ export function ReaderContent() {
   const [selectionPopoverOffset, setSelectionPopoverOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectionPopoverSize, setSelectionPopoverSize] = useState<{ width: number; height: number }>({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
   const [ttsConfirmParagraphId, setTtsConfirmParagraphId] = useState<string | null>(null);
-  const [isAnnotationPanelOpen, setIsAnnotationPanelOpen] = useState(false);
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
+  const [annotationRefreshTick, setAnnotationRefreshTick] = useState(0);
   const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
     loadReaderViewSettings(readerFontSize)
   );
@@ -371,6 +420,22 @@ export function ReaderContent() {
   const paragraphLineHeight = viewSettings.lineHeight;
   const translationLineHeight = Math.max(1.35, viewSettings.lineHeight - 0.1);
   const cjkLetterSpacing = viewSettings.cjkLetterSpacingEnabled ? `${viewSettings.cjkLetterSpacing}em` : 'normal';
+  const isTwoColumnLayout = viewSettings.layoutMode === 'double';
+  const isTranslationEnabled = translationMode !== 'off';
+  const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
+  const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
+  const sourceWordCount = useMemo(
+    () => paragraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
+    [paragraphs]
+  );
+  const translatedWordCount = useMemo(
+    () =>
+      Object.values(translations).reduce(
+        (sum, text) => sum + countWords(typeof text === 'string' ? text : ''),
+        0
+      ),
+    [translations]
+  );
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -416,6 +481,42 @@ export function ReaderContent() {
   }, [readerFontSize]);
 
   useEffect(() => {
+    const onSetBilingualViewMode = (
+      event: CustomEvent<{ mode?: 'both' | 'source' | 'translation' }>
+    ) => {
+      const mode = event.detail?.mode;
+      if (mode !== 'both' && mode !== 'source' && mode !== 'translation') return;
+      setViewSettings((prev) => ({ ...prev, bilingualViewMode: mode }));
+    };
+    const onAnnotationsChanged = () => setAnnotationRefreshTick((prev) => prev + 1);
+
+    window.addEventListener(
+      'reader:set-bilingual-view-mode',
+      onSetBilingualViewMode as EventListener
+    );
+    window.addEventListener('reader:annotations-changed', onAnnotationsChanged as EventListener);
+    return () => {
+      window.removeEventListener(
+        'reader:set-bilingual-view-mode',
+        onSetBilingualViewMode as EventListener
+      );
+      window.removeEventListener('reader:annotations-changed', onAnnotationsChanged as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('reader:content-stats', {
+        detail: {
+          sourceWords: sourceWordCount,
+          translatedWords: translatedWordCount,
+          paragraphCount: paragraphs.length,
+        },
+      })
+    );
+  }, [paragraphs.length, sourceWordCount, translatedWordCount]);
+
+  useEffect(() => {
     if (viewSettings.fontSize !== readerFontSize) {
       setReaderFontSize(viewSettings.fontSize);
     }
@@ -434,13 +535,6 @@ export function ReaderContent() {
     });
   }, [paragraphs, viewSettings.expandDetails, currentDocumentType]);
 
-  const allAnnotations = useMemo(
-    () =>
-      Object.values(annotationsByParagraph)
-        .flat()
-        .sort((a, b) => b.created_at - a.created_at),
-    [annotationsByParagraph]
-  );
   const selectedDoc = documents.find((doc) => doc.id === selectedDocumentId) || null;
   const currentPdfPath = currentDocumentType === 'pdf' ? selectedDoc?.file_path || '' : '';
 
@@ -602,7 +696,7 @@ export function ReaderContent() {
     return () => {
       cancelled = true;
     };
-  }, [paragraphs]);
+  }, [paragraphs, annotationRefreshTick]);
 
   const clearSelectionDraft = () => {
     setSelectionDraft(null);
@@ -686,21 +780,10 @@ export function ReaderContent() {
           [created.paragraph_id]: [created, ...list],
         };
       });
+      window.dispatchEvent(new CustomEvent('reader:annotations-changed'));
       clearSelectionDraft();
     } catch (err) {
       console.error('Failed to create highlight:', err);
-    }
-  };
-
-  const handleDeleteAnnotation = async (annotationId: string, paragraphId: string) => {
-    try {
-      await invoke('delete_annotation', { id: annotationId });
-      setAnnotationsByParagraph((prev) => ({
-        ...prev,
-        [paragraphId]: (prev[paragraphId] || []).filter((item) => item.id !== annotationId),
-      }));
-    } catch (err) {
-      console.error('Failed to delete annotation:', err);
     }
   };
 
@@ -729,11 +812,31 @@ export function ReaderContent() {
     clearSelectionDraft();
   };
 
-  const handleTranslateSelection = () => {
+  const getSentenceForSelection = (paragraphId: string, selectedText: string): string => {
+    const paragraph = paragraphs.find((item) => item.id === paragraphId);
+    if (!paragraph) return selectedText;
+    const source = toSpeakableText(paragraph.text, {
+      markdown: currentDocumentType === 'markdown',
+    });
+    const sentenceList = splitIntoSentences(source);
+    const keyword = selectedText.trim().toLowerCase();
+    if (!keyword) return sentenceList[0] || source || selectedText;
+    const match = sentenceList.find((item) => item.toLowerCase().includes(keyword));
+    return match || sentenceList[0] || source || selectedText;
+  };
+
+  const openDictPanel = (mode: 'dict' | 'sentence') => {
     if (!selectionDraft?.selectedText?.trim()) return;
+    const selectedText = selectionDraft.selectedText.trim();
+    const sentence = getSentenceForSelection(selectionDraft.paragraphId, selectedText);
     window.dispatchEvent(
-      new CustomEvent<{ selectedText: string; autoRun?: boolean }>('reader:translate-selection', {
-        detail: { selectedText: selectionDraft.selectedText.trim(), autoRun: true },
+      new CustomEvent<DictRequestEventDetail>('reader:open-dict', {
+        detail: {
+          mode,
+          selectedText,
+          sentence,
+          paragraphId: selectionDraft.paragraphId,
+        },
       })
     );
     clearSelectionDraft();
@@ -797,8 +900,12 @@ export function ReaderContent() {
       handleExplainSelection();
       return;
     }
-    if (action === 'translate') {
-      handleTranslateSelection();
+    if (action === 'dict') {
+      openDictPanel('dict');
+      return;
+    }
+    if (action === 'sentence') {
+      openDictPanel('sentence');
       return;
     }
     if (action === 'copy') {
@@ -955,7 +1062,10 @@ export function ReaderContent() {
       style={{ backgroundColor: currentTheme.background, color: currentTheme.foreground }}
       onMouseUp={handleSelectionEnd}
     >
-      <div className="mx-auto px-8 py-12" style={{ maxWidth: `${viewSettings.contentWidth}em` }}>
+      <div
+        className={isTwoColumnLayout ? 'w-full pl-8 pr-5 py-8' : 'mx-auto px-8 py-12'}
+        style={isTwoColumnLayout ? { maxWidth: '100%' } : { maxWidth: `${viewSettings.contentWidth}em` }}
+      >
         {currentDocumentType === 'pdf' && (
           <div className="mb-4 flex items-center justify-end gap-2">
             <button
@@ -992,20 +1102,19 @@ export function ReaderContent() {
           </section>
         ) : (
         <>
-          <div className="mb-4 flex justify-end items-start gap-2">
-            <button
-              data-annotation-popover="true"
-              onClick={() => setIsAnnotationPanelOpen(true)}
-              className="rounded-lg border px-3 py-1.5 text-sm"
-              style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary, color: currentTheme.foreground }}
-            >
-              Annotations & Highlights ({allAnnotations.length})
-            </button>
-          </div>
-          <div className="mb-3 text-xs" style={{ color: currentTheme.isDark ? '#a1a1aa' : '#64748b' }}>Tip: Select text to use the pop-up toolbar for "Read Aloud".</div>
-          <article className="prose max-w-none">
+          <article
+            className={isTwoColumnLayout ? 'max-w-none' : 'prose max-w-none'}
+            style={
+              isTwoColumnLayout
+                ? { columnCount: 2, columnGap: '3rem', width: '100%' }
+                : undefined
+            }
+          >
           {paragraphs.map((paragraph) => {
             const isMarkdownParagraph = currentDocumentType === 'markdown';
+            const normalizedMarkdownText = isMarkdownParagraph
+              ? normalizeMarkdownForReader(paragraph.text)
+              : paragraph.text;
             const sentences = splitIntoSentences(paragraph.text);
             const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
             const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
@@ -1014,7 +1123,10 @@ export function ReaderContent() {
             const shouldShowPdfPreview = false;
 
             return (
-              <div key={paragraph.id}>
+              <div
+                key={paragraph.id}
+                style={isTwoColumnLayout ? { breakInside: 'avoid-column' } : undefined}
+              >
                 {shouldShowPdfPreview && (
                   <section className="mb-3 rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
                     <div className="mb-2 text-xs" style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}>Page {currentPage}</div>
@@ -1036,56 +1148,58 @@ export function ReaderContent() {
                 >
                 {isMarkdownParagraph ? (
                   <div className="space-y-2">
-                    <div
-                      className="markdown-content"
-                      style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
-                    >
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
-                          h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
-                          h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
-                          h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
-                          h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
-                          h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
-                          p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
-                          ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
-                          ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
-                          li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
-                          blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
-                          code: ({ children }) => (
-                            <code className="rounded px-1 py-0.5" style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
-                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
-                            </code>
-                          ),
-                          pre: ({ children }) => (
-                            <pre
-                              className="my-3 overflow-x-auto rounded border p-3"
-                              style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
-                            >
-                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `pre-${paragraph.id}`)}
-                            </pre>
-                          ),
-                          a: ({ href, children }) => (
-                            <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: currentTheme.link }}>
-                              {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}
-                            </a>
-                          ),
-                          table: ({ children }) => (
-                            <div className="my-3 overflow-x-auto">
-                              <table className="min-w-full border text-left" style={{ borderColor: currentTheme.border }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `table-${paragraph.id}`)}</table>
-                            </div>
-                          ),
-                          thead: ({ children }) => <thead style={{ backgroundColor: currentTheme.secondary }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `thead-${paragraph.id}`)}</thead>,
-                          th: ({ children }) => <th className="border px-3 py-2 font-semibold" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `th-${paragraph.id}`)}</th>,
-                          td: ({ children }) => <td className="border px-3 py-2" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `td-${paragraph.id}`)}</td>,
-                        }}
+                    {showSource && (
+                      <div
+                        className="markdown-content"
+                        style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                       >
-                        {paragraph.text}
-                      </ReactMarkdown>
-                    </div>
-                    {translationMode !== 'off' && (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
+                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
+                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
+                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
+                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
+                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
+                            p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
+                            ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
+                            ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
+                            li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
+                            blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
+                            code: ({ children }) => (
+                              <code className="rounded px-1 py-0.5" style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
+                                {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre
+                                className="my-3 overflow-x-auto rounded border p-3"
+                                style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
+                              >
+                                {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `pre-${paragraph.id}`)}
+                              </pre>
+                            ),
+                            a: ({ href, children }) => (
+                              <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: currentTheme.link }}>
+                                {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}
+                              </a>
+                            ),
+                            table: ({ children }) => (
+                              <div className="my-3 overflow-x-auto">
+                                <table className="min-w-full border text-left" style={{ borderColor: currentTheme.border }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `table-${paragraph.id}`)}</table>
+                              </div>
+                            ),
+                            thead: ({ children }) => <thead style={{ backgroundColor: currentTheme.secondary }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `thead-${paragraph.id}`)}</thead>,
+                            th: ({ children }) => <th className="border px-3 py-2 font-semibold" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `th-${paragraph.id}`)}</th>,
+                            td: ({ children }) => <td className="border px-3 py-2" style={{ borderColor: currentTheme.border, color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `td-${paragraph.id}`)}</td>,
+                          }}
+                        >
+                          {normalizedMarkdownText}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    {showTranslation && (
                       <div className="ml-4 rounded border-l-2 border-blue-200 pl-3">
                         {translations[markdownTranslationKey(paragraph.id)] ? (
                           <div
@@ -1133,16 +1247,18 @@ export function ReaderContent() {
                     const isReading = currentReadingSentenceKey === key;
                     return (
                       <div key={key} className="mb-2">
-                        <p
-                          ref={(el) => {
-                            sentenceRefs.current[key] = el;
-                          }}
-                          className={isReading ? 'rounded px-2 py-1 border border-amber-300 bg-amber-100' : ''}
-                          style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
-                        >
-                          {renderWithSearchHighlight(sentence, isSearchMatchedParagraph, paragraphAnnotations, `${paragraph.id}-${index}`)}
-                        </p>
-                        {translationMode !== 'off' && (
+                        {showSource && (
+                          <p
+                            ref={(el) => {
+                              sentenceRefs.current[key] = el;
+                            }}
+                            className={isReading ? 'rounded px-2 py-1 border border-amber-300 bg-amber-100' : ''}
+                            style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
+                          >
+                            {renderWithSearchHighlight(sentence, isSearchMatchedParagraph, paragraphAnnotations, `${paragraph.id}-${index}`)}
+                          </p>
+                        )}
+                        {showTranslation && (
                           <div className="flex items-center gap-2 ml-4">
                             {translations[key] ? (
                               <p
@@ -1434,65 +1550,6 @@ export function ReaderContent() {
               </button>
             </div>
           </div>
-        </>
-      )}
-      {isAnnotationPanelOpen && (
-        <>
-          <div
-            data-annotation-popover="true"
-            className="fixed inset-0 z-40 bg-black/20"
-            onClick={() => setIsAnnotationPanelOpen(false)}
-          />
-          <aside
-            data-annotation-popover="true"
-            className="fixed right-0 top-0 z-50 h-full w-[min(92vw,26rem)] border-l border-slate-200 bg-white p-4 shadow-2xl"
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center">
-              <h3 className="text-base font-semibold text-slate-800">Annotations & Highlights ({allAnnotations.length})</h3>
-              <button
-                onClick={() => setIsAnnotationPanelOpen(false)}
-                className="ml-auto rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-              >
-                Close
-              </button>
-            </div>
-            {allAnnotations.length === 0 ? (
-              <p className="text-sm text-slate-500">No annotations yet. Select text to create one.</p>
-            ) : (
-              <div className="h-[calc(100%-3rem)] space-y-2 overflow-y-auto pr-1">
-                {allAnnotations.map((item) => (
-                  <div key={item.id} className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="rounded bg-white px-2 py-0.5 text-xs text-slate-700">
-                        {annotationStyleLabel[item.style]}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setFocusedParagraphId(item.paragraph_id);
-                          setIsAnnotationPanelOpen(false);
-                        }}
-                        className="text-xs text-blue-600 underline-offset-2 hover:underline"
-                      >
-                        Go to Location
-                      </button>
-                      <button
-                        onClick={() => void handleDeleteAnnotation(item.id, item.paragraph_id)}
-                        className="ml-auto text-xs text-rose-600 underline-offset-2 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <p className="text-sm text-slate-800">"{item.selected_text}"</p>
-                    {item.note && item.note.trim().length > 0 && (
-                      <p className="mt-1 text-xs text-amber-800">Note: {item.note}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </aside>
         </>
       )}
     </div>

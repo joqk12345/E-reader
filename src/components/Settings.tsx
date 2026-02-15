@@ -409,6 +409,45 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   }
                 />
                 <SettingRow
+                  title="Column Layout"
+                  description="Switch between single-column and two-column reading"
+                  right={
+                    <select
+                      className={`${compactControlClass} w-[200px]`}
+                      value={readerViewSettings.layoutMode}
+                      onChange={(e) =>
+                        setReaderViewSettings((prev) => ({
+                          ...prev,
+                          layoutMode: e.target.value as 'single' | 'double',
+                        }))
+                      }
+                    >
+                      <option value="single">Single Column</option>
+                      <option value="double">Two Columns</option>
+                    </select>
+                  }
+                />
+                <SettingRow
+                  title="Bilingual View"
+                  description="Default display mode for source/translation in reader toolbar"
+                  right={
+                    <select
+                      className={`${compactControlClass} w-[240px]`}
+                      value={readerViewSettings.bilingualViewMode}
+                      onChange={(e) =>
+                        setReaderViewSettings((prev) => ({
+                          ...prev,
+                          bilingualViewMode: e.target.value as 'both' | 'source' | 'translation',
+                        }))
+                      }
+                    >
+                      <option value="both">Source + Translation</option>
+                      <option value="source">Source Only</option>
+                      <option value="translation">Translation Only</option>
+                    </select>
+                  }
+                />
+                <SettingRow
                   title="CJK Letter Spacing"
                   description="Spacing between CJK characters"
                   right={
