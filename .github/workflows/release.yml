@@ -61,11 +61,54 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build application
+      - name: Build application (macOS app bundle only)
+        if: startsWith(matrix.platform.os, 'macos-')
+        run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles app
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Build application (non-macOS)
+        if: ${{ !startsWith(matrix.platform.os, 'macos-') }}
         run: npm run tauri build -- --target ${{ matrix.platform.target }}
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Package DMG manually (macOS)
+        if: startsWith(matrix.platform.os, 'macos-')
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TARGET="${{ matrix.platform.target }}"
+          APP_DIR="src-tauri/target/${TARGET}/release/bundle/macos/reader.app"
+          DMG_DIR="src-tauri/target/${TARGET}/release/bundle/dmg"
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+
+          if [[ ! -d "$APP_DIR" ]]; then
+            echo "Missing app bundle: $APP_DIR"
+            exit 1
+          fi
+
+          mkdir -p "$DMG_DIR"
+
+          ARCH_SUFFIX="x64"
+          if [[ "$TARGET" == "aarch64-apple-darwin" ]]; then
+            ARCH_SUFFIX="aarch64"
+          fi
+
+          DMG_PATH="${DMG_DIR}/reader_${VERSION}_${ARCH_SUFFIX}.dmg"
+          rm -f "$DMG_PATH"
+
+          hdiutil create \
+            -volname "reader" \
+            -srcfolder "src-tauri/target/${TARGET}/release/bundle/macos" \
+            -ov \
+            -format UDZO \
+            "$DMG_PATH"
+
+          ls -lh "$DMG_DIR"
 
       - name: Prepare release artifacts
         shell: bash
