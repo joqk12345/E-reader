@@ -349,6 +349,16 @@ export function Reader({ onOpenSettings }: ReaderProps) {
       <header
         className={`flex items-center justify-between px-6 border-b border-gray-200 bg-white transition-all ${headerPaddingClass}`}
       >
+        {headerToolsCollapsed && (
+          <button
+            onClick={goBack}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            title="Back to Library"
+            aria-label="Back to Library"
+          >
+            ←
+          </button>
+        )}
         <div className="flex items-center gap-3">
           {!headerToolsCollapsed && (
             <>

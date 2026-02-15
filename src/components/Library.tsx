@@ -508,24 +508,34 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
           className="relative shrink-0 border-r border-gray-200 bg-[#f4f5f7] p-2.5"
           style={{ width: sidebarCollapsed ? '42px' : `${sidebarWidth}px` }}
         >
-          <button
-            onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className="mb-2 flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {sidebarCollapsed ? '›' : '‹'}
-          </button>
-
-          {!sidebarCollapsed && (
+          {sidebarCollapsed ? (
+            <button
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+            >
+              ›
+            </button>
+          ) : (
             <>
-              <div className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 shadow-sm">
+              <div className="mb-2 flex items-center gap-2">
+                <button
+                  onClick={() => setSidebarCollapsed((prev) => !prev)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                >
+                  ‹
+                </button>
+                <div className="flex-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 shadow-sm">
                 <input
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   placeholder="Search library..."
                   className="w-full bg-transparent text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none"
                 />
+              </div>
               </div>
 
               <div className="mt-4">
