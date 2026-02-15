@@ -589,13 +589,36 @@ Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程
 项目配置了 MCP 服务器，支持与外部 AI 助手集成：
 
 **Configured Servers:**
+- `reader`: Reader MCP server（`reader.*` 工具集合，面向 Codex/Claude Code）
 - `tauri`: Tauri MCP 服务器，提供应用状态和操作访问
 - `codex`: Codex CLI 集成
 - `chrome-devtools`: Chrome DevTools 集成
 
+`reader` server 配置风格参考 VMark MCP Setup：客户端只需安装一个本地 `command`。
+`reader` 为业务层工具（SQLite 文档数据操作，支持 Markdown/PDF/EPUB），`tauri` 为开发/调试层工具（Tauri IPC）。
+
+**Reader MCP command:**
+```bash
+./mcp-server/bin/reader-mcp-server.sh
+```
+
+**Reader tools (MCP):**
+- `reader.list_documents` (from Reader SQLite documents table)
+- `reader.open_document` (by `doc_id`/`path`/`title`, content from paragraphs table)
+- `reader.get_markdown_outline` (from sections table)
+- `reader.search_markdown` (paragraph full-text search in SQLite)
+- `reader.semantic_search_documents` (cross-document semantic retrieval from embeddings table)
+- `reader.import_document` (import local Markdown/PDF/EPUB file into Reader SQLite)
+
+`reader.list_documents` 参数可用 `file_types` 过滤，如 `["pdf"]` 或 `["epub"]`。
+`reader.import_document` 现支持 Markdown/PDF/EPUB 导入（PDF 依赖 `pdftotext`，EPUB 依赖 `unzip`）。
+`reader.semantic_search_documents` 支持全库语义检索，默认跨文档返回 `top_k=10`，可用 `scan_limit` 和 `batch_size` 控制大库候选扫描规模。
+
 **Usage:**
 ```bash
-# 启动 MCP 服务器（自动通过 .mcp.json 配置）
+# 1) 客户端加载项目根目录 .mcp.json
+# 2) 通过 reader server 调用 reader.* 业务工具
+# 3) 若要使用 tauri server，再启动 reader app（ws://localhost:9324）
 ```
 
 ### Running Tests
