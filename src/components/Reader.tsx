@@ -8,10 +8,6 @@ import { ToolPanel } from './ToolPanel';
 import { FloatingAudiobookControl } from './FloatingAudiobookControl';
 import { loadReaderViewSettings } from './readerTheme';
 
-type ReaderProps = {
-  onOpenSettings?: () => void;
-};
-
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
@@ -19,7 +15,7 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   return target.isContentEditable;
 };
 
-export function Reader({ onOpenSettings }: ReaderProps) {
+export function Reader() {
   const {
     selectedDocumentId,
     currentDocumentType,
@@ -342,25 +338,36 @@ export function Reader({ onOpenSettings }: ReaderProps) {
     setReadingViewMenuOpen(false);
   };
 
-  const headerPaddingClass = windowMaximized ? 'py-0' : headerToolsCollapsed ? 'py-2' : 'py-4';
+  const headerPaddingClass = readingMode
+    ? 'h-8 px-2 py-0'
+    : windowMaximized
+      ? 'px-6 py-0'
+      : headerToolsCollapsed
+        ? 'px-6 py-2'
+        : 'px-6 py-4';
+  const showCompactHeader = readingMode || headerToolsCollapsed;
 
   return (
     <div className="h-screen flex flex-col bg-white">
       <header
-        className={`flex items-center justify-between px-6 border-b border-gray-200 bg-white transition-all ${headerPaddingClass}`}
+        className={`relative flex items-center border-b ${readingMode ? 'border-transparent bg-white/95' : 'border-gray-200 bg-white'} transition-all ${headerPaddingClass}`}
       >
-        {headerToolsCollapsed && (
-          <button
-            onClick={goBack}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            title="Back to Library"
-            aria-label="Back to Library"
-          >
-            ←
-          </button>
-        )}
-        <div className="flex items-center gap-3">
-          {!headerToolsCollapsed && (
+        <div className={`z-10 flex min-w-0 flex-1 items-center ${readingMode ? 'gap-1' : 'gap-3'}`}>
+          {showCompactHeader && (
+            <button
+              onClick={goBack}
+              className={`inline-flex items-center justify-center rounded-md border bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                readingMode
+                  ? 'h-6 w-6 border-gray-200 text-xs text-gray-500'
+                  : 'h-8 w-8 border-gray-300 text-gray-700'
+              }`}
+              title="Back to Library"
+              aria-label="Back to Library"
+            >
+              ←
+            </button>
+          )}
+          {!showCompactHeader && (
             <>
               <button
                 onClick={goBack}
@@ -443,24 +450,38 @@ export function Reader({ onOpenSettings }: ReaderProps) {
             </>
           )}
         </div>
-        <h1 className="text-xl font-semibold text-gray-900">Reader</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenSettings}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-            title="Open settings (Cmd/Ctrl + ,)"
-            aria-label="Open settings"
-          >
-            ⚙️ Settings
-          </button>
-          <button
-            onClick={() => setHeaderToolsCollapsed((prev) => !prev)}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-            title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
-            aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
-          >
-            {headerToolsCollapsed ? 'Tools: Show' : 'Tools: Hide'}
-          </button>
+
+        {!readingMode && (
+          <h1 className="pointer-events-none absolute left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 text-xl font-semibold text-gray-900">
+            <img
+              src="/reader-logo.svg"
+              alt="Reader Logo"
+              className="h-5 w-5 rounded-md border border-slate-200 bg-white p-0.5"
+            />
+            <span>Reader</span>
+          </h1>
+        )}
+
+        <div className="z-10 flex min-w-0 flex-1 items-center justify-end gap-2">
+          {readingMode ? (
+            <button
+              onClick={toggleReadingMode}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs text-gray-500 hover:bg-gray-50"
+              title="Exit reading mode"
+              aria-label="Exit reading mode"
+            >
+              ✕
+            </button>
+          ) : (
+            <button
+              onClick={() => setHeaderToolsCollapsed((prev) => !prev)}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
+              aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
+            >
+              {headerToolsCollapsed ? 'Tools: Show' : 'Tools: Hide'}
+            </button>
+          )}
         </div>
       </header>
       <div className="flex-1 flex overflow-hidden">

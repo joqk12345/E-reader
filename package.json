@@ -1,6 +1,6 @@
 {
   "name": "reader",
-  "version": "0.3.4",
+  "version": "0.3.16",
   "type": "module",
   "scripts": {
     "dev": "vite",

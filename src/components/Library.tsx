@@ -1,15 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import { Readability } from '@mozilla/readability';
-import TurndownService from 'turndown';
-import { gfm } from 'turndown-plugin-gfm';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
 import type { Document as ReaderDocument } from '../types';
 
 type LibraryProps = {
-  onOpenSettings?: () => void;
   statusBar?: React.ReactNode;
 };
 
@@ -84,18 +80,21 @@ const inferDocumentInsight = (doc: ReaderDocument, preview: string): DocumentIns
   };
 };
 
-export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) => {
+export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const DEFAULT_CATEGORY_VISIBLE_COUNT = 8;
   const DEFAULT_EXPANDED_CATEGORY_COUNT = 2;
-  const { documents, isLoading, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
+  const { documents, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'pdf' | 'markdown'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [groupByCategory, setGroupByCategory] = useState(true);
-  const [urlInput, setUrlInput] = useState('');
+  const [isImportingFile, setIsImportingFile] = useState(false);
   const [isImportingUrl, setIsImportingUrl] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importUrlDraft, setImportUrlDraft] = useState('');
+  const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
@@ -103,143 +102,8 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(248);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const displayMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const normalizeUrl = (input: string) => {
-    const trimmed = input.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    return `https://${trimmed}`;
-  };
-
-  const extractPublishedTime = (doc: globalThis.Document): string | undefined => {
-    const selectors = [
-      'meta[property="article:published_time"]',
-      'meta[name="article:published_time"]',
-      'meta[name="publish_date"]',
-      'meta[property="og:published_time"]',
-      'time[datetime]',
-    ];
-    for (const selector of selectors) {
-      const el = doc.querySelector(selector);
-      if (!el) continue;
-      const content = el.getAttribute('content') || el.getAttribute('datetime') || el.textContent;
-      const value = content?.trim();
-      if (value) return value;
-    }
-    return undefined;
-  };
-
-  const normalizeText = (text: string) =>
-    text
-      .split('\n')
-      .map((line) => line.trimEnd())
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-  const htmlToMarkdown = (html: string): string => {
-    const service = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-      emDelimiter: '_',
-      bulletListMarker: '-',
-      linkStyle: 'inlined',
-    });
-    service.use(gfm);
-
-    service.addRule('iframe-to-link', {
-      filter: 'iframe',
-      replacement: (_content, node) => {
-        const src = (node as HTMLElement).getAttribute('src')?.trim();
-        if (!src) return '';
-        return `\n[Embedded media](${src})\n`;
-      },
-    });
-
-    service.addRule('video-to-link', {
-      filter: 'video',
-      replacement: (_content, node) => {
-        const src =
-          (node as HTMLElement).getAttribute('src')?.trim() ||
-          (node as HTMLElement).querySelector('source')?.getAttribute('src')?.trim();
-        if (!src) return '';
-        return `\n[Video](${src})\n`;
-      },
-    });
-
-    const markdown = service.turndown(html || '');
-    return normalizeText(markdown);
-  };
-
-  const extractMediaLinks = (contentDoc: Document): string[] => {
-    const links = new Set<string>();
-    contentDoc
-      .querySelectorAll('img[src], video[src], source[src], a[href]')
-      .forEach((el) => {
-        const attr = el.getAttribute('src') || el.getAttribute('href');
-        if (!attr) return;
-        const url = attr.trim();
-        if (!url.startsWith('http://') && !url.startsWith('https://')) return;
-        const lower = url.toLowerCase();
-        const isMedia =
-          lower.endsWith('.png') ||
-          lower.endsWith('.jpg') ||
-          lower.endsWith('.jpeg') ||
-          lower.endsWith('.gif') ||
-          lower.endsWith('.webp') ||
-          lower.endsWith('.svg') ||
-          lower.endsWith('.mp4') ||
-          lower.endsWith('.mov') ||
-          lower.includes('youtube.com/watch') ||
-          lower.includes('youtu.be/') ||
-          lower.includes('vimeo.com/');
-        if (isMedia) links.add(url);
-      });
-    return [...links].slice(0, 20);
-  };
-
-  const buildMarkdownFromArticle = (
-    sourceUrl: string,
-    byline: string | undefined,
-    published: string | undefined,
-    excerpt: string | undefined,
-    contentHtml: string,
-    textContent: string,
-    mediaLinks: string[]
-  ) => {
-    const summary =
-      excerpt?.trim() ||
-      textContent
-        .split('\n')
-        .map((s) => s.trim())
-        .find((s) => s.length > 40) ||
-      '_No summary extracted._';
-    const mediaBlock =
-      mediaLinks.length > 0
-        ? mediaLinks.map((link) => `- ${link}`).join('\n')
-        : '_No key image/video links detected._';
-    const markdownBody = htmlToMarkdown(contentHtml);
-    const contentBlock = markdownBody || normalizeText(textContent);
-
-    return [
-      `> Source: ${sourceUrl}`,
-      `> Author: ${byline?.trim() || 'Unknown'}`,
-      `> Published: ${published?.trim() || 'Unknown'}`,
-      '',
-      '## Summary',
-      '',
-      summary,
-      '',
-      '## Media Links',
-      '',
-      mediaBlock,
-      '',
-      '## Content',
-      '',
-      contentBlock,
-    ].join('\n');
-  };
 
   useEffect(() => {
     loadDocuments();
@@ -289,7 +153,9 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
     };
   }, [documents]);
 
-  const handleImport = async () => {
+  const handleImportFile = async () => {
+    setIsImportingFile(true);
+    let importedSuccessfully = false;
     try {
       const selected = await open({
         multiple: false,
@@ -305,16 +171,54 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
         const ext = selected.split('.').pop()?.toLowerCase();
         if (ext === 'epub') {
           await importEpub(selected);
+          importedSuccessfully = true;
         } else if (ext === 'pdf') {
           await importPdf(selected);
+          importedSuccessfully = true;
         } else if (ext === 'md') {
           await importMarkdown(selected);
+          importedSuccessfully = true;
         }
       }
     } catch (error) {
       console.error('Import failed:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       alert(`Failed to import document: ${errorMessage}`);
+    } finally {
+      setIsImportingFile(false);
+      if (importedSuccessfully) {
+        setShowImportDialog(false);
+      }
+    }
+  };
+
+  const normalizeUrl = (input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
+
+  const handleImportUrlBeta = async () => {
+    const url = normalizeUrl(importUrlDraft);
+    if (!url) return;
+    setIsImportingUrl(true);
+    let importedSuccessfully = false;
+    try {
+      const docId = await invoke<string>('import_url', { url });
+      await loadDocuments();
+      selectDocument(docId);
+      importedSuccessfully = true;
+    } catch (error) {
+      console.error('Import URL failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Failed to import URL: ${message}`);
+    } finally {
+      setIsImportingUrl(false);
+      if (importedSuccessfully) {
+        setImportUrlDraft('');
+        setShowImportDialog(false);
+      }
     }
   };
 
@@ -333,52 +237,8 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
     }
   };
 
-  const handleImportUrl = async () => {
-    const url = normalizeUrl(urlInput);
-    if (!url) return;
-    setIsImportingUrl(true);
-    try {
-      let docId = '';
-      try {
-        const html = await invoke<string>('fetch_url_html', { url });
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const article = new Readability(doc, { keepClasses: false }).parse();
-
-        if (!article || !article.textContent || article.textContent.trim().length < 120) {
-          throw new Error('Readability extracted empty or too-short article');
-        }
-
-        const contentDoc = parser.parseFromString(article.content || '', 'text/html');
-        const markdownBody = buildMarkdownFromArticle(
-          url,
-          article.byline || undefined,
-          extractPublishedTime(doc),
-          article.excerpt || undefined,
-          article.content || '',
-          article.textContent || '',
-          extractMediaLinks(contentDoc)
-        );
-
-        docId = await invoke<string>('import_markdown_content', {
-          title: article.title || 'Imported Article',
-          sourceUrl: url,
-          content: markdownBody,
-        });
-      } catch (readabilityError) {
-        console.warn('Readability import failed, fallback to jina reader:', readabilityError);
-        docId = await invoke<string>('import_url', { url });
-      }
-      await loadDocuments();
-      selectDocument(docId);
-      setUrlInput('');
-    } catch (error) {
-      console.error('Import URL failed:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Failed to import URL: ${message}`);
-    } finally {
-      setIsImportingUrl(false);
-    }
+  const handleUnifiedImport = () => {
+    setShowImportDialog(true);
   };
 
   const displayedDocuments = useMemo(() => {
@@ -407,20 +267,6 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
     return sorted;
   }, [categoryFilter, documentInsights, documents, searchText, sortBy, typeFilter]);
 
-  const searchableDocuments = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    return documents.filter((doc) => {
-      if (categoryFilter !== 'all' && (documentInsights[doc.id]?.category || '其他') !== categoryFilter) {
-        return false;
-      }
-      if (!q) return true;
-      const title = doc.title.toLowerCase();
-      const author = (doc.author || '').toLowerCase();
-      const filePath = doc.file_path.toLowerCase();
-      return title.includes(q) || author.includes(q) || filePath.includes(q);
-    });
-  }, [categoryFilter, documentInsights, documents, searchText]);
-
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();
     documents.forEach((doc) => categories.add(documentInsights[doc.id]?.category || '其他'));
@@ -439,16 +285,18 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
   }, [displayedDocuments, documentInsights]);
 
   const typeSummaries = useMemo(() => {
-    const markdownCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
-    const pdfCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'pdf').length;
-    const epubCount = searchableDocuments.filter((doc) => normalizeFileType(doc.file_type) === 'epub').length;
+    const markdownCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
+    const pdfCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'pdf').length;
+    const epubCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'epub').length;
     return [
-      { key: 'all' as const, label: 'All', count: searchableDocuments.length, hint: 'All formats' },
-      { key: 'markdown' as const, label: 'Markdown', count: markdownCount, hint: 'Notes & articles' },
-      { key: 'pdf' as const, label: 'PDF', count: pdfCount, hint: 'Documents' },
-      { key: 'epub' as const, label: 'EPUB', count: epubCount, hint: 'Books' },
+      { key: 'all' as const, label: 'All', count: documents.length },
+      { key: 'epub' as const, label: 'EPUB', count: epubCount },
+      { key: 'pdf' as const, label: 'PDF', count: pdfCount },
+      { key: 'markdown' as const, label: 'Markdown', count: markdownCount },
     ];
-  }, [searchableDocuments]);
+  }, [documents]);
+
+  const quickCategories = useMemo(() => categoryOptions.slice(0, 10), [categoryOptions]);
 
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
@@ -459,19 +307,32 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
   };
 
   useEffect(() => {
+    if (!showDisplayMenu) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!displayMenuRef.current?.contains(target)) {
+        setShowDisplayMenu(false);
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [showDisplayMenu]);
+
+  useEffect(() => {
     if (!isResizingSidebar) return;
 
-    const handleMove = (event: PointerEvent) => {
-      const next = Math.min(360, Math.max(200, event.clientX));
+    const onPointerMove = (event: PointerEvent) => {
+      const next = Math.min(360, Math.max(210, event.clientX));
       setSidebarWidth(next);
     };
-    const handleUp = () => setIsResizingSidebar(false);
+    const onPointerUp = () => setIsResizingSidebar(false);
 
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
     return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
     };
   }, [isResizingSidebar]);
 
@@ -503,187 +364,311 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
         </div>
       )}
 
-      <div className="h-full flex bg-gray-50">
-        <aside
-          className="relative shrink-0 border-r border-gray-200 bg-[#f4f5f7] p-2.5"
-          style={{ width: sidebarCollapsed ? '42px' : `${sidebarWidth}px` }}
-        >
-          {sidebarCollapsed ? (
-            <button
-              onClick={() => setSidebarCollapsed((prev) => !prev)}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
-            >
-              ›
-            </button>
-          ) : (
-            <>
-              <div className="mb-2 flex items-center gap-2">
+      {showImportDialog && (
+        <div className="fixed inset-0 z-40 bg-black/35 flex items-center justify-center">
+          <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Import</h3>
+            <p className="mt-1 text-xs text-gray-500">Choose a local EPUB, PDF, or Markdown file.</p>
+
+            <div className="mt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => void handleImportFile()}
+                disabled={isImportingFile || isImportingUrl}
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h7l5 5v13H7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5" />
+                </svg>
+                {isImportingFile ? 'Importing File...' : 'Import File'}
+              </button>
+
+              <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-amber-700">Import from URL</span>
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Beta</span>
+                </div>
+                <input
+                  value={importUrlDraft}
+                  onChange={(e) => setImportUrlDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleImportUrlBeta();
+                    }
+                  }}
+                  placeholder="https://example.com/article"
+                  className="w-full rounded border border-amber-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
                 <button
-                  onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-100"
-                  title="Collapse sidebar"
-                  aria-label="Collapse sidebar"
+                  type="button"
+                  onClick={() => void handleImportUrlBeta()}
+                  disabled={!importUrlDraft.trim() || isImportingUrl || isImportingFile}
+                  className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-700 disabled:bg-gray-400"
                 >
-                  ‹
+                  {isImportingUrl ? 'Importing URL...' : 'Import URL (Beta)'}
                 </button>
-                <div className="flex-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 shadow-sm">
+              </div>
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isImportingFile || isImportingUrl) return;
+                  setImportUrlDraft('');
+                  setShowImportDialog(false);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`h-full flex bg-gray-50 ${isResizingSidebar ? 'select-none' : ''}`}>
+        <aside
+          className="relative shrink-0 border-r border-gray-200 bg-[#f6f7f9] p-3"
+          style={{ width: `${sidebarWidth}px` }}
+        >
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Formats</h2>
+          <div className="space-y-1">
+            {typeSummaries.map((item) => {
+              const active = typeFilter === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setTypeFilter(item.key)}
+                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors ${
+                    active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={active ? 'text-gray-200' : 'text-gray-500'}>{item.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 border-t border-gray-200 pt-3">
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Category</h2>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('all')}
+                className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                  categoryFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              {quickCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setCategoryFilter(category)}
+                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                    categoryFilter === category ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            role="separator"
+            aria-label="Resize sidebar"
+            className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize transition-colors ${
+              isResizingSidebar ? 'bg-blue-300/70' : 'bg-transparent hover:bg-blue-200/60'
+            }`}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              setIsResizingSidebar(true);
+            }}
+          />
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="border-b border-gray-200 bg-white px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="mr-1 flex shrink-0 items-center gap-2">
+                <img
+                  src="/reader-logo.svg"
+                  alt="Reader Logo"
+                  className="h-7 w-7 rounded-md border border-slate-200 bg-white p-0.5 shadow-sm"
+                />
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-gray-900">Reader</div>
+                  <div className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Library</div>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1">
                 <input
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   placeholder="Search library..."
-                  className="w-full bg-transparent text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none"
+                  className="h-8 w-full rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
                 />
               </div>
-              </div>
 
-              <div className="mt-4">
-                <h3 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Formats</h3>
-                <div className="space-y-1">
-                  {typeSummaries.map((item) => {
-                    const active = typeFilter === item.key;
-                    return (
-                      <button
-                        key={item.key}
-                        onClick={() => setTypeFilter(item.key)}
-                        className={`w-full rounded-lg px-2.5 py-1.5 text-left transition-colors ${
-                          active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200/70'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium">{item.label}</span>
-                          <span className={`text-[11px] ${active ? 'text-gray-200' : 'text-gray-500'}`}>{item.count}</span>
-                        </div>
-                        <p className={`mt-0.5 text-[10px] ${active ? 'text-gray-300' : 'text-gray-500'}`}>{item.hint}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {isAutoClassifying && (
+                <span className="shrink-0 text-[11px] text-gray-500">Indexing...</span>
+              )}
 
-              <div className="mt-4 rounded-lg border border-gray-200 bg-white px-2.5 py-2">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">Summary</p>
-                <p className="mt-0.5 text-xl font-semibold text-gray-900">{documents.length}</p>
-                <p className="text-[11px] text-gray-500">Total documents</p>
-              </div>
-            </>
-          )}
-
-          {!sidebarCollapsed && (
-            <div
-              role="separator"
-              aria-label="Resize sidebar"
-              className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize transition-colors ${
-                isResizingSidebar ? 'bg-blue-300/70' : 'bg-transparent hover:bg-blue-200/60'
-              }`}
-              onPointerDown={(event) => {
-                if (event.button !== 0) return;
-                event.preventDefault();
-                setIsResizingSidebar(true);
-              }}
-            />
-          )}
-        </aside>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-5 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">Library</h1>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 w-[420px] max-w-[42vw]">
-                  <input
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        void handleImportUrl();
-                      }
-                    }}
-                    placeholder="Paste article URL..."
-                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => void handleImportUrl()}
-                    disabled={isImportingUrl || !urlInput.trim()}
-                    className="h-8 px-3 text-xs bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:bg-gray-400 transition-colors"
-                  >
-                    {isImportingUrl ? 'Importing...' : 'Import URL'}
-                  </button>
-                </div>
+              <div ref={displayMenuRef} className="relative shrink-0">
                 <button
-                  onClick={handleImport}
-                  disabled={isLoading}
-                  className="h-8 px-3 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                  type="button"
+                  onClick={() => setShowDisplayMenu((prev) => !prev)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  aria-label="Display options"
+                  title="Display options"
                 >
-                  {isLoading ? 'Importing...' : 'Import Document'}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1.6" />
+                    <circle cx="12" cy="12" r="1.6" />
+                    <circle cx="19" cy="12" r="1.6" />
+                  </svg>
                 </button>
+
+                {showDisplayMenu && (
+                  <div className="absolute right-0 top-9 z-30 w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                    {([
+                      ['grid', 'Grid'],
+                      ['list', 'List'],
+                      ['compact', 'Compact'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setViewMode(value);
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{viewMode === value ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">{label}</span>
+                      </button>
+                    ))}
+
+                    <div className="my-2 h-px bg-gray-200" />
+                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Sort by...</div>
+                    {([
+                      ['recent', 'Recent'],
+                      ['title', 'Title'],
+                      ['type', 'Type'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(value);
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{sortBy === value ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">{label}</span>
+                      </button>
+                    ))}
+
+                    <div className="my-2 h-px bg-gray-200" />
+                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Filter by type...</div>
+                    {([
+                      ['all', 'All'],
+                      ['epub', 'EPUB'],
+                      ['pdf', 'PDF'],
+                      ['markdown', 'Markdown'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setTypeFilter(value);
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{typeFilter === value ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">{label}</span>
+                      </button>
+                    ))}
+
+                    <div className="my-2 h-px bg-gray-200" />
+                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Category...</div>
+                    <div className="max-h-44 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryFilter('all');
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === 'all' ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">All</span>
+                      </button>
+                      {categoryOptions.map((category) => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(category);
+                            setShowDisplayMenu(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        >
+                          <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === category ? '✓' : ''}</span>
+                          <span className="truncate text-base font-medium leading-6">{category}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="my-2 h-px bg-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGroupByCategory((prev) => !prev);
+                        setShowDisplayMenu(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                    >
+                      <span className="w-4 text-center text-[18px] leading-none">{groupByCategory ? '✓' : ''}</span>
+                      <span className="text-base font-medium leading-6">Group by category</span>
+                    </button>
+                  </div>
+                )}
               </div>
+
               <button
-                onClick={onOpenSettings}
-                className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                onClick={handleUnifiedImport}
+                disabled={isImportingFile || isImportingUrl}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
               >
-                ⚙️ Settings
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v10m0 0 4-4m-4 4-4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
+                </svg>
+                {isImportingFile || isImportingUrl ? 'Importing...' : 'Import'}
               </button>
             </div>
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
-              {(['grid', 'list', 'compact'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-2 py-1 text-xs capitalize ${
-                    viewMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Category: All</option>
-              {categoryOptions.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setGroupByCategory((prev) => !prev)}
-              className={`px-2 py-1 text-xs rounded-md border ${
-                groupByCategory
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {groupByCategory ? 'Grouped' : 'Ungrouped'}
-            </button>
-
-            {isAutoClassifying && (
-              <span className="text-xs text-gray-500">Auto-tagging...</span>
-            )}
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'recent' | 'title' | 'type')}
-              className="ml-auto px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="recent">Sort: Recent</option>
-              <option value="title">Sort: Title</option>
-              <option value="type">Sort: Type</option>
-            </select>
-          </div>
-        </div>
 
       {/* Documents Grid */}
       <div className="flex-1 overflow-y-auto p-6">
@@ -799,7 +784,7 @@ export const Library: React.FC<LibraryProps> = ({ onOpenSettings, statusBar }) =
           {statusBar}
         </div>
       )}
-    </div>
+        </div>
     </div>
     </>
   );

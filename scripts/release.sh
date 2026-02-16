@@ -42,9 +42,14 @@ echo -e "${GREEN}Updating tauri.conf.json...${NC}"
 sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
 rm -f src-tauri/tauri.conf.json.bak
 
+# Update version in Cargo.toml
+echo -e "${GREEN}Updating src-tauri/Cargo.toml...${NC}"
+sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+rm -f src-tauri/Cargo.toml.bak
+
 # Commit changes
 echo -e "${GREEN}Committing version changes...${NC}"
-git add package.json src-tauri/tauri.conf.json
+git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
 git commit -m "chore: bump version to $VERSION"
 
 # Create tag

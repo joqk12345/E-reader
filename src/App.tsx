@@ -2,8 +2,9 @@ import { Library } from './components/Library';
 import { Reader } from './components/Reader';
 import { Settings } from './components/Settings';
 import { useStore } from './store/useStore';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getEmbeddingStatus, indexDocumentWithLocalEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
 import { matchesAnyShortcut } from './utils/shortcuts';
@@ -32,6 +33,8 @@ type EmbeddingStatus = {
   total: number;
   stale: number;
 };
+
+type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -62,10 +65,15 @@ function App() {
     keymap,
   } = useStore();
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations'>('reading');
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('reading');
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
   const [runtimeConfig, setRuntimeConfig] = useState<Config | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
+
+  const openSettings = useCallback((section: SettingsSection = 'reading') => {
+    setSettingsSection(section);
+    setShowSettings(true);
+  }, []);
 
   useEffect(() => {
     loadConfig();
@@ -144,12 +152,34 @@ function App() {
   }, [selectedDocumentId]);
 
   useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let unlistenAbout: (() => void) | null = null;
+    const setupMenuEvents = async () => {
+      try {
+        unlisten = await listen('reader://open-settings', () => {
+          openSettings('reading');
+        });
+        unlistenAbout = await listen('reader://open-settings-about', () => {
+          openSettings('about');
+        });
+      } catch (error) {
+        console.warn('Failed to listen for menu events:', error);
+      }
+    };
+    void setupMenuEvents();
+
+    return () => {
+      if (unlisten) unlisten();
+      if (unlistenAbout) unlistenAbout();
+    };
+  }, [openSettings]);
+
+  useEffect(() => {
     const onKeyDown = async (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
       if (matchesAnyShortcut(event, keymap.open_settings)) {
         event.preventDefault();
-        setSettingsSection('reading');
-        setShowSettings(true);
+        openSettings('reading');
         return;
       }
       if (matchesAnyShortcut(event, keymap.font_increase)) {
@@ -197,6 +227,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [
     keymap,
+    openSettings,
     persistReaderFontSize,
     readerFontSize,
     selectedDocumentId,
@@ -214,18 +245,9 @@ function App() {
       <div className="h-screen w-screen bg-gray-50 flex flex-col">
         <div className="flex-1 min-h-0">
           {selectedDocumentId ? (
-            <Reader
-              onOpenSettings={() => {
-                setSettingsSection('reading');
-                setShowSettings(true);
-              }}
-            />
+            <Reader />
           ) : (
           <Library
-            onOpenSettings={() => {
-              setSettingsSection('reading');
-              setShowSettings(true);
-            }}
             statusBar={
               <div className="flex items-center gap-4">
                 <span className="font-semibold text-gray-700">Runtime</span>

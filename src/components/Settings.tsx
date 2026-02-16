@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { useStore } from '../store/useStore';
 import {
   formatShortcutListInput,
@@ -28,7 +29,7 @@ import {
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
-type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations';
+type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 
 interface Config {
   provider: AiProvider;
@@ -88,6 +89,9 @@ interface McpStatus {
 
 const MCP_SETUP_DOCS_URL = 'https://vmark.app/guide/mcp-setup.html';
 const MCP_UI_PREFS_KEY = 'reader-mcp-ui-prefs';
+const APP_WEBSITE_URL = 'https://github.com/joqk12345/E-reader';
+const APP_GITHUB_URL = 'https://github.com/joqk12345/E-reader';
+const APP_RELEASES_URL = 'https://github.com/joqk12345/E-reader/releases';
 
 interface McpUiPrefs {
   startOnLaunch: boolean;
@@ -158,6 +162,15 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
       </svg>
     );
   }
+  if (type === 'about') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 10v6" />
+        <circle cx="12" cy="7.5" r="0.8" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M6 4v6M12 4v10M18 4v4" />
@@ -220,9 +233,26 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const [isTestingMcp, setIsTestingMcp] = useState(false);
   const [isTogglingMcp, setIsTogglingMcp] = useState(false);
   const [mcpUiPrefs, setMcpUiPrefs] = useState<McpUiPrefs>(() => loadMcpUiPrefs());
+  const [appVersion, setAppVersion] = useState('—');
 
   useEffect(() => {
     void loadConfig();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadVersion = async () => {
+      try {
+        const version = await getVersion();
+        if (active) setAppVersion(version);
+      } catch (error) {
+        console.warn('Failed to load app version:', error);
+      }
+    };
+    void loadVersion();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -446,6 +476,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     { id: 'audio', label: 'Audio' },
     { id: 'shortcuts', label: 'Shortcuts' },
     { id: 'integrations', label: 'Integrations' },
+    { id: 'about', label: 'About' },
   ];
 
   const lmDisabled = config.provider !== 'lmstudio';
@@ -524,6 +555,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
               {activeSection === 'audio' && 'Audio'}
               {activeSection === 'shortcuts' && 'Shortcuts'}
               {activeSection === 'integrations' && 'Integrations'}
+              {activeSection === 'about' && 'About'}
             </h2>
 
             {message && (
@@ -1023,6 +1055,67 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     >
                       MCP Setup Guide ↗
                     </a>
+                  </div>
+                </SettingsCard>
+              </div>
+            )}
+
+            {activeSection === 'about' && (
+              <div className="space-y-3">
+                <SettingsCard>
+                  <div className="flex items-start justify-between gap-3 px-1 py-1">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="/reader-logo.svg"
+                        alt="Reader Logo"
+                        className="h-14 w-14 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+                      />
+                      <div>
+                        <div className="text-[28px] leading-none font-semibold tracking-tight text-slate-900">Reader</div>
+                        <div className="mt-1 text-[14px] text-slate-500">Version {appVersion}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1 pt-1 text-right">
+                      <a href={APP_WEBSITE_URL} target="_blank" rel="noreferrer" className="block text-blue-600 hover:underline">
+                        Website
+                      </a>
+                      <a href={APP_GITHUB_URL} target="_blank" rel="noreferrer" className="block text-blue-600 hover:underline">
+                        GitHub
+                      </a>
+                      <a
+                        href={APP_GITHUB_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block text-[12px] text-slate-500 hover:text-blue-600 hover:underline"
+                      >
+                        https://github.com/joqk12345/E-reader
+                      </a>
+                    </div>
+                  </div>
+                </SettingsCard>
+
+                <SettingsCard>
+                  <div className="space-y-3 px-1 py-1">
+                    <div>
+                      <div className="text-[24px] leading-tight font-semibold tracking-tight text-slate-900">Updates</div>
+                      <div className="mt-1 text-[13px] text-slate-500">
+                        Reader currently ships through GitHub Releases and Homebrew Cask.
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div>
+                        <div className="text-[15px] font-semibold text-slate-900">Current version: {appVersion}</div>
+                        <div className="text-[13px] text-slate-500">Open releases page to check and download newer builds.</div>
+                      </div>
+                      <a
+                        href={APP_RELEASES_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
+                      >
+                        Check Updates
+                      </a>
+                    </div>
                   </div>
                 </SettingsCard>
               </div>

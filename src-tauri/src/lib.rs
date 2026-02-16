@@ -22,8 +22,80 @@ use commands::{
     search_by_embedding, summarize, translate, tts_synthesize, update_config,
     upsert_embeddings_batch, validate_local_embedding_model_path,
 };
-use tauri::menu::Menu;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::Emitter;
 
+#[cfg(target_os = "macos")]
+fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let about_item = MenuItem::with_id(
+        app,
+        "reader_open_about_settings",
+        "◉R  About Reader",
+        true,
+        None::<&str>,
+    )?;
+    let settings_item = MenuItem::with_id(
+        app,
+        "reader_open_settings",
+        "⚙  Settings...",
+        true,
+        Some("Cmd+,"),
+    )?;
+    let app_menu = Submenu::with_items(
+        app,
+        "◉R Reader",
+        true,
+        &[
+            &about_item,
+            &PredefinedMenuItem::separator(app)?,
+            &settings_item,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::services(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, None)?,
+            &PredefinedMenuItem::hide_others(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, None)?,
+        ],
+    )?;
+
+    let file_menu = Submenu::with_items(
+        app,
+        "File",
+        true,
+        &[&PredefinedMenuItem::close_window(app, None)?],
+    )?;
+    let edit_menu = Submenu::with_items(
+        app,
+        "Edit",
+        true,
+        &[
+            &PredefinedMenuItem::undo(app, None)?,
+            &PredefinedMenuItem::redo(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::cut(app, None)?,
+            &PredefinedMenuItem::copy(app, None)?,
+            &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
+        ],
+    )?;
+    let window_menu = Submenu::with_items(
+        app,
+        "Window",
+        true,
+        &[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::close_window(app, None)?,
+        ],
+    )?;
+    let help_menu = Submenu::with_items(app, "Help", true, &[])?;
+
+    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &window_menu, &help_menu])
+}
+
+#[cfg(not(target_os = "macos"))]
 fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     Menu::default(app)
 }
@@ -32,6 +104,13 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
 pub fn run() {
     tauri::Builder::default()
         .menu(build_app_menu)
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == "reader_open_about_settings" {
+                let _ = app.emit("reader://open-settings-about", ());
+            } else if event.id().as_ref() == "reader_open_settings" {
+                let _ = app.emit("reader://open-settings", ());
+            }
+        })
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             logger::init_logging();

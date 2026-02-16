@@ -9,6 +9,24 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Library / Branding / macOS menu polish (2026-02-16)**:
+  - Library homepage controls simplified with a cleaner macOS-style layout:
+    - single top toolbar + compact display options menu (`Grid/List/Compact`, sort, type filter, category, grouping)
+    - left sidebar kept as lightweight quick filters
+  - Library sidebar resize restored:
+    - drag-to-resize behavior is back with visual resize handle
+  - Import flow streamlined:
+    - unified `Import` dialog for local files (`EPUB/PDF/Markdown`)
+    - URL import kept as `Beta` inside the same dialog
+    - dialog auto-closes after successful import
+  - Reader naming unified to `Reader` in visible product surfaces
+  - Brand logo rollout:
+    - app icon assets regenerated from `public/reader-logo.svg` for Tauri bundle targets
+    - logo added to Library header, Reader header title area, and Settings > About
+  - macOS app menu polish:
+    - `About` now jumps to Settings `About` tab
+    - app menu labels refined with branded symbol text and spacing
+
 - **Reader UX + Layout refresh (2026-02-15)**:
   - Reading appearance settings now include:
     - `Column Layout`: `Single Column` / `Two Columns`
