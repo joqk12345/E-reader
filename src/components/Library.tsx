@@ -104,6 +104,19 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const displayMenuRef = useRef<HTMLDivElement | null>(null);
 
+  const formatImportErrorMessage = (error: unknown) => {
+    const raw = error instanceof Error ? error.message : String(error ?? '');
+    const normalized = raw.toLowerCase();
+    const isDuplicateFile =
+      normalized.includes('unique constraint failed: documents.file_path') ||
+      (normalized.includes('documents.file_path') && normalized.includes('unique'));
+
+    if (isDuplicateFile) {
+      return '该文件已导入到 Library，无需重复导入。';
+    }
+    return `导入失败：${raw}`;
+  };
+
 
   useEffect(() => {
     loadDocuments();
@@ -182,8 +195,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       }
     } catch (error) {
       console.error('Import failed:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(`Failed to import document: ${errorMessage}`);
+      alert(formatImportErrorMessage(error));
     } finally {
       setIsImportingFile(false);
       if (importedSuccessfully) {
@@ -211,8 +223,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       importedSuccessfully = true;
     } catch (error) {
       console.error('Import URL failed:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`Failed to import URL: ${message}`);
+      alert(formatImportErrorMessage(error));
     } finally {
       setIsImportingUrl(false);
       if (importedSuccessfully) {
