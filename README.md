@@ -7,6 +7,8 @@
 
 ## 🌐 Project Website
 
+- Live website: https://joqk12345.github.io/E-reader/
+- Repository: https://github.com/joqk12345/E-reader.git
 - Website source is in `website/` (VitePress)
 - Local dev:
   - `npm run website:dev`
@@ -19,6 +21,11 @@
 ## ✨ Features
 
 ## 🆕 Recent Updates (2026-02)
+
+- **About links update (2026-02-17)**:
+  - Settings > About now has dedicated `Website` and `GitHub` entries
+  - link items are shown as icon + label rows with hover color transition
+  - external links are opened via system browser (with fallback behavior)
 
 - **External link open behavior fix (2026-02-17)**:
   - Markdown links in Reader now open in external browser when clicked

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import { useStore } from '../store/useStore';
 import {
   formatShortcutListInput,
@@ -89,8 +90,8 @@ interface McpStatus {
 
 const MCP_SETUP_DOCS_URL = 'https://vmark.app/guide/mcp-setup.html';
 const MCP_UI_PREFS_KEY = 'reader-mcp-ui-prefs';
-const APP_WEBSITE_URL = 'https://github.com/joqk12345/E-reader';
-const APP_GITHUB_URL = 'https://github.com/joqk12345/E-reader';
+const APP_WEBSITE_URL = 'https://joqk12345.github.io/E-reader/';
+const APP_GITHUB_URL = 'https://github.com/joqk12345/E-reader.git';
 const APP_RELEASES_URL = 'https://github.com/joqk12345/E-reader/releases';
 
 interface McpUiPrefs {
@@ -309,6 +310,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       setMessage({ type: 'error', text: 'Failed to copy to clipboard.' });
     }
   };
+
+  const handleExternalLinkClick = useCallback((event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    event.preventDefault();
+    void openExternal(url).catch((error) => {
+      console.warn('Failed to open external link via shell plugin, fallback to window.open:', error);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  }, []);
 
   const updateMcpUiPrefs = (patch: Partial<McpUiPrefs>) => {
     setMcpUiPrefs((prev) => {
@@ -1064,31 +1073,48 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
               <div className="space-y-3">
                 <SettingsCard>
                   <div className="flex items-start justify-between gap-3 px-1 py-1">
-                    <div className="flex items-center gap-3">
+                    <a
+                      href={APP_WEBSITE_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => handleExternalLinkClick(event, APP_WEBSITE_URL)}
+                      className="flex items-center gap-3 group"
+                    >
                       <img
                         src="/reader-logo.svg"
                         alt="Reader Logo"
                         className="h-14 w-14 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
                       />
                       <div>
-                        <div className="text-[28px] leading-none font-semibold tracking-tight text-slate-900">Reader</div>
+                        <div className="text-[28px] leading-none font-semibold tracking-tight text-slate-900 group-hover:text-blue-600">Reader</div>
                         <div className="mt-1 text-[14px] text-slate-500">Version {appVersion}</div>
                       </div>
-                    </div>
-                    <div className="space-y-1 pt-1 text-right">
-                      <a href={APP_WEBSITE_URL} target="_blank" rel="noreferrer" className="block text-blue-600 hover:underline">
-                        Website
-                      </a>
-                      <a href={APP_GITHUB_URL} target="_blank" rel="noreferrer" className="block text-blue-600 hover:underline">
-                        GitHub
+                    </a>
+                    <div className="flex flex-col items-end gap-1.5 pt-1">
+                      <a
+                        href={APP_WEBSITE_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => handleExternalLinkClick(event, APP_WEBSITE_URL)}
+                        className="flex items-center gap-1.5 text-[18px] text-slate-500 transition-colors hover:text-blue-600"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M3 12h18M12 3a13.4 13.4 0 0 1 0 18M12 3a13.4 13.4 0 0 0 0 18" />
+                        </svg>
+                        <span>Website</span>
                       </a>
                       <a
                         href={APP_GITHUB_URL}
                         target="_blank"
                         rel="noreferrer"
-                        className="block text-[12px] text-slate-500 hover:text-blue-600 hover:underline"
+                        onClick={(event) => handleExternalLinkClick(event, APP_GITHUB_URL)}
+                        className="flex items-center gap-1.5 text-[18px] text-slate-500 transition-colors hover:text-blue-600"
                       >
-                        https://github.com/joqk12345/E-reader
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.8 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.8 11.8 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.5-2.8 5.5-5.5 5.8.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
+                        </svg>
+                        <span>GitHub</span>
                       </a>
                     </div>
                   </div>
