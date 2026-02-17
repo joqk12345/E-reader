@@ -112,6 +112,7 @@ pub fn run() {
             }
         })
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             logger::init_logging();
             database::init_db(app.handle())?;

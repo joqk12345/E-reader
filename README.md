@@ -9,6 +9,11 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **External link open behavior fix (2026-02-17)**:
+  - Markdown links in Reader now open in external browser when clicked
+  - covers both source markdown rendering and translated markdown rendering
+  - added Tauri shell open permission + plugin wiring with runtime fallback logic
+
 - **Library / Branding / macOS menu polish (2026-02-16)**:
   - Library homepage controls simplified with a cleaner macOS-style layout:
     - single top toolbar + compact display options menu (`Grid/List/Compact`, sort, type filter, category, grouping)
@@ -662,11 +667,11 @@ Quick version:
 
 ```bash
 # Use the release script
-./scripts/release.sh 0.2.0
+./scripts/release.sh 0.4.1
 
 # Or manually
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.4.1
+git push origin v0.4.1
 ```
 
 GitHub Actions will automatically build binaries for all platforms.

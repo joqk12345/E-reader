@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
+import { useState, useEffect, useRef, useMemo, type MouseEvent, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/sentences';
@@ -576,6 +577,27 @@ export function ReaderContent() {
   }, [isTwoColumnLayout, paragraphs, columnPageIndex]);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  const openLinkInExternalBrowser = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
+    if (!href) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const raw = href.trim();
+    if (!raw) return;
+    const normalized = /^(https?:|mailto:)/i.test(raw) ? raw : `https://${raw}`;
+    const isTauriRuntime =
+      typeof window !== 'undefined' &&
+      Object.prototype.hasOwnProperty.call(window, '__TAURI_INTERNALS__');
+
+    if (!isTauriRuntime) {
+      window.open(normalized, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    void openExternal(normalized).catch((error) => {
+      console.warn('Failed to open external link via plugin-shell:', error);
+      window.open(normalized, '_blank', 'noopener,noreferrer');
+    });
+  };
 
   const invokeTranslateWithRetry = async (
     text: string,
@@ -1397,7 +1419,14 @@ export function ReaderContent() {
                               );
                             },
                             a: ({ href, children }) => (
-                              <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: currentTheme.link }}>
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="underline"
+                                style={{ color: currentTheme.link }}
+                                onClick={(event) => openLinkInExternalBrowser(event, href)}
+                              >
                                 {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}
                               </a>
                             ),
@@ -1422,7 +1451,23 @@ export function ReaderContent() {
                             className="markdown-content"
                             style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.link }}
                           >
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="underline"
+                                    style={{ color: currentTheme.link }}
+                                    onClick={(event) => openLinkInExternalBrowser(event, href)}
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+                              }}
+                            >
                               {translations[markdownTranslationKey(paragraph.id)]}
                             </ReactMarkdown>
                           </div>

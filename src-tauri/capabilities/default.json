@@ -8,6 +8,8 @@
     "core:path:allow-resolve-directory",
     "core:path:allow-resolve",
     "dialog:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "shell:default",
+    "shell:allow-open"
   ]
 }
