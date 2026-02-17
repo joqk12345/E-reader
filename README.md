@@ -5,6 +5,17 @@
   <p>Built with Tauri 2 + React, focused on offline reading, semantic search, summarization, translation, and bilingual mode.</p>
 </div>
 
+## 🌐 Project Website
+
+- Website source is in `website/` (VitePress)
+- Local dev:
+  - `npm run website:dev`
+- Local build:
+  - `npm run website:build`
+- GitHub Pages deployment:
+  - Workflow file: `.github/workflows/website.yml`
+  - Trigger: push to `main` with changes under `website/**` (or manual run)
+
 ## ✨ Features
 
 ## 🆕 Recent Updates (2026-02)
