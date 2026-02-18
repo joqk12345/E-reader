@@ -10,11 +10,11 @@ hero:
     alt: Reader
   actions:
     - theme: brand
-      text: Get Started
-      link: /guide/
+      text: Download
+      link: /download
     - theme: alt
-      text: Installation
-      link: /guide/install
+      text: View Guide
+      link: /guide/
 
 features:
   - title: Local-first by default
@@ -43,6 +43,6 @@ It combines:
 
 ## Next
 
+- [Download Reader](/download)
 - [Open the guide](/guide/)
-- [Install Reader](/guide/install)
 - [Project repository](https://github.com/joqk12345/reader)

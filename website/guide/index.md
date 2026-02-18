@@ -21,3 +21,4 @@ Reader is a local-first reading app for EPUB, PDF, and Markdown with built-in AI
 ## Next reading
 
 - [Installation](/guide/install)
+- [MCP Tools Reference](/guide/mcp-tools)

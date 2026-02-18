@@ -18,8 +18,8 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
+      { text: 'Download', link: '/download' },
       { text: 'Guide', link: '/guide/' },
-      { text: 'Install', link: '/guide/install' },
     ],
 
     sidebar: {
@@ -29,6 +29,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/guide/' },
             { text: 'Installation', link: '/guide/install' },
+            { text: 'MCP Tools Reference', link: '/guide/mcp-tools' },
           ],
         },
       ],
