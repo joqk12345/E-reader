@@ -8,30 +8,35 @@ This project uses GitHub Actions for automated building and releasing.
 
 ### Creating a New Release
 
-1. **Update the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`:**
+1. **Sync the version across all release files:**
    ```bash
-   # Update version from 0.3.0 to 0.3.1, for example
+   ./scripts/sync-version.sh 0.3.1
    ```
 
-2. **Commit your changes:**
+2. **Verify all version sources match:**
+   ```bash
+   ./scripts/check-version.sh 0.3.1
+   ```
+
+3. **Commit your changes:**
    ```bash
    git add .
    git commit -m "chore: bump version to 0.3.1"
    git push origin main
    ```
 
-3. **Create and push a version tag:**
+4. **Create and push a version tag:**
    ```bash
    git tag v0.3.1
    git push origin v0.3.1
    ```
 
-4. **GitHub Actions will automatically:**
+5. **GitHub Actions will automatically:**
    - Build the application for multiple platforms (Linux, macOS, Windows)
    - Create a GitHub Release
    - Upload the built artifacts to the release
 
-5. **Visit the releases page:**
+6. **Visit the releases page:**
    - Go to https://github.com/joqk12345/E-reader/releases
    - Review the draft release
    - Edit the release notes if needed

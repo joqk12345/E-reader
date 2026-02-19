@@ -52,6 +52,13 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Validate release version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/check-version.sh "${VERSION}"
+
       - name: Install dependencies (Ubuntu)
         if: matrix.platform.os == 'ubuntu-22.04'
         run: |
@@ -87,7 +94,7 @@ jobs:
           TARGET="${{ matrix.platform.target }}"
           APP_DIR="src-tauri/target/${TARGET}/release/bundle/macos/reader.app"
           DMG_DIR="src-tauri/target/${TARGET}/release/bundle/dmg"
-          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          VERSION="${GITHUB_REF_NAME#v}"
 
           if [[ ! -d "$APP_DIR" ]]; then
             echo "Missing app bundle: $APP_DIR"

@@ -36,6 +36,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Check app version alignment
+        if: matrix.platform.os == 'ubuntu-22.04'
+        run: ./scripts/check-version.sh
+
       - name: Install dependencies (Ubuntu)
         if: matrix.platform.os == 'ubuntu-22.04'
         run: |

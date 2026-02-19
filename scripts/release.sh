@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -32,24 +35,12 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-# Update version in package.json
-echo -e "${GREEN}Updating package.json...${NC}"
-sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
-rm -f package.json.bak
-
-# Update version in tauri.conf.json
-echo -e "${GREEN}Updating tauri.conf.json...${NC}"
-sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
-rm -f src-tauri/tauri.conf.json.bak
-
-# Update version in Cargo.toml
-echo -e "${GREEN}Updating src-tauri/Cargo.toml...${NC}"
-sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
-rm -f src-tauri/Cargo.toml.bak
+echo -e "${GREEN}Syncing version across release files...${NC}"
+./scripts/sync-version.sh "$VERSION"
 
 # Commit changes
 echo -e "${GREEN}Committing version changes...${NC}"
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
 git commit -m "chore: bump version to $VERSION"
 
 # Create tag
