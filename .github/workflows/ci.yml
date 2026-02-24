@@ -50,7 +50,7 @@ jobs:
         run: npm ci
 
       - name: Align Tauri NPM package versions
-        run: npm install --no-save @tauri-apps/api@^2.10.0 @tauri-apps/cli@^2.10.0
+        run: ./scripts/align-tauri-npm.sh
 
       - name: Run TypeScript type check
         run: npm run build

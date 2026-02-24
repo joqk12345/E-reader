@@ -7,8 +7,10 @@ if [[ $# -ne 1 ]]; then
 fi
 
 VERSION="$1"
-if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]; then
-  echo "Invalid version format: ${VERSION}" >&2
+SEMVER_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+if [[ ! "${VERSION}" =~ ${SEMVER_PATTERN} ]]; then
+  echo "Invalid semver format: ${VERSION}" >&2
+  echo "Examples: 0.4.6, 0.4.6-rc.1, 0.4.6+build.1" >&2
   exit 1
 fi
 

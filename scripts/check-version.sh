@@ -5,6 +5,17 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 EXPECTED_VERSION="${1:-}"
+SEMVER_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+
+validate_semver() {
+  local source_name="$1"
+  local source_version="$2"
+  if [[ ! "${source_version}" =~ ${SEMVER_PATTERN} ]]; then
+    echo "invalid semver: ${source_name}=${source_version}" >&2
+    return 1
+  fi
+  return 0
+}
 
 read_cargo_package_version() {
   awk '
@@ -52,6 +63,9 @@ declare -a VERSION_SOURCES=(
 
 REFERENCE_VERSION="${PACKAGE_JSON_VERSION}"
 if [[ -n "${EXPECTED_VERSION}" ]]; then
+  if ! validate_semver "expected" "${EXPECTED_VERSION}"; then
+    exit 1
+  fi
   REFERENCE_VERSION="${EXPECTED_VERSION}"
 fi
 
@@ -59,6 +73,10 @@ HAS_MISMATCH=0
 for entry in "${VERSION_SOURCES[@]}"; do
   source_name="${entry%%:*}"
   source_version="${entry#*:}"
+  if ! validate_semver "${source_name}" "${source_version}"; then
+    HAS_MISMATCH=1
+    continue
+  fi
   if [[ "${source_version}" != "${REFERENCE_VERSION}" ]]; then
     echo "version mismatch: ${source_name}=${source_version}, expected=${REFERENCE_VERSION}" >&2
     HAS_MISMATCH=1

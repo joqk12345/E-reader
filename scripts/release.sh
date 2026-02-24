@@ -23,6 +23,13 @@ fi
 
 VERSION=$1
 VERSION_TAG="v$VERSION"
+SEMVER_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+
+if [[ ! "${VERSION}" =~ ${SEMVER_PATTERN} ]]; then
+    echo -e "${RED}Error: Invalid semver version '${VERSION}'${NC}"
+    echo "Examples: 0.4.6, 0.4.6-rc.1, 0.4.6+build.1"
+    exit 1
+fi
 
 echo -e "${YELLOW}This will create release $VERSION_TAG${NC}"
 echo ""
