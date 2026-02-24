@@ -69,6 +69,7 @@ jobs:
         run: npm ci
 
       - name: Align Tauri NPM package versions
+        shell: bash
         run: ./scripts/align-tauri-npm.sh
 
       - name: Build application (macOS app bundle only)
