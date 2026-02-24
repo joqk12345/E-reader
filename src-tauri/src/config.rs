@@ -86,6 +86,7 @@ pub struct Config {
     pub embedding_local_model_path: Option<String>,
     #[serde(default)]
     pub embedding_download_base_url: Option<String>,
+    #[serde(default = "default_chat_model")]
     pub chat_model: String,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
@@ -127,6 +128,10 @@ fn default_embedding_dimension() -> u32 {
 
 fn default_embedding_auto_reindex() -> bool {
     true
+}
+
+fn default_chat_model() -> String {
+    String::new()
 }
 
 fn normalize_local_embedding_model(model: &str) -> String {
@@ -231,7 +236,7 @@ impl Default for Config {
             embedding_ollama_model: None,
             embedding_local_model_path: None,
             embedding_download_base_url: None,
-            chat_model: "local-model".to_string(),
+            chat_model: default_chat_model(),
             openai_api_key: None,
             openai_base_url: Some("https://api.openai.com/v1".to_string()),
             tts_provider: default_tts_provider(),
@@ -288,7 +293,6 @@ pub fn load_config() -> Result<Config> {
         config.embedding_dimension = default_embedding_dimension();
         changed = true;
     }
-
     // Backward compatibility: persist new embedding fields if missing in old config files.
     let needs_backfill = value
         .as_object()

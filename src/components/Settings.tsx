@@ -30,7 +30,7 @@ import {
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
-type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
+type SettingsSection = 'reading' | 'editor' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 
 interface Config {
   provider: AiProvider;
@@ -126,6 +126,13 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="12" cy="12" r="9" />
         <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+  if (type === 'editor') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M5 6h14M12 6v12M8 18h8" />
       </svg>
     );
   }
@@ -480,6 +487,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
   const navItems: Array<{ id: SettingsSection; label: string }> = [
     { id: 'reading', label: 'Appearance' },
+    { id: 'editor', label: 'Editor' },
     { id: 'translation', label: 'Bilingual Translation' },
     { id: 'ai', label: 'AI & Embedding' },
     { id: 'audio', label: 'Audio' },
@@ -559,6 +567,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
           <main className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <h2 className="mb-3 text-[22px] font-bold tracking-tight text-slate-900">
               {activeSection === 'reading' && 'Appearance'}
+              {activeSection === 'editor' && 'Typography'}
               {activeSection === 'translation' && 'Bilingual Translation'}
               {activeSection === 'ai' && 'AI & Embedding'}
               {activeSection === 'audio' && 'Audio'}
@@ -597,39 +606,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 />
                 <SettingsDivider />
                 <SettingRow
-                  title="Font Size"
-                  description="Main reading text size"
-                  right={
-                    <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.fontSize}px</span>
-                    </>
-                  }
-                />
-                <SettingRow
-                  title="Line Height"
-                  description="Vertical rhythm and readability"
-                  right={
-                    <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.lineHeight.toFixed(1)}</span>
-                    </>
-                  }
-                />
-                <SettingRow
-                  title="Content Width"
-                  description="Set line length for focus"
-                  right={
-                    <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.contentWidth}em</span>
-                    </>
-                  }
-                />
-                <SettingRow
                   title="Column Layout"
                   description="Switch between single-column and two-column reading"
                   right={
@@ -666,6 +642,44 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <option value="source">Source Only</option>
                       <option value="translation">Translation Only</option>
                     </select>
+                  }
+                />
+              </SettingsCard>
+            )}
+
+            {activeSection === 'editor' && (
+              <SettingsCard>
+                <SettingRow
+                  title="Font Size"
+                  description="Main reading text size"
+                  right={
+                    <>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
+                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.fontSize}px</span>
+                    </>
+                  }
+                />
+                <SettingRow
+                  title="Line Height"
+                  description="Vertical rhythm and readability"
+                  right={
+                    <>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
+                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.lineHeight.toFixed(1)}</span>
+                    </>
+                  }
+                />
+                <SettingRow
+                  title="Content Width"
+                  description="Set line length for focus"
+                  right={
+                    <>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
+                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.contentWidth}em</span>
+                    </>
                   }
                 />
                 <SettingRow
@@ -832,6 +846,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Custom API base URL"
                     right={<input className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_base_url: e.target.value }))} />}
                     disabled={openaiDisabled}
+                  />
+                  <SettingRow
+                    title="Chat Model"
+                    description="Model name for chat/completions requests"
+                    right={<input className={`${compactControlClass} w-[260px]`} value={config.chat_model || ''} onChange={handleChange('chat_model')} placeholder={config.provider === 'openai' ? 'gpt-4o-mini' : 'qwen2.5-7b-instruct'} />}
                   />
                 </SettingsCard>
 

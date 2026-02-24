@@ -82,7 +82,7 @@ export function SidebarNavItem({
         active ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200/70'
       }`}
     >
-      <span className={active ? 'text-blue-600' : 'text-slate-500'}>{icon}</span>
+      <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center ${active ? 'text-blue-600' : 'text-slate-500'}`}>{icon}</span>
       <span className="text-[12px] font-medium">{label}</span>
     </button>
   );

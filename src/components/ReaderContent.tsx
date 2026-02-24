@@ -1275,6 +1275,32 @@ export function ReaderContent() {
     );
   }
 
+  const selectionPopoverViewportWidth = window.innerWidth;
+  const selectionPopoverViewportHeight = window.innerHeight;
+  const selectionPopoverWidth = Math.min(
+    selectionPopoverSize.width,
+    Math.floor(selectionPopoverViewportWidth * 0.92)
+  );
+  const selectionPopoverHalfWidth = selectionPopoverWidth / 2;
+  const selectionPopoverEdgePadding = 12;
+  const selectionPopoverMinCenterX =
+    selectionPopoverHalfWidth + selectionPopoverEdgePadding;
+  const selectionPopoverMaxCenterX = Math.max(
+    selectionPopoverMinCenterX,
+    selectionPopoverViewportWidth -
+      selectionPopoverHalfWidth -
+      selectionPopoverEdgePadding
+  );
+  const selectionPopoverLeft = selectionAnchor
+    ? Math.max(
+        selectionPopoverMinCenterX,
+        Math.min(
+          selectionAnchor.x + selectionPopoverOffset.x,
+          selectionPopoverMaxCenterX
+        )
+      )
+    : selectionPopoverMinCenterX;
+
   return (
     <div
       ref={contentRef}
@@ -1556,12 +1582,12 @@ export function ReaderContent() {
           data-selection-popover="true"
           className="fixed z-50 -translate-x-1/2 rounded-xl border border-slate-300 bg-white p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
           style={{
-            left: `${Math.max(36, Math.min(selectionAnchor.x + selectionPopoverOffset.x, window.innerWidth - 36))}px`,
+            left: `${selectionPopoverLeft}px`,
             top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
-            width: `${Math.min(selectionPopoverSize.width, Math.floor(window.innerWidth * 0.92))}px`,
+            width: `${selectionPopoverWidth}px`,
             height:
               selectionPopoverSize.height > 0
-                ? `${Math.min(selectionPopoverSize.height, Math.floor(window.innerHeight * 0.72))}px`
+                ? `${Math.min(selectionPopoverSize.height, Math.floor(selectionPopoverViewportHeight * 0.72))}px`
                 : undefined,
             maxHeight: '72vh',
           }}

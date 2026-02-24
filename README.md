@@ -22,6 +22,12 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Settings + selection popover polish (2026-02-24)**:
+  - `Settings > AI & Embedding` now exposes a dedicated `Chat Model` field (no hardcoded model name in settings UI).
+  - selection action popover now clamps to viewport width using real popover width, so right-edge selections no longer clip out of screen.
+  - `Settings > Appearance` now separates editor-related typography controls into a standalone `Editor` entry (`Typography` panel).
+  - sidebar settings icon alignment normalized with fixed icon slot sizing.
+
 - **About links update (2026-02-17)**:
   - Settings > About now has dedicated `Website` and `GitHub` entries
   - link items are shown as icon + label rows with hover color transition
@@ -364,6 +370,9 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - Use the floating mini player for global playback control when not in the Audio tab
 - **Reader Themes & View Settings**:
   - Click the **Settings** button in the reader header to customize reading experience
+  - Settings structure:
+    - `Appearance`: theme + layout view options
+    - `Editor` (`Typography`): font size, line height, content width, CJK spacing, expand-details
   - **Themes**: Choose from 5 presets - White, Paper, Mint, Sepia, Night
   - **Font Size**: Adjust from 12px to 30px (shortcut: `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0`)
   - **Line Height**: Adjust from 1.2 to 2.4
@@ -386,7 +395,7 @@ Reader supports two AI providers - choose based on your needs:
    - Open Settings (⚙️)
    - Select "LM Studio (Local)" as AI Provider
    - Enter LM Studio URL: `http://localhost:1234/v1`
-   - Set model names for embeddings and chat
+   - Set model names for embeddings and chat (via `Embedding Model` and `Chat Model`)
 5. **Use AI Tools**: Open the Summary or Translate panels in Reader
 
 ### Embedding Setup (Recommended: Local Offline)
@@ -454,7 +463,7 @@ ls -lh "$TARGET" "$TARGET/onnx"
    - Customize API Endpoint (optional): For OpenAI-compatible services like Azure OpenAI or third-party APIs
    - Set model names:
      - Embeddings: `text-embedding-3-small` (OpenAI recommended), or compatible model name from your provider
-     - Chat: `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo`, or compatible chat model from your provider
+     - Chat (`Chat Model`): `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`, or a compatible chat model from your provider
 3. **Save and Use**: All AI features will now use the configured OpenAI-compatible service
 
 #### Switching Between Providers
@@ -533,7 +542,7 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
   "embedding_model": "Xenova/all-MiniLM-L6-v2",
   "embedding_dimension": 384,
   "embedding_auto_reindex": true,
-  "chat_model": "local-model"
+  "chat_model": "qwen2.5-7b-instruct"
 }
 ```
 
