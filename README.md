@@ -105,6 +105,9 @@
 - **Reader Theme System (new)**:
   - 5 built-in reading themes: `White`, `Paper` (default), `Mint`, `Sepia`, `Night`
   - customizable font size (12-30px), line height (1.2-2.4), content width (36-120em)
+  - improved widescreen behavior:
+    - single-column can expand much wider on large monitors
+    - two-column page size now adapts to viewport size to avoid half-filled dual-page screens
   - CJK letter spacing option for better Chinese/Japanese/Korean readability
   - theme preferences persisted in local storage
 - **Focused Reading Mode (improved)**:
@@ -386,6 +389,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - **Font Size**: Adjust from 12px to 30px (shortcut: `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0`)
   - **Line Height**: Adjust from 1.2 to 2.4
   - **Content Width**: Adjust from 36em to 120em
+  - **Two-Column Layout**: Pagination density auto-adjusts based on viewport size
   - **CJK Letter Spacing**: Optional extra spacing for Chinese/Japanese/Korean text
   - All settings are persisted automatically
 

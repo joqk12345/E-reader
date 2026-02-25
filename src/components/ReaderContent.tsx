@@ -9,6 +9,7 @@ import type { Annotation, AnnotationStyle } from '../types';
 import {
   READER_THEMES,
   VIEW_SETTINGS_KEY,
+  clamp,
   loadReaderViewSettings,
   type ReaderViewSettings,
 } from './readerTheme';
@@ -54,7 +55,9 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   note: '✎',
 };
 const DEFAULT_SELECTION_POPOVER_WIDTH = 540;
-const DOUBLE_COLUMN_PAGE_SIZE = 12;
+const BASE_DOUBLE_COLUMN_PAGE_SIZE = 12;
+const MIN_DOUBLE_COLUMN_PAGE_SIZE = 10;
+const MAX_DOUBLE_COLUMN_PAGE_SIZE = 72;
 
 type CodeRule = {
   regex: RegExp;
@@ -536,6 +539,7 @@ export function ReaderContent() {
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const [contentViewport, setContentViewport] = useState({ width: 0, height: 0 });
   const translationsRef = useRef<Record<string, string>>({});
   const inFlightRef = useRef<Set<string>>(new Set());
   const pendingPatchRef = useRef<Record<string, string>>({});
@@ -566,15 +570,35 @@ export function ReaderContent() {
       ),
     [translations]
   );
+  const doubleColumnPageSize = useMemo(() => {
+    if (!isTwoColumnLayout) return paragraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
+    const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+    const viewportWidth = contentViewport.width > 0 ? contentViewport.width : fallbackWidth;
+    const viewportHeight = contentViewport.height > 0 ? contentViewport.height : fallbackHeight;
+    const widthFactor = clamp(viewportWidth / 1180, 0.85, 2.4);
+    const heightFactor = clamp(viewportHeight / 860, 0.8, 2.0);
+    const fontFactor = clamp(18 / viewSettings.fontSize, 0.75, 1.4);
+    const translationFactor = showTranslation ? 0.72 : 1;
+    const estimated = BASE_DOUBLE_COLUMN_PAGE_SIZE * widthFactor * heightFactor * fontFactor * translationFactor;
+    return Math.round(clamp(estimated, MIN_DOUBLE_COLUMN_PAGE_SIZE, MAX_DOUBLE_COLUMN_PAGE_SIZE));
+  }, [
+    contentViewport.height,
+    contentViewport.width,
+    isTwoColumnLayout,
+    paragraphs.length,
+    showTranslation,
+    viewSettings.fontSize,
+  ]);
   const totalColumnPages = useMemo(() => {
     if (!isTwoColumnLayout) return 1;
-    return Math.max(1, Math.ceil(paragraphs.length / DOUBLE_COLUMN_PAGE_SIZE));
-  }, [isTwoColumnLayout, paragraphs.length]);
+    return Math.max(1, Math.ceil(paragraphs.length / doubleColumnPageSize));
+  }, [doubleColumnPageSize, isTwoColumnLayout, paragraphs.length]);
   const displayedParagraphs = useMemo(() => {
     if (!isTwoColumnLayout) return paragraphs;
-    const start = columnPageIndex * DOUBLE_COLUMN_PAGE_SIZE;
-    return paragraphs.slice(start, start + DOUBLE_COLUMN_PAGE_SIZE);
-  }, [isTwoColumnLayout, paragraphs, columnPageIndex]);
+    const start = columnPageIndex * doubleColumnPageSize;
+    return paragraphs.slice(start, start + doubleColumnPageSize);
+  }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, paragraphs]);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
   const openLinkInExternalBrowser = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
@@ -701,9 +725,9 @@ export function ReaderContent() {
     if (!isTwoColumnLayout || !focusedParagraphId) return;
     const idx = paragraphs.findIndex((item) => item.id === focusedParagraphId);
     if (idx < 0) return;
-    const page = Math.floor(idx / DOUBLE_COLUMN_PAGE_SIZE);
+    const page = Math.floor(idx / doubleColumnPageSize);
     setColumnPageIndex(page);
-  }, [focusedParagraphId, isTwoColumnLayout, paragraphs]);
+  }, [doubleColumnPageSize, focusedParagraphId, isTwoColumnLayout, paragraphs]);
 
   useEffect(() => {
     const onFlipRequest = (event: Event) => {
@@ -731,6 +755,24 @@ export function ReaderContent() {
       setReaderFontSize(viewSettings.fontSize);
     }
   }, [readerFontSize, setReaderFontSize, viewSettings.fontSize]);
+
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    const syncSize = () => {
+      setContentViewport({
+        width: container.clientWidth,
+        height: container.clientHeight,
+      });
+    };
+
+    syncSize();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(syncSize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const container = contentRef.current;
@@ -1195,9 +1237,9 @@ export function ReaderContent() {
     if (!parsed) return;
     const idx = paragraphs.findIndex((item) => item.id === parsed.paragraphId);
     if (idx < 0) return;
-    const page = Math.floor(idx / DOUBLE_COLUMN_PAGE_SIZE);
+    const page = Math.floor(idx / doubleColumnPageSize);
     setColumnPageIndex(page);
-  }, [currentReadingSentenceKey, isTwoColumnLayout, paragraphs]);
+  }, [currentReadingSentenceKey, doubleColumnPageSize, isTwoColumnLayout, paragraphs]);
 
   // 跟随当前朗读句子自动滚动
   useEffect(() => {
@@ -1352,7 +1394,7 @@ export function ReaderContent() {
             className={isTwoColumnLayout ? 'max-w-none' : 'prose max-w-none'}
             style={
               isTwoColumnLayout
-                ? { columnCount: 2, columnGap: '3rem', width: '100%' }
+                ? { columnCount: 2, columnGap: '3rem', columnFill: 'auto', width: '100%' }
                 : undefined
             }
           >

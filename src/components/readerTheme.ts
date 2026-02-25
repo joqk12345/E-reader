@@ -117,7 +117,7 @@ export const loadReaderViewSettings = (readerFontSize: number): ReaderViewSettin
           : DEFAULT_VIEW_SETTINGS.lineHeight,
       contentWidth:
         typeof parsed.contentWidth === 'number'
-          ? clamp(parsed.contentWidth, 36, 84)
+          ? clamp(parsed.contentWidth, 36, 120)
           : DEFAULT_VIEW_SETTINGS.contentWidth,
       cjkLetterSpacing:
         typeof parsed.cjkLetterSpacing === 'number'
