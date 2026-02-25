@@ -22,6 +22,8 @@ const annotationStyleLabel: Record<AnnotationStyle, string> = {
   double_underline: 'Double Underline',
   wavy_strikethrough: 'Wavy Strikethrough',
 };
+const READER_INTRO_TEXT = 'Reader: Local-first EPUB/PDF/Markdown reader with AI tools';
+const READER_INTRO_INDEX_URL = 'https://joqk12345.github.io/E-reader/';
 
 type SelectionDraft = {
   paragraphId: string;
@@ -30,9 +32,9 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'ask' | 'play' | 'explain' | 'dict' | 'sentence' | 'copy' | 'highlight' | 'note';
+type SelectionAction = 'ask' | 'play' | 'explain' | 'dict' | 'sentence' | 'copy' | 'share' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'dict', 'sentence', 'copy', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'dict', 'sentence', 'copy', 'share', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   ask: 'Ask',
@@ -41,6 +43,7 @@ const selectionActionLabel: Record<SelectionAction, string> = {
   dict: 'Dict',
   sentence: 'Sentence',
   copy: 'Copy',
+  share: 'Share to X',
   highlight: 'Highlight',
   note: 'Take Note',
 };
@@ -51,6 +54,7 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   dict: '📘',
   sentence: '∑',
   copy: '⧉',
+  share: '↗',
   highlight: '＿',
   note: '✎',
 };
@@ -489,10 +493,21 @@ const countWords = (input: string): number => {
   return cjkChars + (latinWords ? latinWords.length : 0);
 };
 
+const truncateText = (value: string, maxLength: number): string => {
+  const normalized = value.trim();
+  if (normalized.length <= maxLength) return normalized;
+  if (maxLength <= 1) return '…';
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+};
+
+const normalizeInlineText = (value: string): string =>
+  value.replace(/\s+/g, ' ').trim();
+
 export function ReaderContent() {
   const {
     documents,
     selectedDocumentId,
+    sections,
     paragraphs,
     isLoading,
     currentSectionId,
@@ -601,13 +616,9 @@ export function ReaderContent() {
   }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, paragraphs]);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
-  const openLinkInExternalBrowser = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
-    if (!href) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const raw = href.trim();
-    if (!raw) return;
-    const normalized = /^(https?:|mailto:)/i.test(raw) ? raw : `https://${raw}`;
+  const openExternalUrl = (url: string) => {
+    const normalized = url.trim();
+    if (!normalized) return;
     const isTauriRuntime =
       typeof window !== 'undefined' &&
       Object.prototype.hasOwnProperty.call(window, '__TAURI_INTERNALS__');
@@ -621,6 +632,16 @@ export function ReaderContent() {
       console.warn('Failed to open external link via plugin-shell:', error);
       window.open(normalized, '_blank', 'noopener,noreferrer');
     });
+  };
+
+  const openLinkInExternalBrowser = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
+    if (!href) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const raw = href.trim();
+    if (!raw) return;
+    const normalized = /^(https?:|mailto:)/i.test(raw) ? raw : `https://${raw}`;
+    openExternalUrl(normalized);
   };
 
   const invokeTranslateWithRetry = async (
@@ -788,6 +809,11 @@ export function ReaderContent() {
   }, [paragraphs, viewSettings.expandDetails, currentDocumentType]);
 
   const selectedDoc = documents.find((doc) => doc.id === selectedDocumentId) || null;
+  const currentSection = sections.find((item) => item.id === currentSectionId) || null;
+  const sortedSections = useMemo(
+    () => [...sections].sort((a, b) => a.order_index - b.order_index),
+    [sections]
+  );
   const currentPdfPath = currentDocumentType === 'pdf' ? selectedDoc?.file_path || '' : '';
 
   const renderWithSearchHighlight = (text: string, enableHighlight: boolean, paragraphAnnotations: Annotation[], keyPrefix: string) => {
@@ -1120,6 +1146,46 @@ export function ReaderContent() {
     }
   };
 
+  const handleShareSelectionToX = () => {
+    const selectedNow = window.getSelection()?.toString().trim() || '';
+    const textToShare = selectedNow || selectionDraft?.selectedText?.trim() || '';
+    if (!textToShare) return;
+    const normalizedQuote = normalizeInlineText(textToShare);
+    const quote = truncateText(normalizedQuote, 140);
+    const title = truncateText(normalizeInlineText(selectedDoc?.title || 'Untitled'), 64);
+    const author = truncateText(normalizeInlineText(selectedDoc?.author || ''), 42);
+    const selectedParagraph = selectionDraft
+      ? paragraphs.find((item) => item.id === selectionDraft.paragraphId)
+      : null;
+    const pdfPage = currentDocumentType === 'pdf'
+      ? parsePdfPageFromLocation(selectedParagraph?.location)
+      : null;
+    const currentSectionIndex = currentSection
+      ? sortedSections.findIndex((item) => item.id === currentSection.id) + 1
+      : 0;
+    const sectionIndexLabel =
+      currentSection && currentSectionIndex > 0
+        ? `Section ${currentSectionIndex}/${sortedSections.length}: ${truncateText(normalizeInlineText(currentSection.title), 38)}`
+        : '';
+    const pageLabel = pdfPage ? `Page ${pdfPage}` : '';
+    const contentIndex = [sectionIndexLabel, pageLabel].filter(Boolean).join(' · ');
+
+    const metaLine = [`📖 ${title}${author ? ` — ${author}` : ''}`, contentIndex]
+      .filter(Boolean)
+      .join(' | ');
+    const shareText = [
+      `“${quote}”`,
+      metaLine,
+      `${READER_INTRO_TEXT} | Intro & index: ${READER_INTRO_INDEX_URL}`,
+      '#Reader #Reading #EPUB #PDF',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const shareUrl = `https://x.com/intent/post?text=${encodeURIComponent(shareText)}`;
+    openExternalUrl(shareUrl);
+    clearSelectionDraft();
+  };
+
   const handleConfirmPlayFromSelection = () => {
     if (!ttsConfirmParagraphId) return;
     dispatchAudiobookStart({ paragraphId: ttsConfirmParagraphId });
@@ -1162,6 +1228,10 @@ export function ReaderContent() {
     }
     if (action === 'copy') {
       void handleCopySelection();
+      return;
+    }
+    if (action === 'share') {
+      handleShareSelectionToX();
       return;
     }
     if (action === 'highlight') {

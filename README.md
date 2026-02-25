@@ -22,6 +22,12 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Selection share upgrade (2026-02-25)**:
+  - selection popover now includes a `Share to X` action
+  - shared post content now includes selected quote + source context (`title`, optional `author`)
+  - adds content index metadata when available (`Section x/y`, PDF `Page n`)
+  - appends a short Reader introduction and intro/index link: `https://joqk12345.github.io/E-reader/`
+
 - **Markdown list rendering fix (2026-02-25)**:
   - fixed a reader normalization edge case where lines with leading spaces could be mistaken for tree-structure blocks and wrapped as code
   - Markdown list items like `- Write everything you **don't want** in life (anti-vision)` now render correctly instead of showing as unrendered/plain text
@@ -128,7 +134,7 @@
   - all above bindings are editable in Settings and persisted in keymap config
 - **Selection action toolbar redesigned**:
   - selecting text now opens a movable/resizable action popover near selection anchor
-  - actions include: `Ask`, `Play from here`, `Explain`, `Dict`, `Sentence`, `Copy`, `Highlight`, `Note`
+  - actions include: `Ask`, `Play from here`, `Explain`, `Dict`, `Sentence`, `Copy`, `Share to X`, `Highlight`, `Note`
   - action order can be drag-sorted and is persisted in local storage
   - `Play from here` now has explicit confirmation dialog before TTS starts
 - **TTS sentence-follow accuracy improvements (Markdown)**:
@@ -318,6 +324,9 @@ brew list --cask reader >/dev/null 2>&1 && brew upgrade --cask reader || brew in
 
 - **Node.js** 22+
 - **Rust** (latest stable)
+- **AI prerequisite (for Summary/Translate/Chat features)**:
+  - Configure an AI provider in Reader settings before using AI tools.
+  - If you use local mode, set up **LM Studio** first (run local server, load model, then set URL/model names in Reader).
 - **System dependencies** (Linux only):
   ```bash
   sudo apt-get install libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
@@ -400,6 +409,9 @@ The built application will be in `src-tauri/target/release/bundle/`.
 ### AI Features Setup
 
 Reader supports two AI providers - choose based on your needs:
+
+> Important: Configure your AI provider first.  
+> For local mode, you must set up LM Studio (server running + model loaded) before using Summary/Translate/Chat.
 
 #### Option 1: LM Studio (Local, Privacy-First)
 
