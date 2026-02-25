@@ -19,7 +19,7 @@ use commands::{
     get_document_previews, get_paragraph_context, get_section_paragraphs, get_summary_cache,
     import_epub, import_markdown, import_markdown_content, import_pdf, import_url,
     index_document, list_annotations, list_documents, list_tts_voices, get_mcp_status, mcp_request, set_mcp_reader_enabled, search,
-    search_by_embedding, summarize, translate, tts_synthesize, update_config,
+    search_by_embedding, summarize, translate, tts_synthesize, update_config, get_update_target,
     upsert_embeddings_batch, validate_local_embedding_model_path,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -156,6 +156,7 @@ pub fn run() {
             get_mcp_status,
             set_mcp_reader_enabled,
             mcp_request,
+            get_update_target,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

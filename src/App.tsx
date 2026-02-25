@@ -6,7 +6,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getVersion } from '@tauri-apps/api/app';
 import { getEmbeddingStatus, indexDocumentWithLocalEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
+import {
+  checkForUpdates,
+  getErrorMessage,
+  isAutoUpdateEnabled,
+  loadCachedUpdateResult,
+  saveUpdateResult,
+  UPDATE_CHECK_INTERVAL_MS,
+  type UpdateTarget,
+} from './services/updater';
 import { matchesAnyShortcut } from './utils/shortcuts';
 
 const MIN_FONT_SIZE = 14;
@@ -78,6 +88,37 @@ function App() {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const runAutomaticUpdateCheck = async () => {
+      try {
+        if (!isAutoUpdateEnabled()) return;
+
+        const now = Date.now();
+        const cached = loadCachedUpdateResult();
+
+        if (cached && now - cached.checkedAt < UPDATE_CHECK_INTERVAL_MS) {
+          return;
+        }
+
+        const currentVersion = await getVersion();
+        const target = await invoke<UpdateTarget>('get_update_target');
+        const result = await checkForUpdates(currentVersion, target);
+        if (cancelled) return;
+
+        saveUpdateResult(result);
+      } catch (error) {
+        console.warn('Automatic update check failed:', getErrorMessage(error));
+      }
+    };
+
+    void runAutomaticUpdateCheck();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

@@ -27,6 +27,20 @@ import {
   ToggleSwitch,
   compactControlClass,
 } from './settings/SettingsUI';
+import {
+  checkForUpdates,
+  clearDismissedUpdateVersion,
+  getDismissedUpdateVersion,
+  getErrorMessage,
+  isAutoUpdateEnabled,
+  loadCachedUpdateResult,
+  saveUpdateResult,
+  setAutoUpdateEnabled,
+  setDismissedUpdateVersion,
+  UPDATE_CHECK_INTERVAL_MS,
+  type UpdateCheckResult,
+  type UpdateTarget,
+} from '../services/updater';
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
@@ -93,6 +107,8 @@ const MCP_UI_PREFS_KEY = 'reader-mcp-ui-prefs';
 const APP_WEBSITE_URL = 'https://joqk12345.github.io/E-reader/';
 const APP_GITHUB_URL = 'https://github.com/joqk12345/E-reader.git';
 const APP_RELEASES_URL = 'https://github.com/joqk12345/E-reader/releases';
+
+const normalizeVersionForDisplay = (version: string): string => version.trim().replace(/^v/i, '') || '—';
 
 interface McpUiPrefs {
   startOnLaunch: boolean;
@@ -242,6 +258,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const [isTogglingMcp, setIsTogglingMcp] = useState(false);
   const [mcpUiPrefs, setMcpUiPrefs] = useState<McpUiPrefs>(() => loadMcpUiPrefs());
   const [appVersion, setAppVersion] = useState('—');
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(() => loadCachedUpdateResult());
+  const [autoUpdatesEnabled, setAutoUpdatesEnabled] = useState<boolean>(() => isAutoUpdateEnabled());
 
   useEffect(() => {
     void loadConfig();
@@ -318,13 +337,85 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     }
   };
 
-  const handleExternalLinkClick = useCallback((event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
-    event.preventDefault();
-    void openExternal(url).catch((error) => {
+  const openExternalUrl = useCallback((url: string) => {
+    return openExternal(url).catch((error) => {
       console.warn('Failed to open external link via shell plugin, fallback to window.open:', error);
       window.open(url, '_blank', 'noopener,noreferrer');
     });
   }, []);
+
+  const handleExternalLinkClick = useCallback((event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    event.preventDefault();
+    void openExternalUrl(url);
+  }, [openExternalUrl]);
+
+  const runUpdateCheck = useCallback(async (manual: boolean) => {
+    setIsCheckingUpdates(true);
+    try {
+      const currentVersion = await getVersion();
+      const target = await invoke<UpdateTarget>('get_update_target');
+      const result = await checkForUpdates(currentVersion, target);
+      setUpdateResult(result);
+      saveUpdateResult(result);
+      const dismissedVersion = getDismissedUpdateVersion();
+      if (dismissedVersion && dismissedVersion !== result.latestVersion) {
+        clearDismissedUpdateVersion();
+      }
+      if (manual) {
+        setMessage({
+          type: 'success',
+          text: result.updateAvailable
+            ? `Update ${result.latestVersion} is available.`
+            : `Reader is up to date (${result.currentVersion}).`,
+        });
+      }
+    } catch (error) {
+      const text = getErrorMessage(error);
+      setUpdateResult((previous) => ({
+        currentVersion: previous?.currentVersion || normalizeVersionForDisplay(appVersion),
+        latestVersion: previous?.latestVersion || '—',
+        updateAvailable: false,
+        releaseUrl: previous?.releaseUrl || APP_RELEASES_URL,
+        downloadUrl: previous?.downloadUrl || null,
+        releaseName: previous?.releaseName || null,
+        publishedAt: previous?.publishedAt || null,
+        notes: previous?.notes || null,
+        checkedAt: Date.now(),
+        error: text,
+      }));
+      if (manual) {
+        setMessage({ type: 'error', text });
+      }
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  }, [appVersion]);
+
+  useEffect(() => {
+    if (activeSection !== 'about' || isCheckingUpdates) return;
+    if (!autoUpdatesEnabled) return;
+    const isStale = !updateResult || Date.now() - updateResult.checkedAt >= UPDATE_CHECK_INTERVAL_MS;
+    if (isStale) {
+      void runUpdateCheck(false);
+    }
+  }, [activeSection, autoUpdatesEnabled, isCheckingUpdates, runUpdateCheck, updateResult]);
+
+  const handleToggleAutoUpdates = (next: boolean) => {
+    setAutoUpdatesEnabled(next);
+    setAutoUpdateEnabled(next);
+    if (next) {
+      void runUpdateCheck(false);
+    }
+  };
+
+  const handleSkipThisVersion = () => {
+    if (!updateResult?.latestVersion) return;
+    setDismissedUpdateVersion(updateResult.latestVersion);
+    setMessage({
+      type: 'success',
+      text: `Skipped update v${updateResult.latestVersion}.`,
+    });
+  };
 
   const updateMcpUiPrefs = (patch: Partial<McpUiPrefs>) => {
     setMcpUiPrefs((prev) => {
@@ -467,7 +558,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       if (key === 'lineHeight') {
         return { ...prev, lineHeight: clamp(Math.round((prev.lineHeight + delta) * 10) / 10, 1.2, 2.4) };
       }
-      if (key === 'contentWidth') return { ...prev, contentWidth: clamp(prev.contentWidth + delta, 36, 84) };
+      if (key === 'contentWidth') return { ...prev, contentWidth: clamp(prev.contentWidth + delta, 36, 120) };
       return {
         ...prev,
         cjkLetterSpacing: clamp(Math.round((prev.cjkLetterSpacing + delta) * 100) / 100, 0.02, 0.12),
@@ -534,6 +625,30 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     null,
     2
   );
+  const updateCheckedAt = updateResult?.checkedAt
+    ? new Date(updateResult.checkedAt).toLocaleString()
+    : '—';
+  const dismissedVersion = getDismissedUpdateVersion();
+  const isDismissedVersion = Boolean(updateResult?.latestVersion && dismissedVersion === updateResult.latestVersion);
+  const showUpdateAvailableCard = Boolean(updateResult?.updateAvailable && !isDismissedVersion);
+  const updatePublishedAt = updateResult?.publishedAt
+    ? new Date(updateResult.publishedAt).toLocaleDateString()
+    : '—';
+  const updateStatusText = isCheckingUpdates
+    ? 'Checking for updates...'
+    : updateResult?.error
+      ? `Check failed: ${updateResult.error}`
+      : updateResult?.updateAvailable
+        ? isDismissedVersion
+          ? `v${updateResult.latestVersion} available (skipped)`
+          : `v${updateResult.latestVersion} available`
+        : updateResult
+          ? `Up to date (v${updateResult.currentVersion})`
+          : 'Not checked yet';
+  const updateSubtext = updateResult?.updateAvailable
+    ? 'A newer release is available on GitHub.'
+    : 'Reader currently ships through GitHub Releases and Homebrew Cask.';
+  const updateTargetUrl = updateResult?.downloadUrl || updateResult?.releaseUrl || APP_RELEASES_URL;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-[1px]" onClick={onClose}>
@@ -1105,8 +1220,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         className="h-14 w-14 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
                       />
                       <div>
-                        <div className="text-[28px] leading-none font-semibold tracking-tight text-slate-900 group-hover:text-blue-600">Reader</div>
-                        <div className="mt-1 text-[14px] text-slate-500">Version {appVersion}</div>
+                        <div className="text-[20px] leading-none font-semibold tracking-tight text-slate-900 group-hover:text-blue-600">Reader</div>
+                        <div className="mt-1 text-[13px] text-slate-500">Version {appVersion}</div>
                       </div>
                     </a>
                     <div className="flex flex-col items-end gap-1.5 pt-1">
@@ -1115,7 +1230,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_WEBSITE_URL)}
-                        className="flex items-center gap-1.5 text-[18px] text-slate-500 transition-colors hover:text-blue-600"
+                        className="flex items-center gap-1.5 text-[15px] text-slate-500 transition-colors hover:text-blue-600"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                           <circle cx="12" cy="12" r="9" />
@@ -1128,7 +1243,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_GITHUB_URL)}
-                        className="flex items-center gap-1.5 text-[18px] text-slate-500 transition-colors hover:text-blue-600"
+                        className="flex items-center gap-1.5 text-[15px] text-slate-500 transition-colors hover:text-blue-600"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.8 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.8 11.8 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.5-2.8 5.5-5.5 5.8.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
@@ -1139,27 +1254,89 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   </div>
                 </SettingsCard>
 
+                {showUpdateAvailableCard && (
+                  <SettingsCard>
+                    <div className="flex items-start justify-between gap-4 px-1 py-1">
+                      <div>
+                        <div className="text-[20px] leading-tight font-semibold tracking-tight text-slate-900">Update Available</div>
+                        <div className="mt-3 text-[18px] leading-tight font-semibold tracking-tight text-slate-900">
+                          Version {updateResult?.latestVersion}
+                          <span className="ml-2 text-[15px] font-medium text-slate-400">(current: {appVersion})</span>
+                        </div>
+                        <div className="mt-2 text-[13px] text-slate-500">Released: {updatePublishedAt}</div>
+                        <div className="mt-4 text-[13px] text-slate-500">See release notes at</div>
+                        <a
+                          href={updateResult?.releaseUrl || APP_RELEASES_URL}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => handleExternalLinkClick(event, updateResult?.releaseUrl || APP_RELEASES_URL)}
+                          className="text-[13px] text-slate-600 hover:text-blue-600 hover:underline break-all"
+                        >
+                          {updateResult?.releaseUrl || APP_RELEASES_URL}
+                        </a>
+                      </div>
+                      <div className="flex min-w-[180px] flex-col gap-3">
+                        <button
+                          type="button"
+                          onClick={() => void openExternalUrl(updateTargetUrl)}
+                          className="rounded-lg bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-blue-700"
+                        >
+                          Download
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSkipThisVersion}
+                          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )}
+
                 <SettingsCard>
                   <div className="space-y-3 px-1 py-1">
                     <div>
-                      <div className="text-[24px] leading-tight font-semibold tracking-tight text-slate-900">Updates</div>
-                      <div className="mt-1 text-[13px] text-slate-500">
-                        Reader currently ships through GitHub Releases and Homebrew Cask.
+                      <div className="text-[20px] leading-tight font-semibold tracking-tight text-slate-900">Updates</div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <SettingRow
+                        title="Automatic updates"
+                        description="Check for updates on startup"
+                        right={<ToggleSwitch checked={autoUpdatesEnabled} onChange={handleToggleAutoUpdates} />}
+                      />
+                      <SettingsDivider />
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="text-[15px] font-semibold text-slate-900">Check for updates</div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-[15px] text-blue-600">{updateStatusText}</div>
+                          <button
+                            type="button"
+                            onClick={() => void runUpdateCheck(true)}
+                            disabled={isCheckingUpdates}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {isCheckingUpdates ? 'Checking...' : 'Check Now'}
+                          </button>
+                        </div>
                       </div>
+                      <div className="mt-2 text-[12px] text-slate-500">Last checked: {updateCheckedAt}</div>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <div>
                         <div className="text-[15px] font-semibold text-slate-900">Current version: {appVersion}</div>
-                        <div className="text-[13px] text-slate-500">Open releases page to check and download newer builds.</div>
+                        <div className="text-[13px] text-slate-500">{updateSubtext}</div>
                       </div>
-                      <a
-                        href={APP_RELEASES_URL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
-                      >
-                        Check Updates
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void openExternalUrl(updateTargetUrl)}
+                          className="min-w-[132px] rounded-lg bg-blue-600 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-blue-700"
+                        >
+                          {updateResult?.updateAvailable ? `Download v${updateResult.latestVersion}` : 'Open Releases'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </SettingsCard>

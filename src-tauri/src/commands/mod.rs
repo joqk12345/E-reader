@@ -7,6 +7,7 @@ mod mcp;
 mod search;
 mod translate;
 mod tts;
+mod updater;
 
 pub use annotation::{create_annotation, delete_annotation, list_annotations};
 pub use config::{get_config, update_config};
@@ -25,3 +26,4 @@ pub use mcp::{get_mcp_status, mcp_request, set_mcp_reader_enabled};
 pub use search::{get_paragraph_context, search, ParagraphContextOutput, SearchResultOutput};
 pub use translate::{chat_with_context, deep_analyze, get_summary_cache, summarize, translate};
 pub use tts::{list_tts_voices, tts_synthesize};
+pub use updater::get_update_target;

@@ -22,6 +22,15 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Updater UX refresh (2026-02-25)**:
+  - `Settings > About` now includes a dedicated updates workflow:
+    - `Automatic updates` toggle (`Check for updates on startup`)
+    - manual `Check for updates` action with live status
+    - `Update Available` card with `Download` and `Skip`
+  - updater now resolves platform/arch specific installer assets from GitHub Releases (macOS/Windows/Linux) and opens the best matching download URL.
+  - automatic checks are cached to reduce repeated API calls.
+  - About tab typography was normalized to match other settings tabs (`Shortcuts`, `Integrations`), and the `Open Releases` button size was reduced for visual consistency.
+
 - **Settings + selection popover polish (2026-02-24)**:
   - `Settings > AI & Embedding` now exposes a dedicated `Chat Model` field (no hardcoded model name in settings UI).
   - selection action popover now clamps to viewport width using real popover width, so right-edge selections no longer clip out of screen.
@@ -95,7 +104,7 @@
     - TTS provider/voice / status / local-or-http mode (Edge TTS marked as remote/http)
 - **Reader Theme System (new)**:
   - 5 built-in reading themes: `White`, `Paper` (default), `Mint`, `Sepia`, `Night`
-  - customizable font size (12-30px), line height (1.2-2.4), content width (36-84em)
+  - customizable font size (12-30px), line height (1.2-2.4), content width (36-120em)
   - CJK letter spacing option for better Chinese/Japanese/Korean readability
   - theme preferences persisted in local storage
 - **Focused Reading Mode (improved)**:
@@ -376,7 +385,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
   - **Themes**: Choose from 5 presets - White, Paper, Mint, Sepia, Night
   - **Font Size**: Adjust from 12px to 30px (shortcut: `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0`)
   - **Line Height**: Adjust from 1.2 to 2.4
-  - **Content Width**: Adjust from 36em to 84em
+  - **Content Width**: Adjust from 36em to 120em
   - **CJK Letter Spacing**: Optional extra spacing for Chinese/Japanese/Korean text
   - All settings are persisted automatically
 
