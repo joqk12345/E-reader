@@ -22,6 +22,10 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Markdown list rendering fix (2026-02-25)**:
+  - fixed a reader normalization edge case where lines with leading spaces could be mistaken for tree-structure blocks and wrapped as code
+  - Markdown list items like `- Write everything you **don't want** in life (anti-vision)` now render correctly instead of showing as unrendered/plain text
+
 - **Updater UX refresh (2026-02-25)**:
   - `Settings > About` now includes a dedicated updates workflow:
     - `Automatic updates` toggle (`Check for updates on startup`)

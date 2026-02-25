@@ -449,7 +449,7 @@ const parsePdfPageFromLocation = (location?: string): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-const treeLineRe = /(~\/|├──|└──|│\s|^\s{2,}\S)/;
+const treeLineRe = /(~\/|├──|└──|│\s)/;
 const normalizeMarkdownForReader = (text: string): string => {
   const source = text.trim();
   if (!source) return source;
