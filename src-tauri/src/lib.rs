@@ -19,7 +19,7 @@ use commands::{
     get_document_previews, get_document_source_url, get_paragraph_context, get_section_paragraphs,
     get_summary_cache, import_epub, import_markdown, import_markdown_content, import_pdf,
     import_url, index_document, list_annotations, list_documents, list_tts_voices,
-    get_mcp_status, mcp_request, set_mcp_reader_enabled, search, search_by_embedding, summarize,
+    get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled, search, search_by_embedding, summarize,
     translate, tts_synthesize, update_config, get_update_target, upsert_embeddings_batch,
     validate_local_embedding_model_path,
 };
@@ -41,6 +41,13 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
         "⚙  Settings...",
         true,
         Some("Cmd+,"),
+    )?;
+    let install_cli_item = MenuItem::with_id(
+        app,
+        "reader_install_cli_shell_command",
+        "Shell Command: Install 'reader-cli' in PATH...",
+        true,
+        None::<&str>,
     )?;
     let app_menu = Submenu::with_items(
         app,
@@ -91,7 +98,7 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
             &PredefinedMenuItem::close_window(app, None)?,
         ],
     )?;
-    let help_menu = Submenu::with_items(app, "Help", true, &[])?;
+    let help_menu = Submenu::with_items(app, "Help", true, &[&install_cli_item])?;
 
     Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &window_menu, &help_menu])
 }
@@ -110,6 +117,21 @@ pub fn run() {
                 let _ = app.emit("reader://open-settings-about", ());
             } else if event.id().as_ref() == "reader_open_settings" {
                 let _ = app.emit("reader://open-settings", ());
+            } else if event.id().as_ref() == "reader_install_cli_shell_command" {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let payload = match install_cli_shell_command() {
+                        Ok(result) => serde_json::json!({
+                            "ok": true,
+                            "result": result,
+                        }),
+                        Err(error) => serde_json::json!({
+                            "ok": false,
+                            "error": error.to_string(),
+                        }),
+                    };
+                    let _ = app_handle.emit("reader://cli-shell-command-installed", payload);
+                });
             }
         })
         .plugin(tauri_plugin_dialog::init())
@@ -157,6 +179,7 @@ pub fn run() {
             update_config,
             get_mcp_status,
             set_mcp_reader_enabled,
+            install_cli_shell_command,
             mcp_request,
             get_update_target,
         ])

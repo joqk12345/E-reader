@@ -5,9 +5,10 @@
   "type": "module",
   "description": "MCP server for Reader business tools",
   "bin": {
-    "reader-mcp-server": "./dist/cli.js"
+    "reader-mcp-server": "./dist/cli.js",
+    "reader-cli": "./dist/cli.js"
   },
   "scripts": {
-    "build": "mkdir -p dist && cp src/cli.mjs dist/cli.js"
+    "build": "rm -rf dist && mkdir -p dist && cp -R src/* dist/ && cp dist/cli.mjs dist/cli.js && chmod +x dist/cli.js"
   }
 }

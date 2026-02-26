@@ -2,7 +2,10 @@ use crate::error::Result;
 use crate::mcp::McpServer;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::fs;
 use std::fs::OpenOptions;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Command as ProcessCommand, Stdio};
 use tauri::AppHandle;
@@ -113,6 +116,124 @@ pub async fn set_mcp_reader_enabled(enabled: bool) -> Result<McpStatus> {
     let launcher_path = paths.launcher_path;
     upsert_reader_server_entry(&config_path, &launcher_path, enabled)?;
     get_mcp_status(Some(false)).await
+}
+
+#[derive(Serialize)]
+pub struct ShellCommandInstallResult {
+    pub installed_path: String,
+    pub install_dir: String,
+    pub launcher_path: String,
+    pub path_updated: bool,
+    pub profile_file: Option<String>,
+    pub message: String,
+}
+
+#[tauri::command]
+pub fn install_cli_shell_command() -> Result<ShellCommandInstallResult> {
+    install_cli_shell_command_inner()
+}
+
+fn install_cli_shell_command_inner() -> Result<ShellCommandInstallResult> {
+    let paths = resolve_mcp_paths();
+    let launcher_path = paths.launcher_path;
+    if !launcher_path.exists() {
+        return Err(crate::ReaderError::NotFound(format!(
+            "CLI launcher not found: {}",
+            launcher_path.to_string_lossy()
+        )));
+    }
+
+    let home = dirs::home_dir().ok_or_else(|| {
+        crate::ReaderError::Internal("Failed to resolve home directory".to_string())
+    })?;
+
+    let preferred_dir = PathBuf::from("/usr/local/bin");
+    let fallback_dir = home.join(".local").join("bin");
+
+    let install_dir = if is_writable_dir(&preferred_dir) {
+        preferred_dir
+    } else {
+        fs::create_dir_all(&fallback_dir)?;
+        fallback_dir
+    };
+
+    let installed_path = install_dir.join("reader-cli");
+    if installed_path.exists() || installed_path.symlink_metadata().is_ok() {
+        fs::remove_file(&installed_path)?;
+    }
+
+    #[cfg(unix)]
+    symlink(&launcher_path, &installed_path).map_err(|error| {
+        crate::ReaderError::Internal(format!(
+            "Failed to create symlink {} -> {}: {}",
+            installed_path.to_string_lossy(),
+            launcher_path.to_string_lossy(),
+            error
+        ))
+    })?;
+
+    #[cfg(not(unix))]
+    {
+        return Err(crate::ReaderError::Internal(
+            "Install shell command is currently supported on Unix-like systems only".to_string(),
+        ));
+    }
+
+    let (path_updated, profile_file) = ensure_dir_in_path_for_zsh(&install_dir)?;
+    let message = if path_updated {
+        format!(
+            "Installed at {} and updated {}",
+            installed_path.to_string_lossy(),
+            profile_file
+                .as_ref()
+                .map(|v| v.as_str())
+                .unwrap_or("shell profile")
+        )
+    } else {
+        format!("Installed at {}", installed_path.to_string_lossy())
+    };
+
+    Ok(ShellCommandInstallResult {
+        installed_path: installed_path.to_string_lossy().to_string(),
+        install_dir: install_dir.to_string_lossy().to_string(),
+        launcher_path: launcher_path.to_string_lossy().to_string(),
+        path_updated,
+        profile_file,
+        message,
+    })
+}
+
+fn ensure_dir_in_path_for_zsh(dir: &Path) -> Result<(bool, Option<String>)> {
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    let dir_text = dir.to_string_lossy().to_string();
+    if path_env.split(':').any(|entry| entry == dir_text) {
+        return Ok((false, None));
+    }
+
+    let home = dirs::home_dir().ok_or_else(|| {
+        crate::ReaderError::Internal("Failed to resolve home directory".to_string())
+    })?;
+    let zshrc = home.join(".zshrc");
+    let export_line = format!("\n# Reader CLI\nexport PATH=\"{}:$PATH\"\n", dir_text);
+
+    let current = if zshrc.exists() {
+        fs::read_to_string(&zshrc)?
+    } else {
+        String::new()
+    };
+    if current.contains(&format!("export PATH=\"{}:$PATH\"", dir_text))
+        || current.contains(&format!("export PATH='{}:$PATH'", dir_text))
+    {
+        return Ok((false, Some(zshrc.to_string_lossy().to_string())));
+    }
+
+    let mut next = current;
+    if !next.ends_with('\n') && !next.is_empty() {
+        next.push('\n');
+    }
+    next.push_str(&export_line);
+    fs::write(&zshrc, next)?;
+    Ok((true, Some(zshrc.to_string_lossy().to_string())))
 }
 
 fn resolve_mcp_paths() -> McpPaths {

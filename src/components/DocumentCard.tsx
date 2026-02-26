@@ -8,6 +8,8 @@ interface DocumentCardProps {
   variant?: 'grid' | 'list' | 'compact';
   category?: string;
   tags?: string[];
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({
@@ -17,6 +19,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   variant = 'grid',
   category,
   tags = [],
+  isFavorite = false,
+  onToggleFavorite,
 }) => {
   const getFileTypeIcon = () => {
     if (document.file_type === 'epub') return '📚';
@@ -34,6 +38,13 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
+  const actionPillSizeClassName = 'inline-flex h-8 w-12 items-center justify-center rounded-full transition-colors';
+  const favoriteButtonClassName = `${actionPillSizeClassName} ${
+    isFavorite ? 'bg-slate-100 text-amber-600 hover:bg-slate-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+  }`;
+  const deleteButtonClassName = `${actionPillSizeClassName} bg-slate-100 text-gray-500 hover:bg-red-50 hover:text-red-500`;
+  const favoriteButtonTitle = isFavorite ? 'Remove from favorites' : 'Add to favorites';
+
   if (variant === 'compact') {
     return (
       <div
@@ -45,18 +56,31 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           <p className="flex-1 min-w-0 text-xs font-medium text-gray-900 truncate">{document.title}</p>
           {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">{category}</span>}
           <span className="text-[11px] text-gray-500">{getFileTypeLabel()}</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="text-gray-400 hover:text-red-500 transition-colors p-1"
-            aria-label="Delete document"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite?.();
+              }}
+              className={favoriteButtonClassName}
+              aria-label={favoriteButtonTitle}
+              title={favoriteButtonTitle}
+            >
+              <span className="text-lg leading-none">☆</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className={deleteButtonClassName}
+              aria-label="Delete document"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -89,18 +113,31 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               </div>
             )}
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="text-gray-400 hover:text-red-500 transition-colors p-1"
-            aria-label="Delete document"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite?.();
+              }}
+              className={favoriteButtonClassName}
+              aria-label={favoriteButtonTitle}
+              title={favoriteButtonTitle}
+            >
+              <span className="text-lg leading-none">☆</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className={deleteButtonClassName}
+              aria-label="Delete document"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -116,7 +153,9 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           <span className="text-xl leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{document.title}</h3>
-            {category && <p className="text-xs text-blue-700 mt-0.5">{category}</p>}
+            <div className="mt-0.5 flex flex-wrap items-center gap-1">
+              {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">{category}</span>}
+            </div>
             {document.author && (
               <p className="text-xs text-gray-600 truncate">{document.author}</p>
             )}
@@ -134,18 +173,31 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             )}
           </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="text-gray-400 hover:text-red-500 transition-colors p-1"
-          aria-label="Delete document"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite?.();
+            }}
+            className={favoriteButtonClassName}
+            aria-label={favoriteButtonTitle}
+            title={favoriteButtonTitle}
+          >
+            <span className="text-lg leading-none">☆</span>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className={deleteButtonClassName}
+            aria-label="Delete document"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -325,6 +325,314 @@ function loadReaderConfig() {
   return {};
 }
 
+function normalizeAiProvider(provider) {
+  const normalized = String(provider || '').trim().toLowerCase();
+  if (normalized === 'openai' || normalized === 'lmstudio') return normalized;
+  return 'lmstudio';
+}
+
+function resolveChatRuntime(args = {}) {
+  const config = loadReaderConfig();
+  const provider = normalizeAiProvider(args?.provider || config.provider || 'lmstudio');
+  const model = String(args?.chat_model || config.chat_model || '').trim();
+  if (!model) {
+    throw new Error(
+      'Missing chat model. Configure Reader chat_model in config, or pass --chat-model.'
+    );
+  }
+
+  if (provider === 'openai') {
+    const baseUrl = String(
+      args?.openai_base_url || config.openai_base_url || 'https://api.openai.com/v1'
+    )
+      .trim()
+      .replace(/\/+$/, '');
+    const apiKey = String(
+      args?.openai_api_key || config.openai_api_key || process.env.OPENAI_API_KEY || ''
+    ).trim();
+    if (!apiKey) {
+      throw new Error('Missing OpenAI API key. Set config/openai_api_key or OPENAI_API_KEY.');
+    }
+    return { provider, baseUrl, apiKey, model };
+  }
+
+  const baseUrl = String(args?.lm_studio_url || config.lm_studio_url || 'http://localhost:1234/v1')
+    .trim()
+    .replace(/\/+$/, '');
+  return { provider: 'lmstudio', baseUrl, apiKey: '', model };
+}
+
+async function chatCompletion(args, messages, opts = {}) {
+  const runtime = resolveChatRuntime(args);
+  const payload = {
+    model: runtime.model,
+    messages,
+    temperature: typeof opts.temperature === 'number' ? opts.temperature : 0.3,
+    max_tokens: Number.isInteger(opts.maxTokens) ? opts.maxTokens : 1200,
+  };
+  const headers = { 'content-type': 'application/json' };
+  if (runtime.provider === 'openai') {
+    headers.authorization = `Bearer ${runtime.apiKey}`;
+  }
+
+  const response = await fetch(`${runtime.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Chat completion failed (${response.status}): ${text.slice(0, 500)}`);
+  }
+  const json = await response.json();
+  const content = json?.choices?.[0]?.message?.content;
+  if (!content || typeof content !== 'string') {
+    throw new Error('Chat completion returned empty content');
+  }
+  return content.trim();
+}
+
+function resolveContextText(dbPath, root, args, options = {}) {
+  const maxDocumentParagraphs = Number.isInteger(options?.maxDocumentParagraphs)
+    ? options.maxDocumentParagraphs
+    : 180;
+  const maxChars = Number.isInteger(options?.maxChars) ? options.maxChars : 24000;
+
+  const paragraphId = String(args?.paragraph_id || '').trim();
+  const sectionId = String(args?.section_id || '').trim();
+  const hasDocSelector = Boolean(args?.doc_id || args?.path || args?.title);
+
+  if (paragraphId) {
+    const rows = runSqlJson(
+      dbPath,
+      `SELECT p.text, p.doc_id, p.section_id, d.title AS document_title, s.title AS section_title
+       FROM paragraphs p
+       JOIN documents d ON d.id = p.doc_id
+       JOIN sections s ON s.id = p.section_id
+       WHERE p.id = ${sqlQuote(paragraphId)}
+       LIMIT 1`
+    );
+    const row = rows[0];
+    if (!row) throw new Error(`paragraph not found: ${paragraphId}`);
+    const text = String(row.text || '');
+    return {
+      scope: 'paragraph',
+      scope_label: 'Current paragraph',
+      doc_id: row.doc_id,
+      section_id: row.section_id,
+      document_title: row.document_title || null,
+      section_title: row.section_title || null,
+      content: text.slice(0, maxChars),
+      truncated: text.length > maxChars,
+    };
+  }
+
+  if (sectionId) {
+    const sectionRows = runSqlJson(
+      dbPath,
+      `SELECT s.id, s.doc_id, s.title, d.title AS document_title
+       FROM sections s
+       JOIN documents d ON d.id = s.doc_id
+       WHERE s.id = ${sqlQuote(sectionId)}
+       LIMIT 1`
+    );
+    const section = sectionRows[0];
+    if (!section) throw new Error(`section not found: ${sectionId}`);
+    const paragraphs = runSqlJson(
+      dbPath,
+      `SELECT text
+       FROM paragraphs
+       WHERE section_id = ${sqlQuote(sectionId)}
+       ORDER BY order_index ASC`
+    );
+    const text = paragraphs.map((p) => p.text || '').join('\n\n');
+    if (!text.trim()) throw new Error(`section has no content: ${sectionId}`);
+    return {
+      scope: 'section',
+      scope_label: 'Current section',
+      doc_id: section.doc_id,
+      section_id: section.id,
+      document_title: section.document_title || null,
+      section_title: section.title || null,
+      content: text.slice(0, maxChars),
+      truncated: text.length > maxChars,
+    };
+  }
+
+  if (!hasDocSelector) {
+    throw new Error(
+      'Provide one context selector: paragraph_id, section_id, or one of doc_id/path/title.'
+    );
+  }
+
+  const doc = resolveDocument(dbPath, root, args);
+  const paragraphs = runSqlJson(
+    dbPath,
+    `SELECT text
+     FROM paragraphs
+     WHERE doc_id = ${sqlQuote(doc.id)}
+     ORDER BY order_index ASC
+     LIMIT ${maxDocumentParagraphs}`
+  );
+  const text = paragraphs.map((p) => p.text || '').join('\n\n');
+  if (!text.trim()) throw new Error(`document has no content: ${doc.id}`);
+  return {
+    scope: 'document',
+    scope_label: 'Current document',
+    doc_id: doc.id,
+    section_id: null,
+    document_title: doc.title || null,
+    section_title: null,
+    content: text.slice(0, maxChars),
+    truncated: text.length > maxChars,
+  };
+}
+
+function stripThinkingContent(text) {
+  return String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
+async function summarizeContext(root, args) {
+  const dbPath = resolveDbPath(args);
+  const style = String(args?.style || 'brief').trim().toLowerCase();
+  if (!['brief', 'detailed', 'bullet'].includes(style)) {
+    throw new Error(`Invalid style: ${style}. Use brief/detailed/bullet.`);
+  }
+  const context = resolveContextText(dbPath, root, args, { maxDocumentParagraphs: 180 });
+  const systemPromptByStyle = {
+    brief:
+      'You are a skilled summarizer. Create a brief summary in 1-2 sentences. Output summary only.',
+    detailed:
+      'You are a skilled summarizer. Create a detailed multi-paragraph summary covering key points. Output summary only.',
+    bullet:
+      'You are a skilled summarizer. Summarize as concise bullet points. Output bullets only.',
+  };
+  const output = await chatCompletion(
+    args,
+    [
+      { role: 'system', content: systemPromptByStyle[style] },
+      { role: 'user', content: context.content },
+    ],
+    { temperature: 0.5, maxTokens: style === 'brief' ? 300 : style === 'detailed' ? 2000 : 1000 }
+  );
+  return {
+    db_path: dbPath,
+    style,
+    scope: context.scope,
+    doc_id: context.doc_id,
+    section_id: context.section_id,
+    truncated_context: context.truncated,
+    summary: stripThinkingContent(output),
+  };
+}
+
+async function translateTextWithReaderConfig(_root, args) {
+  const text = String(args?.text || '').trim();
+  if (!text) throw new Error('text is required');
+  const targetLang = String(args?.target_lang || '').trim().toLowerCase();
+  if (!targetLang) throw new Error('target_lang is required');
+  const targetLangName = targetLang === 'zh' ? 'Chinese' : targetLang === 'en' ? 'English' : targetLang;
+  const output = await chatCompletion(
+    args,
+    [
+      {
+        role: 'system',
+        content:
+          `You are a professional translator. Translate text to ${targetLangName}. ` +
+          'If input contains Markdown, preserve Markdown structure. Output translation only.',
+      },
+      { role: 'user', content: text },
+    ],
+    { temperature: 0.3, maxTokens: 2000 }
+  );
+  return {
+    target_lang: targetLang,
+    translation: stripThinkingContent(output),
+  };
+}
+
+async function deepAnalyzeContext(root, args) {
+  const dbPath = resolveDbPath(args);
+  const context = resolveContextText(dbPath, root, args, { maxDocumentParagraphs: 180 });
+  const prompt = `你是一个严格的“信息深度分析引擎”。请仅基于给定文本输出 Markdown，禁止臆测。
+
+必须输出以下章节（按顺序）：
+## 1) 概念清单（中英文）
+## 2) 概念定义（中英文）
+## 3) 概念关系（中英文）
+## 4) COT逻辑梳理（显式步骤）
+## 5) 事实与看法
+## 6) FAQ（由文中问题整理）
+## 7) Visualization（包含 mermaid）
+## 8) 类比清单
+## 9) 金句（10条）
+
+输出要求：
+- 中文为主，概念名中英双语
+- 禁止输出与文本无关内容
+- 保持结构化层级`;
+
+  const output = await chatCompletion(
+    args,
+    [
+      { role: 'system', content: prompt },
+      { role: 'user', content: context.content },
+    ],
+    { temperature: 0.3, maxTokens: 3600 }
+  );
+  return {
+    db_path: dbPath,
+    scope: context.scope,
+    doc_id: context.doc_id,
+    section_id: context.section_id,
+    truncated_context: context.truncated,
+    analysis: stripThinkingContent(output),
+  };
+}
+
+async function chatWithContext(root, args) {
+  const dbPath = resolveDbPath(args);
+  const question = String(args?.question || '').trim();
+  if (!question) throw new Error('question is required');
+  const context = resolveContextText(dbPath, root, args, { maxDocumentParagraphs: 180 });
+  const history = Array.isArray(args?.history) ? args.history : [];
+  const historyMessages = history
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      role: String(item.role || '').trim().toLowerCase(),
+      content: String(item.content || '').trim(),
+    }))
+    .filter((item) => (item.role === 'user' || item.role === 'assistant') && item.content)
+    .slice(-8);
+
+  const output = await chatCompletion(
+    args,
+    [
+      {
+        role: 'system',
+        content:
+          'You are a reading assistant for QA over a document context. Answer only with provided context. If insufficient, explicitly say what is missing.',
+      },
+      {
+        role: 'system',
+        content: `Context scope: ${context.scope_label}\nContext content:\n${context.content}`,
+      },
+      ...historyMessages,
+      { role: 'user', content: question },
+    ],
+    { temperature: 0.2, maxTokens: 1200 }
+  );
+
+  return {
+    db_path: dbPath,
+    scope: context.scope,
+    doc_id: context.doc_id,
+    section_id: context.section_id,
+    truncated_context: context.truncated,
+    answer: stripThinkingContent(output),
+  };
+}
+
 function normalizeEmbeddingProfile(dbPath, args, config) {
   const fromArgs = args?.embedding_profile || {};
   const provider = String(
@@ -1238,6 +1546,123 @@ export function getTools() {
         additionalProperties: false,
       },
     },
+    {
+      name: 'reader.summarize_context',
+      description: 'Summarize paragraph/section/document context using Reader AI config',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          db_path: { type: 'string' },
+          doc_id: { type: 'string' },
+          path: { type: 'string' },
+          title: { type: 'string' },
+          section_id: { type: 'string' },
+          paragraph_id: { type: 'string' },
+          style: { type: 'string', enum: ['brief', 'detailed', 'bullet'], default: 'brief' },
+          provider: { type: 'string', enum: ['lmstudio', 'openai'] },
+          chat_model: { type: 'string' },
+          lm_studio_url: { type: 'string' },
+          openai_base_url: { type: 'string' },
+          openai_api_key: { type: 'string' },
+        },
+        anyOf: [
+          { required: ['paragraph_id'] },
+          { required: ['section_id'] },
+          { required: ['doc_id'] },
+          { required: ['path'] },
+          { required: ['title'] },
+        ],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: 'reader.translate_text',
+      description: 'Translate plain/markdown text with Reader AI config',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', minLength: 1 },
+          target_lang: { type: 'string', minLength: 1 },
+          provider: { type: 'string', enum: ['lmstudio', 'openai'] },
+          chat_model: { type: 'string' },
+          lm_studio_url: { type: 'string' },
+          openai_base_url: { type: 'string' },
+          openai_api_key: { type: 'string' },
+        },
+        required: ['text', 'target_lang'],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: 'reader.deep_analyze_context',
+      description: 'Run deep analysis for paragraph/section/document context',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          db_path: { type: 'string' },
+          doc_id: { type: 'string' },
+          path: { type: 'string' },
+          title: { type: 'string' },
+          section_id: { type: 'string' },
+          paragraph_id: { type: 'string' },
+          provider: { type: 'string', enum: ['lmstudio', 'openai'] },
+          chat_model: { type: 'string' },
+          lm_studio_url: { type: 'string' },
+          openai_base_url: { type: 'string' },
+          openai_api_key: { type: 'string' },
+        },
+        anyOf: [
+          { required: ['paragraph_id'] },
+          { required: ['section_id'] },
+          { required: ['doc_id'] },
+          { required: ['path'] },
+          { required: ['title'] },
+        ],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: 'reader.chat_with_context',
+      description: 'Ask a question with paragraph/section/document context',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          db_path: { type: 'string' },
+          question: { type: 'string', minLength: 1 },
+          doc_id: { type: 'string' },
+          path: { type: 'string' },
+          title: { type: 'string' },
+          section_id: { type: 'string' },
+          paragraph_id: { type: 'string' },
+          history: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                role: { type: 'string', enum: ['user', 'assistant'] },
+                content: { type: 'string' },
+              },
+              required: ['role', 'content'],
+              additionalProperties: false,
+            },
+          },
+          provider: { type: 'string', enum: ['lmstudio', 'openai'] },
+          chat_model: { type: 'string' },
+          lm_studio_url: { type: 'string' },
+          openai_base_url: { type: 'string' },
+          openai_api_key: { type: 'string' },
+        },
+        required: ['question'],
+        anyOf: [
+          { required: ['paragraph_id'] },
+          { required: ['section_id'] },
+          { required: ['doc_id'] },
+          { required: ['path'] },
+          { required: ['title'] },
+        ],
+        additionalProperties: false,
+      },
+    },
   ];
 }
 
@@ -1375,5 +1800,9 @@ export async function callTool(root, toolName, args) {
   if (toolName === 'reader.search_markdown') return searchDocument(root, args);
   if (toolName === 'reader.semantic_search_documents') return semanticSearchDocuments(root, args);
   if (toolName === 'reader.import_document') return importDocument(root, args);
+  if (toolName === 'reader.summarize_context') return summarizeContext(root, args);
+  if (toolName === 'reader.translate_text') return translateTextWithReaderConfig(root, args);
+  if (toolName === 'reader.deep_analyze_context') return deepAnalyzeContext(root, args);
+  if (toolName === 'reader.chat_with_context') return chatWithContext(root, args);
   throw new Error(`Unknown tool: ${toolName}`);
 }

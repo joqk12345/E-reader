@@ -195,6 +195,7 @@ function App() {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     let unlistenAbout: (() => void) | null = null;
+    let unlistenInstallCli: (() => void) | null = null;
     const setupMenuEvents = async () => {
       try {
         unlisten = await listen('reader://open-settings', () => {
@@ -202,6 +203,23 @@ function App() {
         });
         unlistenAbout = await listen('reader://open-settings-about', () => {
           openSettings('about');
+        });
+        unlistenInstallCli = await listen<{
+          ok?: boolean;
+          error?: string;
+          result?: { message?: string; installed_path?: string; profile_file?: string | null };
+        }>('reader://cli-shell-command-installed', (event) => {
+          const payload = event.payload || {};
+          if (payload.ok) {
+            const message =
+              payload.result?.message ||
+              (payload.result?.installed_path
+                ? `Installed at ${payload.result.installed_path}`
+                : 'reader-cli installed');
+            alert(message);
+          } else {
+            alert(`Install reader-cli failed: ${payload.error || 'Unknown error'}`);
+          }
         });
       } catch (error) {
         console.warn('Failed to listen for menu events:', error);
@@ -212,6 +230,7 @@ function App() {
     return () => {
       if (unlisten) unlisten();
       if (unlistenAbout) unlistenAbout();
+      if (unlistenInstallCli) unlistenInstallCli();
     };
   }, [openSettings]);
 

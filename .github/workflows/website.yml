@@ -7,6 +7,15 @@ on:
       - 'website/**'
       - '.github/workflows/website.yml'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Deployment mode'
+        required: false
+        default: 'changed'
+        type: choice
+        options:
+          - changed
+          - force
 
 permissions:
   contents: read
@@ -18,16 +27,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      website: ${{ steps.filter.outputs.website }}
+      should_deploy: ${{ steps.gate.outputs.should_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect website changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            website:
+              - 'website/**'
+              - '.github/workflows/website.yml'
+
+      - name: Decide deploy mode
+        id: gate
+        run: |
+          MODE="${{ github.event.inputs.mode || 'changed' }}"
+          CHANGED="${{ steps.filter.outputs.website }}"
+          if [ "$MODE" = "force" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "$CHANGED" = "true" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            website
+          sparse-checkout-cone-mode: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -46,11 +96,12 @@ jobs:
           path: website/.vitepress/dist
 
   deploy:
+    needs: [changes, build]
+    if: needs.changes.outputs.should_deploy == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

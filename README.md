@@ -20,178 +20,6 @@
 
 ## ✨ Features
 
-## 🆕 Recent Updates (2026-02)
-
-- **Link import quick actions in Reader header (2026-02-26)**:
-  - when a document is imported from a URL (with detectable source link), Reader now shows a top-right quick actions button
-  - dropdown actions include:
-    - `Copy Link`
-    - `Open in DefaultBrowser`
-  - actions are hidden for non-link imports
-
-- **Selection share upgrade (2026-02-25)**:
-  - selection popover now includes a `Share to X` action
-  - shared post content now includes selected quote + source context (`title`, optional `author`)
-  - adds content index metadata when available (`Section x/y`, PDF `Page n`)
-  - appends a short Reader introduction and intro/index link: `https://joqk12345.github.io/E-reader/`
-
-- **Markdown list rendering fix (2026-02-25)**:
-  - fixed a reader normalization edge case where lines with leading spaces could be mistaken for tree-structure blocks and wrapped as code
-  - Markdown list items like `- Write everything you **don't want** in life (anti-vision)` now render correctly instead of showing as unrendered/plain text
-
-- **Updater UX refresh (2026-02-25)**:
-  - `Settings > About` now includes a dedicated updates workflow:
-    - `Automatic updates` toggle (`Check for updates on startup`)
-    - manual `Check for updates` action with live status
-    - `Update Available` card with `Download` and `Skip`
-  - updater now resolves platform/arch specific installer assets from GitHub Releases (macOS/Windows/Linux) and opens the best matching download URL.
-  - automatic checks are cached to reduce repeated API calls.
-  - About tab typography was normalized to match other settings tabs (`Shortcuts`, `Integrations`), and the `Open Releases` button size was reduced for visual consistency.
-
-- **Settings + selection popover polish (2026-02-24)**:
-  - `Settings > AI & Embedding` now exposes a dedicated `Chat Model` field (no hardcoded model name in settings UI).
-  - selection action popover now clamps to viewport width using real popover width, so right-edge selections no longer clip out of screen.
-  - `Settings > Appearance` now separates editor-related typography controls into a standalone `Editor` entry (`Typography` panel).
-  - sidebar settings icon alignment normalized with fixed icon slot sizing.
-
-- **About links update (2026-02-17)**:
-  - Settings > About now has dedicated `Website` and `GitHub` entries
-  - link items are shown as icon + label rows with hover color transition
-  - external links are opened via system browser (with fallback behavior)
-
-- **External link open behavior fix (2026-02-17)**:
-  - Markdown links in Reader now open in external browser when clicked
-  - covers both source markdown rendering and translated markdown rendering
-  - added Tauri shell open permission + plugin wiring with runtime fallback logic
-
-- **Library / Branding / macOS menu polish (2026-02-16)**:
-  - Library homepage controls simplified with a cleaner macOS-style layout:
-    - single top toolbar + compact display options menu (`Grid/List/Compact`, sort, type filter, category, grouping)
-    - left sidebar kept as lightweight quick filters
-  - Library sidebar resize restored:
-    - drag-to-resize behavior is back with visual resize handle
-  - Import flow streamlined:
-    - unified `Import` dialog for local files (`EPUB/PDF/Markdown`)
-    - URL import kept as `Beta` inside the same dialog
-    - dialog auto-closes after successful import
-  - Reader naming unified to `Reader` in visible product surfaces
-  - Brand logo rollout:
-    - app icon assets regenerated from `public/reader-logo.svg` for Tauri bundle targets
-    - logo added to Library header, Reader header title area, and Settings > About
-  - macOS app menu polish:
-    - `About` now jumps to Settings `About` tab
-    - app menu labels refined with branded symbol text and spacing
-
-- **Reader UX + Layout refresh (2026-02-15)**:
-  - Reading appearance settings now include:
-    - `Column Layout`: `Single Column` / `Two Columns`
-    - `Bilingual View`: `Source + Translation` / `Source Only` / `Translation Only`
-  - Reader top toolbar now uses a compact `Reading View` dropdown instead of flat button rows.
-  - `Annotations & Highlights` moved into right `ToolPanel` as a dedicated `Marks` tab.
-  - new `Dict` tab in right `ToolPanel`:
-    - selection toolbar adds `Dict` and `Sentence` actions
-    - `Dict`: context-aware meaning, IPA display, pronunciation via configured TTS engine, sentence translation
-    - `Sentence`: sentence-structure analysis with markdown-marked components + Chinese translation
-  - selection toolbar simplified:
-    - removed duplicate `Translate` quick action (translation remains in right `Translate` tab)
-  - Reader bottom stats bar updated:
-    - style aligned with library status bar
-    - confined to center reading pane (does not occupy left/right sidebars)
-    - hidden automatically in focused reading mode
-    - English copy + word-count based stats: `Word Stats: Source / Translation / Paragraphs`
-    - in two-column mode, status bar now also shows pagination: `Page current/total`
-  - Two-column pagination behavior refinement:
-    - no longer applies flow-columns across full content at once
-    - now paginates by current reading window and supports keyboard page flip
-    - removed floating pagination overlay to avoid text occlusion
-  - Markdown code block rendering:
-    - added syntax highlighting in reader mode for fenced code blocks
-  - Markdown rendering robustness:
-    - fixed fenced code block paragraph splitting in markdown parser (prevents broken/partial tree-structure rendering)
-    - improved tree-structure text rendering fallback in reader/dict markdown display
-
-- **Library Sidebar + Runtime Status Bar (new)**:
-  - left sidebar now supports `All / Markdown / PDF / EPUB` grouped filtering with linked search counts
-  - sidebar is resizable by drag, and can be collapsed/expanded (default expanded)
-  - compact visual style for denser browsing layout
-  - bottom runtime status bar (content area only) shows:
-    - Chat model / status / local-or-http mode
-    - Embedding model / status / local-or-http mode
-    - embedding index count (`indexed/total`)
-    - TTS provider/voice / status / local-or-http mode (Edge TTS marked as remote/http)
-- **Reader Theme System (new)**:
-  - 5 built-in reading themes: `White`, `Paper` (default), `Mint`, `Sepia`, `Night`
-  - customizable font size (12-30px), line height (1.2-2.4), content width (36-120em)
-  - improved widescreen behavior:
-    - single-column can expand much wider on large monitors
-    - two-column page size now adapts to viewport size to avoid half-filled dual-page screens
-  - CJK letter spacing option for better Chinese/Japanese/Korean readability
-  - theme preferences persisted in local storage
-- **Focused Reading Mode (improved)**:
-  - one-click collapse of header tools + TOC + right tool panel for distraction-free reading
-  - exits reading mode by restoring the previous collapse/expand state
-  - supports shortcut toggle (`Cmd/Ctrl+Shift+R`)
-- **Shortcut system expanded and configurable**:
-  - added configurable shortcuts: `Open Search`, `Audio Play`, `Audio Pause/Resume`, `Audio Stop`, `Toggle Reading Mode`, `Toggle Header Tools`, `Toggle Window Maximize`, `Font Increase/Decrease/Reset`
-  - defaults now include:
-    - `Cmd/Ctrl+F` for search
-    - `Cmd/Ctrl+Shift+P` play, `Cmd/Ctrl+Shift+Space` pause/resume, `Cmd/Ctrl+Shift+S` stop
-    - `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0` for font size
-    - `PageDown/Space/J` / `PageUp/Shift+Space/K` for navigation
-  - all above bindings are editable in Settings and persisted in keymap config
-- **Selection action toolbar redesigned**:
-  - selecting text now opens a movable/resizable action popover near selection anchor
-  - actions include: `Ask`, `Play from here`, `Explain`, `Dict`, `Sentence`, `Copy`, `Share to X`, `Highlight`, `Note`
-  - action order can be drag-sorted and is persisted in local storage
-  - `Play from here` now has explicit confirmation dialog before TTS starts
-- **TTS sentence-follow accuracy improvements (Markdown)**:
-  - TTS sentence queue and UI sentence matching now use the same markdown-to-speakable normalization path
-  - sentence key parsing is hardened for paragraph ids containing underscores
-  - markdown reading highlight now uses DOM-range marking (`mark[data-reading-sentence]`) for better cross-node matching (including links)
-- **Selection-to-tool workflow upgrades**:
-  - `Ask` sends question to Chat tab directly from selection popover
-  - `Translate` switches to Translate tab and can auto-run on selected text
-  - `Note` supports saving both selected quote and optional note content into Notes tab
-  - `Cmd/Ctrl+F` now opens Search tab and auto-focuses the query input
-- **Tool panel behavior improvements**:
-  - Search/Summary/Translate/Deep/Chat/Notes tabs are kept mounted (hidden instead of unmounted) to reduce context loss on tab switch
-  - right tool panel collapsed state now has a dedicated top-centered expand arrow (aligned with TOC behavior)
-  - Chat panel supports direct free-form questions via built-in input (Enter to send), while keeping selection-triggered questions
-- **TOC collapsed-state UX polish**:
-  - collapsed TOC sidebar now uses a dedicated centered expand button
-  - TOC content area is now independently scrollable in both expanded and collapsed layouts
-- **PDF parsed-flow component (preparation)**:
-  - added `PdfParsedFlow` component for page-grouped parsed rendering with figure/table/formula heuristics and page-visual fallback hooks
-
-- **Deep Analysis tool (new `Deep` tab in Reader)**:
-  - one-click structured analysis pipeline for document/section/paragraph
-  - output includes: bilingual concepts, definitions, concept relations, COT-style logic, facts vs opinions, FAQ, analogies, top quotes
-  - visualization-ready output with multiple Mermaid graphs
-- **macOS menu shortcuts expanded**:
-  - added menu actions for `Open Settings`, `Toggle Maximize Window`, `Toggle Header Toolbar`, `Next/Previous Page`
-  - menu actions are emitted to Reader and executed as native app actions
-- **Configurable keymap support**:
-  - shortcut mappings now support persisted config (`next_page`, `prev_page`, `open_settings`)
-  - shortcut matcher supports alias normalization (e.g. `PageDown/Next`, `PageUp/Prior`)
-- **Reader header toolbar UX**:
-  - header tools can be collapsed
-  - when window is maximized, header vertical padding is reduced (`py-0`) for denser reading area
-- **PDF parsing quality improvements**:
-  - better handling for split words and hyphenated line wraps
-  - improved normalization for spaced-uppercase heading artifacts in technical PDFs
-- **Library auto organization (new)**:
-  - auto category + tag inference from title and extracted content preview
-  - category filter and grouped/ungrouped view toggle
-  - grouped mode supports per-category collapse/expand and `Show more / Show less`
-  - card layouts (`Grid`/`List`/`Compact`) tuned to denser spacing with long-title clamping
-- **Context Chat + Notes workflow (new)**:
-  - right tool panel adds `Chat` and `Notes` tabs
-  - `Chat` supports multi-turn QA grounded in current reading scope (paragraph/section/document)
-  - text selection popover now includes quick actions: `Explain` and `Take Notes`
-  - `Explain` jumps to `Chat` and asks for contextual explanation automatically
-  - `Take Notes` writes selected text into `Notes` workspace for centralized management
-  - `Notes` supports per-document note editing, delete, JSON import/export, and Markdown export (copy)
-
 ## 🧭 Backlog Notes
 
 - **Vector store scalability track (deferred)**:
@@ -688,6 +516,10 @@ Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程
 ./mcp-server/bin/reader-mcp-server.sh
 ```
 
+在 macOS 菜单中可直接安装命令行入口：
+- `Reader -> Shell Command: Install 'reader-cli' in PATH...`
+- 安装后可在终端直接运行 `reader-cli ...`
+
 **Reader tools (MCP):**
 - `reader.list_documents` (from Reader SQLite documents table)
 - `reader.open_document` (by `doc_id`/`path`/`title`, content from paragraphs table)
@@ -695,10 +527,29 @@ Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程
 - `reader.search_markdown` (paragraph full-text search in SQLite)
 - `reader.semantic_search_documents` (cross-document semantic retrieval from embeddings table)
 - `reader.import_document` (import local Markdown/PDF/EPUB file into Reader SQLite)
+- `reader.summarize_context` (summary for paragraph/section/document)
+- `reader.translate_text` (text translation by Reader AI config)
+- `reader.deep_analyze_context` (structured deep analysis)
+- `reader.chat_with_context` (contextual QA for paragraph/section/document)
 
 `reader.list_documents` 参数可用 `file_types` 过滤，如 `["pdf"]` 或 `["epub"]`。
 `reader.import_document` 现支持 Markdown/PDF/EPUB 导入（PDF 依赖 `pdftotext`，EPUB 依赖 `unzip`）。
 `reader.semantic_search_documents` 支持全库语义检索，默认跨文档返回 `top_k=10`，可用 `scan_limit` 和 `batch_size` 控制大库候选扫描规模。
+
+**Direct CLI (usable via terminal):**
+```bash
+# 导入三种文件
+reader-cli import ./docs/a.md
+reader-cli import ./docs/b.pdf
+reader-cli import ./docs/c.epub
+
+# 工具栏常用能力
+reader-cli search "vector database" --limit 20
+reader-cli summary --doc-id <doc_id> --style brief
+reader-cli translate "Hello world" --target-lang zh
+reader-cli deep --doc-id <doc_id>
+reader-cli chat "这篇内容主要观点是什么？" --doc-id <doc_id>
+```
 
 **Usage:**
 ```bash

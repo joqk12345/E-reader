@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
@@ -18,6 +18,9 @@ type DocumentInsight = {
   category: string;
   tags: string[];
 };
+
+const FAVORITES_CATEGORY = 'Favorites';
+const FAVORITES_STORAGE_KEY = 'reader.favoriteDocumentIds';
 
 const normalizeFileType = (fileType: string): 'epub' | 'pdf' | 'markdown' => {
   const normalized = fileType.trim().toLowerCase();
@@ -97,6 +100,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
+  const [favoriteDocumentIds, setFavoriteDocumentIds] = useState<Record<string, boolean>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [expandedCategoryItems, setExpandedCategoryItems] = useState<Record<string, boolean>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
@@ -123,48 +127,116 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   }, [loadDocuments]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, boolean>;
+      if (parsed && typeof parsed === 'object') {
+        setFavoriteDocumentIds(parsed);
+      }
+    } catch (error) {
+      console.warn('Failed to load favorites from local storage:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteDocumentIds));
+    } catch (error) {
+      console.warn('Failed to save favorites to local storage:', error);
+    }
+  }, [favoriteDocumentIds]);
+
+  useEffect(() => {
+    if (documents.length === 0) return;
+
+    setFavoriteDocumentIds((prev) => {
+      const docIdSet = new Set(documents.map((doc) => doc.id));
+      const next = Object.entries(prev).reduce<Record<string, boolean>>((acc, [docId, isFavorite]) => {
+        if (isFavorite && docIdSet.has(docId)) {
+          acc[docId] = true;
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(next).length === Object.keys(prev).length) {
+        return prev;
+      }
+      return next;
+    });
+  }, [documents]);
+
+  const getDocumentCategory = (docId: string) => {
+    if (favoriteDocumentIds[docId]) {
+      return FAVORITES_CATEGORY;
+    }
+    return documentInsights[docId]?.category || '其他';
+  };
+
+  const isFavoriteDocument = (docId: string) => Boolean(favoriteDocumentIds[docId]);
+
+  const toggleFavoriteDocument = (docId: string) => {
+    setFavoriteDocumentIds((prev) => {
+      const next = { ...prev };
+      if (next[docId]) {
+        delete next[docId];
+      } else {
+        next[docId] = true;
+      }
+      return next;
+    });
+  };
+
+  const runAutoClassification = useCallback(async (targetDocs: ReaderDocument[]) => {
+    if (targetDocs.length === 0) {
+      setDocumentInsights({});
+      return;
+    }
+
+    setIsAutoClassifying(true);
+    try {
+      const rows = await invoke<DocumentPreview[]>('get_document_previews', {
+        docIds: targetDocs.map((doc) => doc.id),
+        maxChars: 1200,
+      });
+      const previewMap = rows.reduce<Record<string, string>>((acc, item) => {
+        acc[item.doc_id] = item.preview || '';
+        return acc;
+      }, {});
+      const next = targetDocs.reduce<Record<string, DocumentInsight>>((acc, doc) => {
+        acc[doc.id] = inferDocumentInsight(doc, previewMap[doc.id] || '');
+        return acc;
+      }, {});
+      setDocumentInsights(next);
+    } catch (error) {
+      console.warn('Auto classify fallback to title-only mode:', error);
+      const next = targetDocs.reduce<Record<string, DocumentInsight>>((acc, doc) => {
+        acc[doc.id] = inferDocumentInsight(doc, '');
+        return acc;
+      }, {});
+      setDocumentInsights(next);
+    } finally {
+      setIsAutoClassifying(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (documents.length === 0) {
       setDocumentInsights({});
       return;
     }
 
     let cancelled = false;
-    setIsAutoClassifying(true);
-    invoke<DocumentPreview[]>('get_document_previews', {
-      docIds: documents.map((doc) => doc.id),
-      maxChars: 1200,
-    })
-      .then((rows) => {
-        if (cancelled) return;
-        const previewMap = rows.reduce<Record<string, string>>((acc, item) => {
-          acc[item.doc_id] = item.preview || '';
-          return acc;
-        }, {});
-        const next = documents.reduce<Record<string, DocumentInsight>>((acc, doc) => {
-          acc[doc.id] = inferDocumentInsight(doc, previewMap[doc.id] || '');
-          return acc;
-        }, {});
-        setDocumentInsights(next);
-      })
-      .catch((error) => {
-        console.warn('Auto classify fallback to title-only mode:', error);
-        if (cancelled) return;
-        const next = documents.reduce<Record<string, DocumentInsight>>((acc, doc) => {
-          acc[doc.id] = inferDocumentInsight(doc, '');
-          return acc;
-        }, {});
-        setDocumentInsights(next);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsAutoClassifying(false);
-        }
-      });
+    void runAutoClassification(documents).catch(() => {
+      if (cancelled) return;
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [documents]);
+  }, [documents, runAutoClassification]);
 
   const handleImportFile = async () => {
     setIsImportingFile(true);
@@ -186,7 +258,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
           await importEpub(selected);
           importedSuccessfully = true;
         } else if (ext === 'pdf') {
-          await importPdf(selected);
+          const docId = await importPdf(selected);
+          selectDocument(docId);
           importedSuccessfully = true;
         } else if (ext === 'md') {
           await importMarkdown(selected);
@@ -257,7 +330,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     const filtered = documents.filter((doc) => {
       const docType = normalizeFileType(doc.file_type);
       if (typeFilter !== 'all' && docType !== typeFilter) return false;
-      if (categoryFilter !== 'all' && (documentInsights[doc.id]?.category || '其他') !== categoryFilter) {
+      if (categoryFilter !== 'all' && getDocumentCategory(doc.id) !== categoryFilter) {
         return false;
       }
       if (!q) return true;
@@ -276,24 +349,33 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       sorted.sort((a, b) => normalizeFileType(a.file_type).localeCompare(normalizeFileType(b.file_type)) || a.title.localeCompare(b.title));
     }
     return sorted;
-  }, [categoryFilter, documentInsights, documents, searchText, sortBy, typeFilter]);
+  }, [categoryFilter, documents, favoriteDocumentIds, searchText, sortBy, typeFilter, documentInsights]);
 
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();
-    documents.forEach((doc) => categories.add(documentInsights[doc.id]?.category || '其他'));
+    documents.forEach((doc) => categories.add(getDocumentCategory(doc.id)));
     return Array.from(categories).sort((a, b) => a.localeCompare(b));
-  }, [documentInsights, documents]);
+  }, [documents, favoriteDocumentIds, documentInsights]);
+
+  const regularCategoryOptions = useMemo(
+    () => categoryOptions.filter((category) => category !== FAVORITES_CATEGORY),
+    [categoryOptions]
+  );
 
   const groupedEntries = useMemo(() => {
     const grouped = displayedDocuments.reduce<Record<string, ReaderDocument[]>>((acc, doc) => {
-      const category = documentInsights[doc.id]?.category || '其他';
+      const category = getDocumentCategory(doc.id);
       if (!acc[category]) acc[category] = [];
       acc[category].push(doc);
       return acc;
     }, {});
 
-    return Object.entries(grouped).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
-  }, [displayedDocuments, documentInsights]);
+    return Object.entries(grouped).sort((a, b) => {
+      if (a[0] === FAVORITES_CATEGORY && b[0] !== FAVORITES_CATEGORY) return -1;
+      if (b[0] === FAVORITES_CATEGORY && a[0] !== FAVORITES_CATEGORY) return 1;
+      return b[1].length - a[1].length || a[0].localeCompare(b[0]);
+    });
+  }, [displayedDocuments, favoriteDocumentIds, documentInsights]);
 
   const typeSummaries = useMemo(() => {
     const markdownCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
@@ -307,7 +389,12 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     ];
   }, [documents]);
 
-  const quickCategories = useMemo(() => categoryOptions.slice(0, 10), [categoryOptions]);
+  const favoriteCount = useMemo(
+    () => documents.reduce((acc, doc) => (isFavoriteDocument(doc.id) ? acc + 1 : acc), 0),
+    [documents, favoriteDocumentIds]
+  );
+
+  const quickCategories = useMemo(() => regularCategoryOptions.slice(0, 10), [regularCategoryOptions]);
 
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
@@ -470,6 +557,17 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             <div className="space-y-1">
               <button
                 type="button"
+                onClick={() => setCategoryFilter(FAVORITES_CATEGORY)}
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                  categoryFilter === FAVORITES_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>Favorite</span>
+                <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{favoriteCount}</span>
+              </button>
+              <div className="my-1 h-px bg-gray-200" />
+              <button
+                type="button"
                 onClick={() => setCategoryFilter('all')}
                 className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
                   categoryFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
@@ -619,6 +717,18 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       <button
                         type="button"
                         onClick={() => {
+                          setCategoryFilter(FAVORITES_CATEGORY);
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === FAVORITES_CATEGORY ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">Favorite</span>
+                      </button>
+                      <div className="my-1 h-px bg-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => {
                           setCategoryFilter('all');
                           setShowDisplayMenu(false);
                         }}
@@ -627,7 +737,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === 'all' ? '✓' : ''}</span>
                         <span className="text-base font-medium leading-6">All</span>
                       </button>
-                      {categoryOptions.map((category) => (
+                      {regularCategoryOptions.map((category) => (
                         <button
                           key={category}
                           type="button"
@@ -724,8 +834,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={doc.id}
                         document={doc}
                         variant="grid"
-                        category={documentInsights[doc.id]?.category}
+                        category={getDocumentCategory(doc.id)}
                         tags={documentInsights[doc.id]?.tags || []}
+                        isFavorite={isFavoriteDocument(doc.id)}
+                        onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
                         onClick={() => selectDocument(doc.id)}
                         onDelete={() => handleDeleteRequest(doc.id, doc.title)}
                       />
@@ -738,8 +850,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={doc.id}
                         document={doc}
                         variant={viewMode}
-                        category={documentInsights[doc.id]?.category}
+                        category={getDocumentCategory(doc.id)}
                         tags={documentInsights[doc.id]?.tags || []}
+                        isFavorite={isFavoriteDocument(doc.id)}
+                        onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
                         onClick={() => selectDocument(doc.id)}
                         onDelete={() => handleDeleteRequest(doc.id, doc.title)}
                       />
@@ -767,8 +881,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 key={doc.id}
                 document={doc}
                 variant="grid"
-                category={documentInsights[doc.id]?.category}
+                category={getDocumentCategory(doc.id)}
                 tags={documentInsights[doc.id]?.tags || []}
+                isFavorite={isFavoriteDocument(doc.id)}
+                onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
                 onClick={() => selectDocument(doc.id)}
                 onDelete={() => handleDeleteRequest(doc.id, doc.title)}
               />
@@ -781,8 +897,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 key={doc.id}
                 document={doc}
                 variant={viewMode}
-                category={documentInsights[doc.id]?.category}
+                category={getDocumentCategory(doc.id)}
                 tags={documentInsights[doc.id]?.tags || []}
+                isFavorite={isFavoriteDocument(doc.id)}
+                onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
                 onClick={() => selectDocument(doc.id)}
                 onDelete={() => handleDeleteRequest(doc.id, doc.title)}
               />

@@ -23,4 +23,4 @@ printf '[%s] launch node=%s script=%s\n' \
   "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$NODE_BIN" "$ROOT_DIR/src/cli.mjs" \
   >>"$LOG_FILE" 2>/dev/null || true
 
-exec "$NODE_BIN" "$ROOT_DIR/src/cli.mjs"
+exec "$NODE_BIN" "$ROOT_DIR/src/cli.mjs" "$@"
