@@ -707,6 +707,15 @@ Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程
 # 3) 若要使用 tauri server，再启动 reader app（ws://localhost:9324）
 ```
 
+**Install build behavior (MCP config path):**
+- 在开发环境中，默认写入项目目录下的 `.mcp.json`。
+- 在安装版中，如果应用目录不可写，会自动回退到可写目录（当前工作目录或用户主目录）来更新 `.mcp.json`。
+- `reader` 的 `command` 会写入绝对 launcher 路径，避免安装版因启动目录不确定导致 MCP 启动失败。
+
+**Troubleshooting:**
+- 若设置页出现 `Failed to update MCP configuration`，新版会显示后端原始错误信息（例如权限或路径问题），可直接据此排查。
+- 可在 Settings -> Integrations 中查看 `Config` 与 `Launcher` 状态，并使用 `Refresh Status` / `Test Connection` 验证。
+
 ### Running Tests
 
 ```bash

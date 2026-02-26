@@ -2,6 +2,7 @@ use crate::error::Result;
 use crate::mcp::McpServer;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::process::{Command as ProcessCommand, Stdio};
 use tauri::AppHandle;
@@ -35,17 +36,22 @@ pub struct McpStatus {
     pub checked_at: i64,
 }
 
+struct McpPaths {
+    project_root: PathBuf,
+    config_path: PathBuf,
+    launcher_path: PathBuf,
+    tools_path: PathBuf,
+    server_package_path: PathBuf,
+}
+
 #[tauri::command]
 pub async fn get_mcp_status(check_connection: Option<bool>) -> Result<McpStatus> {
-    let project_root = detect_project_root();
-    let config_path = project_root.join(".mcp.json");
-    let launcher_path = project_root.join("mcp-server").join("bin").join("reader-mcp-server.sh");
-    let tools_path = project_root
-        .join("mcp-server")
-        .join("src")
-        .join("tools")
-        .join("markdown-tools.mjs");
-    let server_package_path = project_root.join("mcp-server").join("package.json");
+    let paths = resolve_mcp_paths();
+    let project_root = paths.project_root;
+    let config_path = paths.config_path;
+    let launcher_path = paths.launcher_path;
+    let tools_path = paths.tools_path;
+    let server_package_path = paths.server_package_path;
 
     let config_exists = config_path.exists();
     let launcher_exists = launcher_path.exists();
@@ -102,27 +108,96 @@ pub async fn get_mcp_status(check_connection: Option<bool>) -> Result<McpStatus>
 
 #[tauri::command]
 pub async fn set_mcp_reader_enabled(enabled: bool) -> Result<McpStatus> {
-    let project_root = detect_project_root();
-    let config_path = project_root.join(".mcp.json");
-    let launcher_path = project_root.join("mcp-server").join("bin").join("reader-mcp-server.sh");
+    let paths = resolve_mcp_paths();
+    let config_path = paths.config_path;
+    let launcher_path = paths.launcher_path;
     upsert_reader_server_entry(&config_path, &launcher_path, enabled)?;
     get_mcp_status(Some(false)).await
 }
 
+fn resolve_mcp_paths() -> McpPaths {
+    let project_root = detect_project_root();
+    let config_path = detect_config_path(&project_root);
+    let launcher_path = project_root.join("mcp-server").join("bin").join("reader-mcp-server.sh");
+    let tools_path = project_root
+        .join("mcp-server")
+        .join("src")
+        .join("tools")
+        .join("markdown-tools.mjs");
+    let server_package_path = project_root.join("mcp-server").join("package.json");
+
+    McpPaths {
+        project_root,
+        config_path,
+        launcher_path,
+        tools_path,
+        server_package_path,
+    }
+}
+
 fn detect_project_root() -> PathBuf {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    if cwd.join(".mcp.json").exists() || cwd.join("mcp-server").exists() {
+    if cwd.join("mcp-server").exists() {
         return cwd;
     }
 
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     if let Some(parent) = manifest_dir.parent() {
-        if parent.join(".mcp.json").exists() || parent.join("mcp-server").exists() {
+        if parent.join("mcp-server").exists() {
             return parent.to_path_buf();
         }
     }
 
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            for candidate in exe_dir.ancestors() {
+                if candidate.join("mcp-server").exists() {
+                    return candidate.to_path_buf();
+                }
+            }
+        }
+    }
+
     cwd
+}
+
+fn detect_config_path(project_root: &Path) -> PathBuf {
+    let project_config = project_root.join(".mcp.json");
+    if project_config.exists() || is_writable_dir(project_root) {
+        return project_config;
+    }
+
+    if let Ok(cwd) = std::env::current_dir() {
+        let cwd_config = cwd.join(".mcp.json");
+        if cwd_config.exists() || is_writable_dir(&cwd) {
+            return cwd_config;
+        }
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        return home.join(".mcp.json");
+    }
+
+    project_config
+}
+
+fn is_writable_dir(dir: &Path) -> bool {
+    if !dir.is_dir() {
+        return false;
+    }
+
+    let probe_path = dir.join(format!(".reader-write-probe-{}", std::process::id()));
+    match OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&probe_path)
+    {
+        Ok(_) => {
+            let _ = std::fs::remove_file(&probe_path);
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 fn read_reader_server_config(config_path: &Path) -> (bool, Option<String>, Vec<String>) {

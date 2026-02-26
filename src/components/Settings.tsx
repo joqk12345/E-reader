@@ -443,7 +443,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       }
     } catch (error) {
       console.error('Failed to update MCP config:', error);
-      setMessage({ type: 'error', text: 'Failed to update MCP configuration.' });
+      setMessage({ type: 'error', text: getErrorMessage(error) || 'Failed to update MCP configuration.' });
     } finally {
       setIsTogglingMcp(false);
     }
