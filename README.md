@@ -22,6 +22,13 @@
 
 ## 🆕 Recent Updates (2026-02)
 
+- **Link import quick actions in Reader header (2026-02-26)**:
+  - when a document is imported from a URL (with detectable source link), Reader now shows a top-right quick actions button
+  - dropdown actions include:
+    - `Copy Link`
+    - `Open in DefaultBrowser`
+  - actions are hidden for non-link imports
+
 - **Selection share upgrade (2026-02-25)**:
   - selection popover now includes a `Share to X` action
   - shared post content now includes selected quote + source context (`title`, optional `author`)

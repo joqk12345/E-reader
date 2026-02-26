@@ -16,11 +16,12 @@ use commands::{
     clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
     deep_analyze, download_embedding_model_files, fetch_url_html, get_config, get_document,
     get_document_paragraphs, get_document_sections, get_embedding_profile_status,
-    get_document_previews, get_paragraph_context, get_section_paragraphs, get_summary_cache,
-    import_epub, import_markdown, import_markdown_content, import_pdf, import_url,
-    index_document, list_annotations, list_documents, list_tts_voices, get_mcp_status, mcp_request, set_mcp_reader_enabled, search,
-    search_by_embedding, summarize, translate, tts_synthesize, update_config, get_update_target,
-    upsert_embeddings_batch, validate_local_embedding_model_path,
+    get_document_previews, get_document_source_url, get_paragraph_context, get_section_paragraphs,
+    get_summary_cache, import_epub, import_markdown, import_markdown_content, import_pdf,
+    import_url, index_document, list_annotations, list_documents, list_tts_voices,
+    get_mcp_status, mcp_request, set_mcp_reader_enabled, search, search_by_embedding, summarize,
+    translate, tts_synthesize, update_config, get_update_target, upsert_embeddings_batch,
+    validate_local_embedding_model_path,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
@@ -128,6 +129,7 @@ pub fn run() {
             list_documents,
             get_document_previews,
             get_document,
+            get_document_source_url,
             delete_document,
             get_document_sections,
             get_section_paragraphs,

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import { useStore } from '../store/useStore';
 import { matchesAnyShortcut } from '../utils/shortcuts';
 import { TOCPanel } from './TOCPanel';
@@ -17,6 +19,7 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
 
 export function Reader() {
   const {
+    documents,
     selectedDocumentId,
     currentDocumentType,
     loadSections,
@@ -51,7 +54,10 @@ export function Reader() {
     () => loadReaderViewSettings(readerFontSize).bilingualViewMode
   );
   const [readingViewMenuOpen, setReadingViewMenuOpen] = useState(false);
+  const [sourceLinkMenuOpen, setSourceLinkMenuOpen] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const readingViewMenuRef = useRef<HTMLDivElement | null>(null);
+  const sourceLinkMenuRef = useRef<HTMLDivElement | null>(null);
   const readingModeSnapshotRef = useRef<{
     headerToolsCollapsed: boolean;
     tocCollapsed: boolean;
@@ -61,6 +67,11 @@ export function Reader() {
   const maxTocWidth = 420;
   const minToolWidth = 280;
   const maxToolWidth = 460;
+  const selectedDocument = useMemo(
+    () => documents.find((doc) => doc.id === selectedDocumentId) || null,
+    [documents, selectedDocumentId]
+  );
+  const showSourceLinkActions = Boolean(sourceUrl);
 
   const handleTocWidthChange = (width: number) => {
     setTocWidth(width);
@@ -319,14 +330,42 @@ export function Reader() {
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
-      if (!readingViewMenuRef.current || !target) return;
-      if (!readingViewMenuRef.current.contains(target)) {
+      if (!target) return;
+      if (readingViewMenuRef.current && !readingViewMenuRef.current.contains(target)) {
         setReadingViewMenuOpen(false);
+      }
+      if (sourceLinkMenuRef.current && !sourceLinkMenuRef.current.contains(target)) {
+        setSourceLinkMenuOpen(false);
       }
     };
     window.addEventListener('pointerdown', onPointerDown);
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSourceLinkMenuOpen(false);
+
+    if (!selectedDocumentId || !selectedDocument || selectedDocument.file_type !== 'markdown') {
+      setSourceUrl(null);
+      return;
+    }
+
+    void invoke<string | null>('get_document_source_url', { docId: selectedDocumentId })
+      .then((value) => {
+        if (cancelled) return;
+        setSourceUrl(value?.trim() || null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSourceUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDocument, selectedDocumentId]);
 
   const setBilingualModeFromHeader = (mode: 'both' | 'source' | 'translation') => {
     window.dispatchEvent(
@@ -346,6 +385,43 @@ export function Reader() {
         ? 'px-6 py-2'
         : 'px-6 py-4';
   const showCompactHeader = readingMode || headerToolsCollapsed;
+
+  const openSourceUrlInBrowser = () => {
+    const normalized = sourceUrl?.trim();
+    if (!normalized) return;
+    const isTauriRuntime =
+      typeof window !== 'undefined' &&
+      Object.prototype.hasOwnProperty.call(window, '__TAURI_INTERNALS__');
+    if (!isTauriRuntime) {
+      window.open(normalized, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    void openExternal(normalized).catch(() => {
+      window.open(normalized, '_blank', 'noopener,noreferrer');
+    });
+  };
+
+  const copySourceUrl = async () => {
+    const normalized = sourceUrl?.trim();
+    if (!normalized) return;
+    try {
+      await navigator.clipboard.writeText(normalized);
+      return;
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = normalized;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -463,6 +539,40 @@ export function Reader() {
         )}
 
         <div className="z-10 flex min-w-0 flex-1 items-center justify-end gap-2">
+          {!readingMode && showSourceLinkActions && (
+            <div className="relative" ref={sourceLinkMenuRef}>
+              <button
+                onClick={() => setSourceLinkMenuOpen((prev) => !prev)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gray-200 text-gray-800 hover:bg-gray-300"
+                title="Imported link actions"
+                aria-label="Imported link actions"
+              >
+                ⤴
+              </button>
+              {sourceLinkMenuOpen && (
+                <div className="absolute right-0 top-11 z-40 min-w-[220px] rounded-2xl border border-gray-300 bg-gray-100 p-1.5 shadow-lg">
+                  <button
+                    onClick={() => {
+                      void copySourceUrl();
+                      setSourceLinkMenuOpen(false);
+                    }}
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[15px] leading-6 text-gray-900 hover:bg-gray-200/80"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => {
+                      openSourceUrlInBrowser();
+                      setSourceLinkMenuOpen(false);
+                    }}
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[15px] leading-6 text-gray-900 hover:bg-gray-200/80"
+                  >
+                    Open in DefaultBrowser
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {readingMode ? (
             <button
               onClick={toggleReadingMode}

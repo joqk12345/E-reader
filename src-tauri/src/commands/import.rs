@@ -318,6 +318,25 @@ pub async fn get_document(
 }
 
 #[tauri::command]
+pub async fn get_document_source_url(app_handle: AppHandle, doc_id: String) -> Result<Option<String>> {
+    let conn = database::get_connection(&app_handle)?;
+    let Some(doc) = database::get_document(&conn, &doc_id)? else {
+        return Ok(None);
+    };
+
+    if doc.file_type != "markdown" {
+        return Ok(None);
+    }
+
+    let content = match std::fs::read_to_string(&doc.file_path) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(extract_source_url_from_markdown(&content))
+}
+
+#[tauri::command]
 pub async fn delete_document(app_handle: AppHandle, id: String) -> Result<()> {
     let conn = database::get_connection(&app_handle)?;
     database::delete_document(&conn, &id)?;
@@ -364,6 +383,25 @@ fn normalize_http_url(input: &str) -> Result<Url> {
             "Only http/https URLs are supported".to_string(),
         )),
     }
+}
+
+fn extract_source_url_from_markdown(content: &str) -> Option<String> {
+    for line in content.lines().take(40) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let without_quote = trimmed.trim_start_matches('>').trim();
+        let lower = without_quote.to_ascii_lowercase();
+        if lower.starts_with("source:") {
+            let candidate = without_quote["source:".len()..].trim();
+            if let Ok(normalized) = normalize_http_url(candidate) {
+                return Some(normalized.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn inferred_title_from_url(url: &Url) -> String {

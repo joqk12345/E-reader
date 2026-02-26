@@ -18,8 +18,8 @@ pub use embedding::{
 };
 pub use import::{
     delete_document, fetch_url_html, get_document, get_document_sections, get_section_paragraphs,
-    get_document_previews, import_epub, import_markdown, import_markdown_content, import_pdf,
-    import_url, list_documents,
+    get_document_previews, get_document_source_url, import_epub, import_markdown,
+    import_markdown_content, import_pdf, import_url, list_documents,
 };
 pub use index::index_document;
 pub use mcp::{get_mcp_status, mcp_request, set_mcp_reader_enabled};
