@@ -58,6 +58,7 @@ interface Config {
   embedding_local_model_path?: string;
   embedding_download_base_url?: string;
   chat_model: string;
+  enable_thinking: boolean;
   openai_api_key?: string;
   openai_base_url?: string;
   tts_provider: 'auto' | 'edge' | 'cosyvoice';
@@ -80,6 +81,15 @@ interface EmbeddingStatus {
   indexed: number;
   total: number;
   stale: number;
+}
+
+interface ModelConnectionTestResult {
+  ok: boolean;
+  provider: string;
+  endpoint: string;
+  model: string;
+  latency_ms?: number;
+  detail: string;
 }
 
 interface McpStatus {
@@ -219,6 +229,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     embedding_local_model_path: '',
     embedding_download_base_url: '',
     chat_model: '',
+    enable_thinking: false,
     openai_api_key: '',
     openai_base_url: 'https://api.openai.com/v1',
     tts_provider: 'auto',
@@ -253,6 +264,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
+  const [isTestingModelConnection, setIsTestingModelConnection] = useState(false);
+  const [modelConnectionResult, setModelConnectionResult] = useState<ModelConnectionTestResult | null>(null);
   const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null);
   const [isTestingMcp, setIsTestingMcp] = useState(false);
   const [isTogglingMcp, setIsTogglingMcp] = useState(false);
@@ -528,6 +541,31 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       setMessage({ type: 'error', text: 'Failed to save configuration' });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTestModelConnection = async () => {
+    setIsTestingModelConnection(true);
+    setMessage(null);
+    try {
+      const result = await invoke<ModelConnectionTestResult>('test_model_connection', { config });
+      setModelConnectionResult(result);
+      if (result.ok) {
+        setMessage({
+          type: 'success',
+          text: `Model connection ok (${result.provider}, ${result.model})${typeof result.latency_ms === 'number' ? ` in ${result.latency_ms}ms` : ''}.`,
+        });
+      } else {
+        setMessage({
+          type: 'error',
+          text: `Model connection failed: ${result.detail}`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to test model connection:', error);
+      setMessage({ type: 'error', text: getErrorMessage(error) || 'Failed to test model connection.' });
+    } finally {
+      setIsTestingModelConnection(false);
     }
   };
 
@@ -870,6 +908,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             {activeSection === 'ai' && (
               <div className="space-y-4">
                 <SettingsCard>
+                  <p className="py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    Chat
+                  </p>
                   <SettingRow
                     title="Chat Provider"
                     description="Select AI backend"
@@ -881,6 +922,68 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     }
                   />
                   <SettingsDivider />
+                  <SettingRow
+                    title="LM Studio URL"
+                    description="Active when provider is LM Studio"
+                    right={<input className={`${compactControlClass} w-[260px]`} disabled={lmDisabled} value={config.lm_studio_url} onChange={handleChange('lm_studio_url')} />}
+                    disabled={lmDisabled}
+                  />
+                  <SettingRow
+                    title="OpenAI API Key"
+                    description="Active when provider is OpenAI"
+                    right={<input type="password" className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_api_key: e.target.value }))} />}
+                    disabled={openaiDisabled}
+                  />
+                  <SettingRow
+                    title="OpenAI Endpoint"
+                    description="Custom API base URL"
+                    right={<input className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_base_url: e.target.value }))} />}
+                    disabled={openaiDisabled}
+                  />
+                  <SettingRow
+                    title="Chat Model"
+                    description="Model name for chat/completions requests"
+                    right={<input className={`${compactControlClass} w-[260px]`} value={config.chat_model || ''} onChange={handleChange('chat_model')} placeholder={config.provider === 'openai' ? 'gpt-4o-mini' : 'qwen2.5-7b-instruct'} />}
+                  />
+                  <SettingRow
+                    title="Enable Thinking"
+                    description="Send enable_thinking to compatible models (disable for faster translation)"
+                    right={<ToggleSwitch checked={config.enable_thinking} onChange={(next) => setConfig((prev) => ({ ...prev, enable_thinking: next }))} />}
+                  />
+                  <SettingRow
+                    title="Model Connectivity Test"
+                    description={
+                      modelConnectionResult
+                        ? `Last: ${modelConnectionResult.ok ? 'ok' : 'failed'} · ${modelConnectionResult.provider} · ${modelConnectionResult.endpoint}`
+                        : 'Run a live chat request against current settings'
+                    }
+                    right={
+                      <div className="flex items-center gap-2.5">
+                        {modelConnectionResult ? (
+                          <StatusDot
+                            success={modelConnectionResult.ok}
+                            text={
+                              modelConnectionResult.ok
+                                ? `ok${typeof modelConnectionResult.latency_ms === 'number' ? ` (${modelConnectionResult.latency_ms}ms)` : ''}`
+                                : 'failed'
+                            }
+                          />
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => void handleTestModelConnection()}
+                          disabled={isTestingModelConnection}
+                          className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-slate-100 px-3 text-[13px] text-slate-700 shadow-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isTestingModelConnection ? 'Testing...' : 'Test Connection'}
+                        </button>
+                      </div>
+                    }
+                  />
+                  <SettingsDivider />
+                  <p className="py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    Embedding
+                  </p>
                   <SettingRow
                     title="Embedding Provider"
                     description="Index and retrieval engine"
@@ -940,32 +1043,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Embedding model name in Ollama"
                     right={<input className={`${compactControlClass} w-[260px]`} disabled={ollamaEmbeddingDisabled} value={config.embedding_ollama_model || ''} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_ollama_model: e.target.value }))} />}
                     disabled={ollamaEmbeddingDisabled}
-                  />
-
-                  <SettingsDivider />
-
-                  <SettingRow
-                    title="LM Studio URL"
-                    description="Active when provider is LM Studio"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={lmDisabled} value={config.lm_studio_url} onChange={handleChange('lm_studio_url')} />}
-                    disabled={lmDisabled}
-                  />
-                  <SettingRow
-                    title="OpenAI API Key"
-                    description="Active when provider is OpenAI"
-                    right={<input type="password" className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_api_key: e.target.value }))} />}
-                    disabled={openaiDisabled}
-                  />
-                  <SettingRow
-                    title="OpenAI Endpoint"
-                    description="Custom API base URL"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_base_url: e.target.value }))} />}
-                    disabled={openaiDisabled}
-                  />
-                  <SettingRow
-                    title="Chat Model"
-                    description="Model name for chat/completions requests"
-                    right={<input className={`${compactControlClass} w-[260px]`} value={config.chat_model || ''} onChange={handleChange('chat_model')} placeholder={config.provider === 'openai' ? 'gpt-4o-mini' : 'qwen2.5-7b-instruct'} />}
                   />
                 </SettingsCard>
 

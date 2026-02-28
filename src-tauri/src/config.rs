@@ -88,6 +88,8 @@ pub struct Config {
     pub embedding_download_base_url: Option<String>,
     #[serde(default = "default_chat_model")]
     pub chat_model: String,
+    #[serde(default = "default_enable_thinking")]
+    pub enable_thinking: bool,
     pub openai_api_key: Option<String>,
     pub openai_base_url: Option<String>,
     #[serde(default = "default_tts_provider")]
@@ -132,6 +134,10 @@ fn default_embedding_auto_reindex() -> bool {
 
 fn default_chat_model() -> String {
     String::new()
+}
+
+fn default_enable_thinking() -> bool {
+    false
 }
 
 fn normalize_local_embedding_model(model: &str) -> String {
@@ -237,6 +243,7 @@ impl Default for Config {
             embedding_local_model_path: None,
             embedding_download_base_url: None,
             chat_model: default_chat_model(),
+            enable_thinking: default_enable_thinking(),
             openai_api_key: None,
             openai_base_url: Some("https://api.openai.com/v1".to_string()),
             tts_provider: default_tts_provider(),

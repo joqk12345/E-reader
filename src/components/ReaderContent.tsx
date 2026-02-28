@@ -573,6 +573,22 @@ export function ReaderContent() {
   const isTranslationEnabled = translationMode !== 'off';
   const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
   const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
+  const translationCardBg = currentTheme.isDark ? '#2f3540' : '#e8ebf2';
+  const translationCardBorder = currentTheme.isDark ? '#72a5ff' : '#8fb5ff';
+  const translationIconColor = currentTheme.isDark ? '#9fc0ff' : '#5f8fe5';
+  const renderTranslationCard = (content: ReactNode) => (
+    <div
+      className={`rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
+      style={{ backgroundColor: translationCardBg, borderColor: translationCardBorder }}
+    >
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 text-sm leading-none select-none" style={{ color: translationIconColor }}>
+          🌐
+        </span>
+        <div className="min-w-0 flex-1">{content}</div>
+      </div>
+    </div>
+  );
   const sourceWordCount = useMemo(
     () => paragraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
     [paragraphs]
@@ -1583,34 +1599,36 @@ export function ReaderContent() {
                       </div>
                     )}
                     {showTranslation && (
-                      <div className="ml-4 rounded border-l-2 border-blue-200 pl-3">
+                      <div className="mt-2">
                         {translations[markdownTranslationKey(paragraph.id)] ? (
-                          <div
-                            className="markdown-content"
-                            style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.link }}
-                          >
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                a: ({ href, children }) => (
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="underline"
-                                    style={{ color: currentTheme.link }}
-                                    onClick={(event) => openLinkInExternalBrowser(event, href)}
-                                  >
-                                    {children}
-                                  </a>
-                                ),
-                              }}
+                          renderTranslationCard(
+                            <div
+                              className="markdown-content"
+                              style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
                             >
-                              {translations[markdownTranslationKey(paragraph.id)]}
-                            </ReactMarkdown>
-                          </div>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  a: ({ href, children }) => (
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="underline"
+                                      style={{ color: currentTheme.link }}
+                                      onClick={(event) => openLinkInExternalBrowser(event, href)}
+                                    >
+                                      {children}
+                                    </a>
+                                  ),
+                                }}
+                              >
+                                {translations[markdownTranslationKey(paragraph.id)]}
+                              </ReactMarkdown>
+                            </div>
+                          )
                         ) : (
-                          <div className="flex items-center gap-2 py-1">
+                          <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2 py-1`}>
                             <button
                               onClick={() => void handleTranslateMarkdownParagraph(paragraph.id, paragraph.text)}
                               className="text-xs text-blue-600 hover:text-blue-800 underline"
@@ -1658,20 +1676,24 @@ export function ReaderContent() {
                           </p>
                         )}
                         {showTranslation && (
-                          <div className="flex items-center gap-2 ml-4">
+                          <div className="mt-2">
                             {translations[key] ? (
-                              <p
-                                style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.link }}
-                              >
-                                {translations[key]}
-                              </p>
+                              renderTranslationCard(
+                                <p
+                                  style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
+                                >
+                                  {translations[key]}
+                                </p>
+                              )
                             ) : (
-                              <button
-                                onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
-                                className="text-xs text-blue-600 hover:text-blue-800 underline"
-                              >
-                                Translate
-                              </button>
+                              <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>
+                                <button
+                                  onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
+                                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                >
+                                  Translate
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}

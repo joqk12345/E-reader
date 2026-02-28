@@ -10,6 +10,7 @@ pub fn create_client(config: &Config) -> Result<Arc<dyn AiClient>> {
                 config.lm_studio_url.clone(),
                 config.embedding_model.clone(),
                 config.chat_model.clone(),
+                config.enable_thinking,
             )?;
             Ok(Arc::new(client))
         }
@@ -29,6 +30,7 @@ pub fn create_client(config: &Config) -> Result<Arc<dyn AiClient>> {
                 api_key.clone(),
                 config.embedding_model.clone(),
                 config.chat_model.clone(),
+                config.enable_thinking,
             )?;
             Ok(Arc::new(client))
         }

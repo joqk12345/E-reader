@@ -20,7 +20,7 @@ use commands::{
     get_summary_cache, import_epub, import_markdown, import_markdown_content, import_pdf,
     import_url, index_document, list_annotations, list_documents, list_tts_voices,
     get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled, search, search_by_embedding, summarize,
-    translate, tts_synthesize, update_config, get_update_target, upsert_embeddings_batch,
+    translate, tts_synthesize, update_config, test_model_connection, get_update_target, upsert_embeddings_batch,
     validate_local_embedding_model_path,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -177,6 +177,7 @@ pub fn run() {
             list_tts_voices,
             get_config,
             update_config,
+            test_model_connection,
             get_mcp_status,
             set_mcp_reader_enabled,
             install_cli_shell_command,

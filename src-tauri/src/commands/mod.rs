@@ -10,7 +10,7 @@ mod tts;
 mod updater;
 
 pub use annotation::{create_annotation, delete_annotation, list_annotations};
-pub use config::{get_config, update_config};
+pub use config::{get_config, test_model_connection, update_config};
 pub use embedding::{
     clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,
     get_embedding_profile_status, search_by_embedding, upsert_embeddings_batch,

@@ -136,6 +136,7 @@ pub async fn handle_search(app_handle: &AppHandle, args: Value) -> Result<Value>
         config.lm_studio_url,
         config.embedding_model,
         config.chat_model,
+        config.enable_thinking,
     )?;
 
     // Note: Current implementation only supports doc_id filtering

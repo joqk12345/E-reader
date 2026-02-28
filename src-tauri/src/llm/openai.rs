@@ -28,6 +28,8 @@ struct ChatRequest {
     messages: Vec<ChatMessage>,
     temperature: f32,
     max_tokens: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    enable_thinking: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +48,7 @@ pub struct OpenAiClient {
     api_key: String,
     embedding_model: String,
     chat_model: String,
+    enable_thinking: bool,
 }
 
 impl OpenAiClient {
@@ -54,6 +57,7 @@ impl OpenAiClient {
         api_key: String,
         embedding_model: String,
         chat_model: String,
+        enable_thinking: bool,
     ) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(120))
@@ -66,6 +70,7 @@ impl OpenAiClient {
             api_key,
             embedding_model,
             chat_model,
+            enable_thinking,
         })
     }
 }
@@ -125,9 +130,10 @@ impl AiClient for OpenAiClient {
 
         let request = ChatRequest {
             model: self.chat_model.clone(),
-            messages,
+            messages: messages.clone(),
             temperature,
             max_tokens,
+            enable_thinking: Some(self.enable_thinking),
         };
 
         let response = self
@@ -140,6 +146,38 @@ impl AiClient for OpenAiClient {
             .map_err(|e| ReaderError::ModelApi(format!("Failed to send request: {}", e)))?;
 
         if !response.status().is_success() {
+            // Some OpenAI-compatible servers don't support `enable_thinking`.
+            // Retry once without that field for compatibility.
+            if request.enable_thinking.is_some() {
+                let fallback_request = ChatRequest {
+                    model: self.chat_model.clone(),
+                    messages,
+                    temperature,
+                    max_tokens,
+                    enable_thinking: None,
+                };
+                let fallback_response = self
+                    .client
+                    .post(&url)
+                    .header("Authorization", format!("Bearer {}", self.api_key))
+                    .json(&fallback_request)
+                    .send()
+                    .await
+                    .map_err(|e| ReaderError::ModelApi(format!("Failed to send request: {}", e)))?;
+
+                if fallback_response.status().is_success() {
+                    let chat_response: ChatResponse = fallback_response.json().await.map_err(|e| {
+                        ReaderError::ModelApi(format!("Failed to parse response: {}", e))
+                    })?;
+
+                    if chat_response.choices.is_empty() {
+                        return Err(ReaderError::ModelApi("No choices in response".to_string()));
+                    }
+
+                    return Ok(chat_response.choices[0].message.content.clone());
+                }
+            }
+
             let status = response.status();
             let error_text = response
                 .text()
