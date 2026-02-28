@@ -209,6 +209,15 @@ type DictRequestEventDetail = {
   paragraphId?: string;
 };
 
+type AgentRuntimeConfig = {
+  slot: 'chat' | 'summary' | 'translate' | 'deep_analyze' | 'embedding';
+  translation_parallelism?: number;
+};
+
+type AiProfilesPayload = {
+  agents: AgentRuntimeConfig[];
+};
+
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const renderTextWithHighlight = (text: string, query: string): ReactNode => {
@@ -560,6 +569,7 @@ export function ReaderContent() {
   const pendingPatchRef = useRef<Record<string, string>>({});
   const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
+  const [translationParallelism, setTranslationParallelism] = useState(5);
   const matchedParagraphSet = useRef<Set<string>>(new Set());
   const popoverDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
   const popoverResizeRef = useRef<{ startX: number; startY: number; originWidth: number; originHeight: number } | null>(null);
@@ -576,6 +586,32 @@ export function ReaderContent() {
   const translationCardBg = currentTheme.isDark ? '#2f3540' : '#e8ebf2';
   const translationCardBorder = currentTheme.isDark ? '#72a5ff' : '#8fb5ff';
   const translationIconColor = currentTheme.isDark ? '#9fc0ff' : '#5f8fe5';
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadParallelism = async () => {
+      try {
+        const payload = await invoke<AiProfilesPayload>('get_ai_profiles');
+        if (cancelled) return;
+        const translateAgent = payload.agents?.find((item) => item.slot === 'translate');
+        const raw = Number(translateAgent?.translation_parallelism ?? 5);
+        const clamped = Math.min(10, Math.max(1, Number.isFinite(raw) ? raw : 5));
+        setTranslationParallelism(clamped);
+      } catch {
+        if (!cancelled) setTranslationParallelism(5);
+      }
+    };
+    void loadParallelism();
+
+    const onProfilesChanged = () => {
+      void loadParallelism();
+    };
+    window.addEventListener('reader://ai-profiles-updated', onProfilesChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('reader://ai-profiles-updated', onProfilesChanged);
+    };
+  }, []);
   const renderTranslationCard = (content: ReactNode) => (
     <div
       className={`rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
@@ -926,7 +962,10 @@ export function ReaderContent() {
 
     if (pending.length === 0) return;
 
-    const maxConcurrency = currentDocumentType === 'markdown' ? 1 : 3;
+    const maxConcurrency = Math.min(
+      Math.max(1, translationParallelism),
+      pending.length
+    );
     const runWorker = async () => {
       while (pending.length > 0 && !cancelled) {
         const item = pending.shift();
@@ -936,7 +975,7 @@ export function ReaderContent() {
     };
 
     const workers = Array.from(
-      { length: Math.min(maxConcurrency, pending.length) },
+      { length: maxConcurrency },
       () => runWorker()
     );
 
@@ -945,7 +984,7 @@ export function ReaderContent() {
     return () => {
       cancelled = true;
     };
-  }, [translationMode, autoTranslate, paragraphs, currentDocumentType]);
+  }, [translationMode, autoTranslate, paragraphs, currentDocumentType, translationParallelism]);
 
   // 当章节或翻译方向变化时，清空翻译缓存并重建任务
   useEffect(() => {

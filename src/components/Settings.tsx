@@ -27,6 +27,7 @@ import {
   ToggleSwitch,
   compactControlClass,
 } from './settings/SettingsUI';
+import { AiProfilesPanel } from './settings/AiProfilesPanel';
 import {
   checkForUpdates,
   clearDismissedUpdateVersion,
@@ -75,21 +76,6 @@ interface Config {
 interface SettingsProps {
   onClose: () => void;
   initialSection?: SettingsSection;
-}
-
-interface EmbeddingStatus {
-  indexed: number;
-  total: number;
-  stale: number;
-}
-
-interface ModelConnectionTestResult {
-  ok: boolean;
-  provider: string;
-  endpoint: string;
-  model: string;
-  latency_ms?: number;
-  detail: string;
 }
 
 interface McpStatus {
@@ -263,9 +249,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
-  const [isTestingModelConnection, setIsTestingModelConnection] = useState(false);
-  const [modelConnectionResult, setModelConnectionResult] = useState<ModelConnectionTestResult | null>(null);
   const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null);
   const [isTestingMcp, setIsTestingMcp] = useState(false);
   const [isTogglingMcp, setIsTogglingMcp] = useState(false);
@@ -506,12 +489,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         audio_stop: formatShortcutListInput(normalized.keymap.audio_stop),
         toggle_reading_mode: formatShortcutListInput(normalized.keymap.toggle_reading_mode),
       });
-      try {
-        const status = await invoke<EmbeddingStatus>('get_embedding_profile_status', { docId: null });
-        setEmbeddingStatus(status);
-      } catch (e) {
-        console.warn('Failed to load embedding status:', e);
-      }
       await loadMcpStatus(false);
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -542,36 +519,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleTestModelConnection = async () => {
-    setIsTestingModelConnection(true);
-    setMessage(null);
-    try {
-      const result = await invoke<ModelConnectionTestResult>('test_model_connection', { config });
-      setModelConnectionResult(result);
-      if (result.ok) {
-        setMessage({
-          type: 'success',
-          text: `Model connection ok (${result.provider}, ${result.model})${typeof result.latency_ms === 'number' ? ` in ${result.latency_ms}ms` : ''}.`,
-        });
-      } else {
-        setMessage({
-          type: 'error',
-          text: `Model connection failed: ${result.detail}`,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to test model connection:', error);
-      setMessage({ type: 'error', text: getErrorMessage(error) || 'Failed to test model connection.' });
-    } finally {
-      setIsTestingModelConnection(false);
-    }
-  };
-
-  const handleChange = (field: keyof Config) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfig((prev) => ({ ...prev, [field]: e.target.value }));
-    setMessage(null);
   };
 
   const handleShortcutChange = (field: keyof Keymap) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -625,10 +572,6 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     { id: 'about', label: 'About' },
   ];
 
-  const lmDisabled = config.provider !== 'lmstudio';
-  const openaiDisabled = config.provider !== 'openai';
-  const localEmbeddingDisabled = config.embedding_provider !== 'local_transformers';
-  const ollamaEmbeddingDisabled = config.embedding_provider !== 'ollama';
   const edgeDisabled = config.tts_provider === 'cosyvoice';
   const cosyDisabled = config.tts_provider === 'edge';
   const mcpEnabled = Boolean(mcpStatus?.reader_configured);
@@ -906,177 +849,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             )}
 
             {activeSection === 'ai' && (
-              <div className="space-y-4">
-                <SettingsCard>
-                  <p className="py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                    Chat
-                  </p>
-                  <SettingRow
-                    title="Chat Provider"
-                    description="Select AI backend"
-                    right={
-                      <select className={`${compactControlClass} w-[260px]`} value={config.provider} onChange={(e) => setConfig((prev) => ({ ...prev, provider: e.target.value as AiProvider }))}>
-                        <option value="lmstudio">LM Studio (Local)</option>
-                        <option value="openai">OpenAI (Cloud)</option>
-                      </select>
-                    }
-                  />
-                  <SettingsDivider />
-                  <SettingRow
-                    title="LM Studio URL"
-                    description="Active when provider is LM Studio"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={lmDisabled} value={config.lm_studio_url} onChange={handleChange('lm_studio_url')} />}
-                    disabled={lmDisabled}
-                  />
-                  <SettingRow
-                    title="OpenAI API Key"
-                    description="Active when provider is OpenAI"
-                    right={<input type="password" className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_api_key: e.target.value }))} />}
-                    disabled={openaiDisabled}
-                  />
-                  <SettingRow
-                    title="OpenAI Endpoint"
-                    description="Custom API base URL"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={openaiDisabled} value={config.openai_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, openai_base_url: e.target.value }))} />}
-                    disabled={openaiDisabled}
-                  />
-                  <SettingRow
-                    title="Chat Model"
-                    description="Model name for chat/completions requests"
-                    right={<input className={`${compactControlClass} w-[260px]`} value={config.chat_model || ''} onChange={handleChange('chat_model')} placeholder={config.provider === 'openai' ? 'gpt-4o-mini' : 'qwen2.5-7b-instruct'} />}
-                  />
-                  <SettingRow
-                    title="Enable Thinking"
-                    description="Send enable_thinking to compatible models (disable for faster translation)"
-                    right={<ToggleSwitch checked={config.enable_thinking} onChange={(next) => setConfig((prev) => ({ ...prev, enable_thinking: next }))} />}
-                  />
-                  <SettingRow
-                    title="Model Connectivity Test"
-                    description={
-                      modelConnectionResult
-                        ? `Last: ${modelConnectionResult.ok ? 'ok' : 'failed'} · ${modelConnectionResult.provider} · ${modelConnectionResult.endpoint}`
-                        : 'Run a live chat request against current settings'
-                    }
-                    right={
-                      <div className="flex items-center gap-2.5">
-                        {modelConnectionResult ? (
-                          <StatusDot
-                            success={modelConnectionResult.ok}
-                            text={
-                              modelConnectionResult.ok
-                                ? `ok${typeof modelConnectionResult.latency_ms === 'number' ? ` (${modelConnectionResult.latency_ms}ms)` : ''}`
-                                : 'failed'
-                            }
-                          />
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => void handleTestModelConnection()}
-                          disabled={isTestingModelConnection}
-                          className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-slate-100 px-3 text-[13px] text-slate-700 shadow-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isTestingModelConnection ? 'Testing...' : 'Test Connection'}
-                        </button>
-                      </div>
-                    }
-                  />
-                  <SettingsDivider />
-                  <p className="py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                    Embedding
-                  </p>
-                  <SettingRow
-                    title="Embedding Provider"
-                    description="Index and retrieval engine"
-                    right={
-                      <select className={`${compactControlClass} w-[260px]`} value={config.embedding_provider} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_provider: e.target.value as EmbeddingProvider }))}>
-                        <option value="local_transformers">Local Transformers</option>
-                        <option value="lmstudio">LM Studio</option>
-                        <option value="openai_compatible">OpenAI Compatible</option>
-                        <option value="ollama">Ollama</option>
-                      </select>
-                    }
-                  />
-                  <SettingRow
-                    title="Embedding Model"
-                    description="Model id used for vectorization"
-                    right={<input className={`${compactControlClass} w-[260px]`} value={config.embedding_model} onChange={handleChange('embedding_model')} />}
-                  />
-                  <SettingRow
-                    title="Embedding Dimension"
-                    description="Configured vector size"
-                    right={<input className={`${compactControlClass} w-[260px]`} value={String(config.embedding_dimension)} disabled readOnly />}
-                    disabled
-                  />
-                  <SettingRow
-                    title="Auto Reindex"
-                    description="Rebuild index when embedding profile changes"
-                    right={
-                      <>
-                        <StatusDot success={!embeddingStatus || embeddingStatus.stale === 0} text={!embeddingStatus || embeddingStatus.stale === 0 ? 'Healthy' : 'Needs reindex'} />
-                        <ToggleSwitch checked={config.embedding_auto_reindex} onChange={(next) => setConfig((prev) => ({ ...prev, embedding_auto_reindex: next }))} />
-                      </>
-                    }
-                  />
-
-                  <SettingsDivider />
-
-                  <SettingRow
-                    title="Local Model Path"
-                    description="Used only for local transformers"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={localEmbeddingDisabled} value={config.embedding_local_model_path || ''} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_local_model_path: e.target.value }))} />}
-                    disabled={localEmbeddingDisabled}
-                  />
-                  <SettingRow
-                    title="Download Mirror"
-                    description="Optional base URL for model download"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={localEmbeddingDisabled} value={config.embedding_download_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_download_base_url: e.target.value }))} />}
-                    disabled={localEmbeddingDisabled}
-                  />
-                  <SettingRow
-                    title="Ollama URL"
-                    description="Used only for Ollama embedding"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={ollamaEmbeddingDisabled} value={config.embedding_ollama_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_ollama_url: e.target.value }))} />}
-                    disabled={ollamaEmbeddingDisabled}
-                  />
-                  <SettingRow
-                    title="Ollama Model"
-                    description="Embedding model name in Ollama"
-                    right={<input className={`${compactControlClass} w-[260px]`} disabled={ollamaEmbeddingDisabled} value={config.embedding_ollama_model || ''} onChange={(e) => setConfig((prev) => ({ ...prev, embedding_ollama_model: e.target.value }))} />}
-                    disabled={ollamaEmbeddingDisabled}
-                  />
-                </SettingsCard>
-
-                <SettingsCard>
-                  <KVInfo
-                    rows={[
-                      {
-                        key: 'Indexed',
-                        value: (
-                          <span className="font-medium text-emerald-600">
-                            {embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : '—'}
-                          </span>
-                        ),
-                      },
-                      {
-                        key: 'Stale',
-                        value: (
-                          <span className="font-medium text-slate-700">
-                            {embeddingStatus ? embeddingStatus.stale : '—'}
-                          </span>
-                        ),
-                      },
-                      {
-                        key: 'Tools',
-                        value: (
-                          <a href="#" className="inline-flex items-center gap-1 text-blue-600 hover:underline">
-                            open docs ↗
-                          </a>
-                        ),
-                      },
-                    ]}
-                  />
-                </SettingsCard>
-              </div>
+              <AiProfilesPanel />
             )}
 
             {activeSection === 'audio' && (

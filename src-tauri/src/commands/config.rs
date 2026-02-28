@@ -18,7 +18,15 @@ pub async fn get_config() -> Result<Config> {
 /// Updates the LM Studio URL and model settings
 #[tauri::command]
 pub async fn update_config(config: Config) -> Result<()> {
-    save_config(&config)?;
+    let mut next = config;
+
+    // AI profiles are managed by dedicated commands (save_provider_profile/save_model_profile/save_agent_config).
+    // `update_config` is still used by legacy/general settings and may carry stale ai_profiles snapshot.
+    // Always preserve persisted ai_profiles here to prevent accidental overwrite.
+    let persisted = load_config()?;
+    next.ai_profiles = persisted.ai_profiles;
+
+    save_config(&next)?;
     Ok(())
 }
 

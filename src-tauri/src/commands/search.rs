@@ -1,7 +1,8 @@
+use super::ai_profiles::embedding_with_agent_slot;
 use crate::config::load_config;
+use crate::config::AgentSlot;
 use crate::database::{embeddings, get_connection};
 use crate::error::{ReaderError, Result};
-use crate::llm::create_client;
 use crate::search::{cosine_similarity, SearchOptions, SearchResult};
 use rusqlite::params;
 use std::collections::HashMap;
@@ -70,7 +71,7 @@ pub async fn search(
         return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
     }
 
-    // Load configuration and create LLM client
+    // Load configuration and resolve embedding runtime
     let config = load_config()?;
     if config.embedding_provider == "local_transformers" {
         let fallback = keyword_search_with_timeout(
@@ -82,24 +83,6 @@ pub async fn search(
         .await?;
         return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
     }
-    let llm_client = match create_client(&config) {
-        Ok(client) => client,
-        Err(err) => {
-            tracing::warn!(
-                "Semantic search unavailable, falling back to keyword search: {}",
-                err
-            );
-            let fallback = keyword_search_with_timeout(
-                app_handle.clone(),
-                query_owned.clone(),
-                doc_id.clone(),
-                top_k,
-            )
-            .await?;
-            return Ok(fallback.into_iter().map(SearchResultOutput::from).collect());
-        }
-    };
-
     // Get database connection and collect all embeddings (synchronous part)
     let all_embeddings: Vec<(String, Vec<f32>)>;
     {
@@ -148,7 +131,7 @@ pub async fn search(
     // Generate query embedding (async part - no connection held here)
     let query_embedding = match timeout(
         Duration::from_secs(SEARCH_EMBEDDING_TIMEOUT_SECS),
-        llm_client.generate_embedding(query),
+        embedding_with_agent_slot(&config, AgentSlot::Embedding, query),
     )
     .await
     {

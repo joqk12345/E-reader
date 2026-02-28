@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## 🆕 Recent Updates (2026-02)
 
+- **AI Profiles 三层配置重构与稳定性修复（2026-03-01）**:
+  - 设置页 `AI & Embedding` 升级为三页结构：`Providers / Models / Agents`
+  - 新增后端命令：
+    - `get_ai_profiles`
+    - `save_provider_profile`
+    - `save_model_profile`
+    - `save_agent_config`
+    - `delete_provider_profile`
+    - `delete_model_profile`
+    - `test_provider_profile`
+    - `test_model_profile`
+    - `resolve_agent_runtime`
+  - 运行时路由改为按 Agent Slot 解析模型，并支持主模型失败后重试一次再回退
+  - 新增 `Translate` Agent 并行度控制（`translation_parallelism`，范围 `1-10`，默认 `5`），用于降低翻译限流风险
+  - 修复 Provider 类型序列化不一致导致的切换白屏问题（`lm_studio/open_ai/open_ai_compatible`）
+  - 修复 `OpenAI Compatible` 被错误强制 API Key 的校验逻辑（现为可空）
+  - 修复 Provider/Model 删除交互，改为删除前确认弹窗
+  - 修复 AI 配置持久化覆盖问题：
+    - 防止 `update_config` 误覆盖 `ai_profiles`
+    - 防止仅创建 Provider 时被迁移逻辑重置
+  - 启动时会自动补齐默认快速上手 Providers（若缺失）：
+    - `LM Studio (http://localhost:1234/v1)`
+    - `Ollama (http://localhost:11434/v1)`
+
 - **MCP CLI 增强与直连命令（2026-02-26）**:
   - `mcp-server` 新增 `reader-cli` 可执行入口，并支持 `tools/tool/import/search/summary/translate/deep/chat` 子命令
   - `reader-mcp-server.sh` 支持透传参数，便于同一入口同时服务 MCP stdio 与 CLI 调用

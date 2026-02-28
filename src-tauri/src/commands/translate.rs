@@ -1,10 +1,12 @@
+use super::ai_profiles::chat_with_agent_slot;
 use crate::config::load_config;
+use crate::config::AgentSlot;
 use crate::database::{
     get_connection, get_paragraph, get_summary, get_text_translation, get_translation,
     save_summary, save_text_translation, save_translation,
 };
 use crate::error::{ReaderError, Result};
-use crate::llm::{create_client, ChatMessage};
+use crate::llm::ChatMessage;
 use sha2::{Digest, Sha256};
 use tauri::AppHandle;
 use tokio::time::{timeout, Duration};
@@ -55,9 +57,8 @@ pub async fn translate(
         _ => {}
     }
 
-    // Load configuration and create LLM client
+    // Load configuration and resolve agent runtime
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
 
     // Get text to translate
     let text_to_translate = if let Some(pid) = &paragraph_id {
@@ -111,7 +112,7 @@ pub async fn translate(
     // Call LLM with timeout to avoid endless "translating" state in UI
     let translation = timeout(
         Duration::from_secs(TRANSLATE_TIMEOUT_SECS),
-        llm_client.chat(messages, 0.3, 2000),
+        chat_with_agent_slot(&config, AgentSlot::Translate, messages, 0.3, 2000),
     )
     .await
     .map_err(|_| {
@@ -285,9 +286,8 @@ pub async fn summarize(
         },
     ];
 
-    // Load configuration and create LLM client
+    // Load configuration and resolve agent runtime
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
 
     // Call LLM with appropriate max_tokens based on style
     let max_tokens = match style.as_str() {
@@ -297,7 +297,8 @@ pub async fn summarize(
         _ => 1000,
     };
 
-    let summary = llm_client.chat(messages, 0.5, max_tokens).await?;
+    let summary =
+        chat_with_agent_slot(&config, AgentSlot::Summary, messages, 0.5, max_tokens).await?;
 
     // Cache result
     let conn = get_connection(&app_handle)?;
@@ -503,8 +504,7 @@ pub async fn deep_analyze(
     ];
 
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
-    let analysis = llm_client.chat(messages, 0.3, 3600).await?;
+    let analysis = chat_with_agent_slot(&config, AgentSlot::DeepAnalyze, messages, 0.3, 3600).await?;
 
     let conn = get_connection(&app_handle)?;
     save_summary(&conn, &target_id, &target_type, analysis_style, &analysis)?;
@@ -617,11 +617,10 @@ pub async fn chat_with_context(
     });
 
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
 
     let answer = timeout(
         Duration::from_secs(CHAT_TIMEOUT_SECS),
-        llm_client.chat(messages, 0.2, 1200),
+        chat_with_agent_slot(&config, AgentSlot::Chat, messages, 0.2, 1200),
     )
     .await
     .map_err(|_| {

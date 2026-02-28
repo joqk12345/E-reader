@@ -1,4 +1,5 @@
 mod annotation;
+mod ai_profiles;
 mod config;
 mod embedding;
 mod import;
@@ -10,6 +11,11 @@ mod tts;
 mod updater;
 
 pub use annotation::{create_annotation, delete_annotation, list_annotations};
+pub use ai_profiles::{
+    delete_model_profile, delete_provider_profile, get_ai_profiles, resolve_agent_runtime,
+    save_agent_config, save_model_profile, save_provider_profile, test_model_profile,
+    test_provider_profile,
+};
 pub use config::{get_config, test_model_connection, update_config};
 pub use embedding::{
     clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,

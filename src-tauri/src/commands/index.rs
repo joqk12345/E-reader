@@ -1,10 +1,11 @@
+use super::ai_profiles::{embedding_with_agent_slot, resolve_agent_runtime_with_config};
 use crate::config::load_config;
+use crate::config::AgentSlot;
 use crate::database::get_connection;
 use crate::database::{get_embedding, insert_embedding, list_paragraphs};
 use crate::error::Result;
-use crate::llm::create_client;
 use tauri::AppHandle;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /// Indexes a document by generating embeddings for all its paragraphs
 ///
@@ -23,11 +24,14 @@ use tracing::{error, info, warn};
 pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usize> {
     info!("Starting document indexing for doc_id: {}", doc_id);
 
-    // Load configuration and create LLM client
+    // Load configuration and resolve embedding runtime
     let config = load_config()?;
-    let llm_client = create_client(&config)?;
-    let embedding_provider = config.embedding_provider.clone();
-    let embedding_model = config.embedding_model.clone();
+    let runtime = resolve_agent_runtime_with_config(&config, AgentSlot::Embedding)?;
+    let (provider_profile, model_profile) = runtime.primary.ok_or_else(|| {
+        crate::ReaderError::InvalidArgument("No primary embedding model configured".to_string())
+    })?;
+    let embedding_provider = format!("{:?}", provider_profile.provider_type).to_lowercase();
+    let embedding_model = model_profile.model_name.clone();
 
     // Get database connection
     let conn = get_connection(&app_handle)?;
@@ -59,7 +63,7 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
                 // No embedding exists, generate one
                 info!("Generating embedding for paragraph {}", paragraph.id);
 
-                match llm_client.generate_embedding(&paragraph.text).await {
+                match embedding_with_agent_slot(&config, AgentSlot::Embedding, &paragraph.text).await {
                     Ok(embedding_vector) => {
                         // Store the embedding
                         match insert_embedding(
