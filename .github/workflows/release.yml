@@ -72,9 +72,9 @@ jobs:
         shell: bash
         run: ./scripts/align-tauri-npm.sh
 
-      - name: Build application (macOS app bundle only)
+      - name: Build application (macOS DMG)
         if: startsWith(matrix.platform.os, 'macos-')
-        run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles app
+        run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles dmg
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
@@ -85,41 +85,6 @@ jobs:
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-
-      - name: Package DMG manually (macOS)
-        if: startsWith(matrix.platform.os, 'macos-')
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          TARGET="${{ matrix.platform.target }}"
-          APP_DIR="src-tauri/target/${TARGET}/release/bundle/macos/reader.app"
-          DMG_DIR="src-tauri/target/${TARGET}/release/bundle/dmg"
-          VERSION="${GITHUB_REF_NAME#v}"
-
-          if [[ ! -d "$APP_DIR" ]]; then
-            echo "Missing app bundle: $APP_DIR"
-            exit 1
-          fi
-
-          mkdir -p "$DMG_DIR"
-
-          ARCH_SUFFIX="x64"
-          if [[ "$TARGET" == "aarch64-apple-darwin" ]]; then
-            ARCH_SUFFIX="aarch64"
-          fi
-
-          DMG_PATH="${DMG_DIR}/reader_${VERSION}_${ARCH_SUFFIX}.dmg"
-          rm -f "$DMG_PATH"
-
-          hdiutil create \
-            -volname "reader" \
-            -srcfolder "src-tauri/target/${TARGET}/release/bundle/macos" \
-            -ov \
-            -format UDZO \
-            "$DMG_PATH"
-
-          ls -lh "$DMG_DIR"
 
       - name: Prepare release artifacts
         shell: bash
