@@ -5,7 +5,7 @@ import { open as openExternal } from '@tauri-apps/plugin-shell';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/sentences';
-import type { Annotation, AnnotationStyle } from '../types';
+import type { Annotation, AnnotationStyle, Paragraph } from '../types';
 import {
   READER_THEMES,
   VIEW_SETTINGS_KEY,
@@ -207,6 +207,21 @@ type DictRequestEventDetail = {
   selectedText: string;
   sentence: string;
   paragraphId?: string;
+};
+
+type RemoteArticleImage = {
+  src: string;
+  alt: string;
+};
+
+type MarkdownParagraphMeta = {
+  heading: string | null;
+  inMediaLinks: boolean;
+};
+
+type MarkdownVisibilityFilterOptions = {
+  dropLeadingBeforeFirstH1?: boolean;
+  hideMediaLinksSection?: boolean;
 };
 
 type AgentRuntimeConfig = {
@@ -463,10 +478,169 @@ const parsePdfPageFromLocation = (location?: string): number | null => {
 };
 
 const treeLineRe = /(~\/|├──|└──|│\s)/;
-const normalizeMarkdownForReader = (text: string): string => {
-  const source = text.trim();
+const flattenedTreeLineSplitRe = /(?<=[A-Za-z0-9_./-])\d+(?=(?:~\/|[A-Za-z_./-]|├──|└──|│))/g;
+const jinaImageRe = /^!\((.+?)\)\[(https?:\/\/[^\]\s]+)\]$/i;
+const labelledImageRe = /^image(?:\s+\d+)?\s*:\s*(.+)$/i;
+const urlInTextRe = /https?:\/\/[^\s\])\]]+/gi;
+
+const cleanupImageUrl = (value: string): string =>
+  value.replace(/[)\].,;:!?]+$/g, '');
+
+const normalizeImageAltText = (value: string): string =>
+  value
+    .replace(/^[\s"'`“”‘’[(]+/, '')
+    .replace(/[\s"'`“”‘’)\]]+$/g, '')
+    .trim();
+
+const buildMarkdownImage = (src: string, alt: string): string =>
+  `![${normalizeImageAltText(alt) || 'Image'}](${cleanupImageUrl(src)})`;
+
+const isReaderImagePlaceholderLine = (line: string): boolean => {
+  const trimmed = line.trim();
+  return jinaImageRe.test(trimmed) || labelledImageRe.test(trimmed);
+};
+
+const convertReaderImageLine = (
+  line: string,
+  fallbackImage?: RemoteArticleImage
+): { text: string; consumedFallback: boolean } => {
+  const trimmed = line.trim();
+  if (!trimmed) return { text: line, consumedFallback: false };
+
+  const jinaMatch = trimmed.match(jinaImageRe);
+  if (jinaMatch) {
+    const [, alt, src] = jinaMatch;
+    return { text: buildMarkdownImage(src, alt), consumedFallback: false };
+  }
+
+  const labelledMatch = trimmed.match(labelledImageRe);
+  if (!labelledMatch) return { text: line, consumedFallback: false };
+
+  const payload = labelledMatch[1]?.trim() || '';
+  const urlMatches = [...payload.matchAll(urlInTextRe)];
+  const urlCandidate = urlMatches[urlMatches.length - 1]?.[0];
+  if (urlCandidate) {
+    const src = cleanupImageUrl(urlCandidate);
+    const alt = normalizeImageAltText(payload.slice(0, payload.lastIndexOf(urlCandidate)));
+    if (!src) return { text: line, consumedFallback: false };
+    return {
+      text: buildMarkdownImage(src, alt || fallbackImage?.alt || 'Image'),
+      consumedFallback: false,
+    };
+  }
+
+  if (!fallbackImage?.src) return { text: line, consumedFallback: false };
+
+  return {
+    text: buildMarkdownImage(fallbackImage.src, payload || fallbackImage.alt || 'Image'),
+    consumedFallback: true,
+  };
+};
+
+const pickImageSourceFromElement = (img: HTMLImageElement): string => {
+  const srcset =
+    img.getAttribute('srcset') ||
+    img.getAttribute('data-srcset') ||
+    img.getAttribute('imagesrcset') ||
+    '';
+  if (srcset) {
+    const candidates = srcset
+      .split(',')
+      .map((entry) => entry.trim().split(/\s+/)[0])
+      .filter(Boolean);
+    if (candidates.length > 0) {
+      return candidates[candidates.length - 1];
+    }
+  }
+
+  return (
+    img.getAttribute('src') ||
+    img.getAttribute('data-src') ||
+    img.getAttribute('data-original') ||
+    img.getAttribute('data-lazy-src') ||
+    ''
+  );
+};
+
+const extractArticleImagesFromHtml = (html: string, sourceUrl: string): RemoteArticleImage[] => {
+  if (typeof DOMParser === 'undefined') return [];
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const container =
+    doc.querySelector('main article') ||
+    doc.querySelector('article') ||
+    doc.querySelector('main') ||
+    doc.body;
+  if (!container) return [];
+
+  const seen = new Set<string>();
+  const images: RemoteArticleImage[] = [];
+
+  for (const img of Array.from(container.querySelectorAll('img'))) {
+    const rawSrc = pickImageSourceFromElement(img);
+    if (!rawSrc) continue;
+
+    let resolvedSrc = '';
+    try {
+      resolvedSrc = new URL(rawSrc, sourceUrl).toString();
+    } catch {
+      continue;
+    }
+
+    const alt = normalizeImageAltText(
+      img.getAttribute('alt') || img.getAttribute('aria-label') || ''
+    );
+    const lowerSrc = resolvedSrc.toLowerCase();
+    const lowerAlt = alt.toLowerCase();
+    if (
+      lowerSrc.includes('logo') ||
+      lowerSrc.includes('icon') ||
+      lowerSrc.includes('avatar') ||
+      lowerAlt.includes('logo') ||
+      lowerAlt.includes('icon')
+    ) {
+      continue;
+    }
+
+    if (seen.has(resolvedSrc)) continue;
+    seen.add(resolvedSrc);
+    images.push({ src: resolvedSrc, alt });
+  }
+
+  return images;
+};
+
+const renderRemoteImageGalleryMarkdown = (remoteImages: RemoteArticleImage[]): string =>
+  remoteImages
+    .map((image) => buildMarkdownImage(image.src, image.alt || 'Article image'))
+    .join('\n\n');
+
+const expandFlattenedTreeText = (text: string): string => {
+  if (text.includes('\n') || !/[├└]──/.test(text)) {
+    return text;
+  }
+
+  return text
+    .replace(/^\d+(?=(?:~\/|[A-Za-z_./-]|├──|└──|│))/, '')
+    .replace(flattenedTreeLineSplitRe, '\n');
+};
+
+const normalizeMarkdownForReader = (
+  text: string,
+  remoteImages: RemoteArticleImage[] = [],
+  imageCursor?: { current: number },
+  hasInlineImagePlaceholders = false
+): string => {
+  const source = expandFlattenedTreeText(text.trim());
   if (!source) return source;
   if (source.includes('```')) return source;
+  if (
+    !hasInlineImagePlaceholders &&
+    remoteImages.length > 0 &&
+    source === '_No key image/video links detected._'
+  ) {
+    return renderRemoteImageGalleryMarkdown(remoteImages);
+  }
 
   const lines = source.split('\n');
   const out: string[] = [];
@@ -485,7 +659,15 @@ const normalizeMarkdownForReader = (text: string): string => {
       out.push('```');
       continue;
     }
-    out.push(line);
+    const fallbackImage =
+      isReaderImagePlaceholderLine(line) && imageCursor
+        ? remoteImages[imageCursor.current]
+        : undefined;
+    const converted = convertReaderImageLine(line, fallbackImage);
+    if (converted.consumedFallback && imageCursor) {
+      imageCursor.current += 1;
+    }
+    out.push(converted.text);
     i += 1;
   }
 
@@ -511,6 +693,147 @@ const truncateText = (value: string, maxLength: number): string => {
 
 const normalizeInlineText = (value: string): string =>
   value.replace(/\s+/g, ' ').trim();
+
+const markdownHeadingRe = /^#{1,6}\s+(.+)$/;
+const markdownImageSyntaxRe = /!\[[^\]]*\]\([^)\n]+\)/g;
+const bareMediaLinkLineRe = /^\s*[-*]?\s*https?:\/\/\S+\s*$/i;
+const articleStopHeadings = new Set([
+  'keep reading',
+  'related posts',
+  'related articles',
+  'recommended',
+  'our research',
+  'latest advancements',
+  'terms & policies',
+]);
+const standaloneNoiseParagraphs = new Set([
+  'loading…',
+  'loading...',
+  'share',
+  'view all',
+  'openai',
+]);
+
+const buildMarkdownParagraphMeta = (
+  paragraphs: Paragraph[]
+): Record<string, MarkdownParagraphMeta> => {
+  let currentHeading: string | null = null;
+  const meta: Record<string, MarkdownParagraphMeta> = {};
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.text.trim();
+    const headingMatch = trimmed.match(markdownHeadingRe);
+    if (headingMatch) {
+      currentHeading = normalizeInlineText(headingMatch[1] || '').toLowerCase();
+    }
+    meta[paragraph.id] = {
+      heading: currentHeading,
+      inMediaLinks: currentHeading?.includes('media links') || false,
+    };
+  }
+
+  return meta;
+};
+
+const sanitizeMarkdownForTranslation = (
+  text: string,
+  options?: { inMediaLinks?: boolean }
+): string => {
+  if (options?.inMediaLinks) {
+    return '';
+  }
+
+  const cleaned = text
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+      if (isReaderImagePlaceholderLine(trimmed)) return false;
+      if (trimmed === '_No key image/video links detected._') return false;
+      if (bareMediaLinkLineRe.test(trimmed)) return false;
+      return true;
+    })
+    .join('\n')
+    .replace(markdownImageSyntaxRe, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return cleaned;
+};
+
+const shouldHideMarkdownParagraph = (
+  paragraph: Paragraph,
+  meta: MarkdownParagraphMeta | undefined,
+  options?: MarkdownVisibilityFilterOptions
+): boolean => {
+  const trimmed = paragraph.text.trim();
+  if (!trimmed) return false;
+
+  const normalized = normalizeInlineText(trimmed).toLowerCase();
+  if (standaloneNoiseParagraphs.has(normalized)) {
+    return true;
+  }
+
+  if (meta?.heading && articleStopHeadings.has(meta.heading)) {
+    return true;
+  }
+
+  if (meta?.heading === 'table of contents') {
+    return true;
+  }
+
+  if (options?.hideMediaLinksSection && meta?.inMediaLinks) {
+    return true;
+  }
+
+  if (
+    normalized.startsWith('by ') &&
+    normalized.length < 120 &&
+    !normalized.includes('.')
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const filterVisibleMarkdownParagraphs = (
+  paragraphs: Paragraph[],
+  metaById: Record<string, MarkdownParagraphMeta>,
+  options?: MarkdownVisibilityFilterOptions
+): Paragraph[] => {
+  const visible: Paragraph[] = [];
+  let stop = false;
+  let seenPrimaryHeading = false;
+
+  for (const paragraph of paragraphs) {
+    const meta = metaById[paragraph.id];
+    const trimmed = paragraph.text.trim();
+    const headingMatch = trimmed.match(markdownHeadingRe);
+    const heading = normalizeInlineText(headingMatch?.[1] || '').toLowerCase();
+    const isPrimaryHeading = trimmed.startsWith('# ');
+
+    if (!seenPrimaryHeading && isPrimaryHeading) {
+      seenPrimaryHeading = true;
+    }
+    if (options?.dropLeadingBeforeFirstH1 && !seenPrimaryHeading) {
+      continue;
+    }
+
+    if (heading && articleStopHeadings.has(heading)) {
+      stop = true;
+    }
+    if (stop) {
+      continue;
+    }
+    if (shouldHideMarkdownParagraph(paragraph, meta, options)) {
+      continue;
+    }
+    visible.push(paragraph);
+  }
+
+  return visible;
+};
 
 export function ReaderContent() {
   const {
@@ -560,6 +883,8 @@ export function ReaderContent() {
   const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
     loadReaderViewSettings(readerFontSize)
   );
+  const [documentSourceUrl, setDocumentSourceUrl] = useState<string | null>(null);
+  const [remoteArticleImages, setRemoteArticleImages] = useState<RemoteArticleImage[]>([]);
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -580,6 +905,8 @@ export function ReaderContent() {
   const translationLineHeight = Math.max(1.35, viewSettings.lineHeight - 0.1);
   const cjkLetterSpacing = viewSettings.cjkLetterSpacingEnabled ? `${viewSettings.cjkLetterSpacing}em` : 'normal';
   const isTwoColumnLayout = viewSettings.layoutMode === 'double';
+  const isMultimediaMode = viewSettings.markdownRenderMode === 'multimedia';
+  const isWebSourceDocument = /^https?:\/\//i.test(documentSourceUrl || '');
   const isTranslationEnabled = translationMode !== 'off';
   const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
   const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
@@ -612,6 +939,68 @@ export function ReaderContent() {
       window.removeEventListener('reader://ai-profiles-updated', onProfilesChanged);
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDocumentSourceUrl(null);
+
+    if (currentDocumentType !== 'markdown' || !selectedDocumentId) {
+      return;
+    }
+
+    const loadDocumentSourceUrl = async () => {
+      try {
+        const sourceUrl = await invoke<string | null>('get_document_source_url', {
+          docId: selectedDocumentId,
+        });
+        if (cancelled) return;
+        setDocumentSourceUrl(sourceUrl?.trim() || null);
+      } catch {
+        if (!cancelled) {
+          setDocumentSourceUrl(null);
+        }
+      }
+    };
+
+    void loadDocumentSourceUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocumentType, selectedDocumentId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRemoteArticleImages([]);
+
+    if (!isMultimediaMode || currentDocumentType !== 'markdown' || !documentSourceUrl) {
+      return;
+    }
+
+    const loadRemoteArticleImages = async () => {
+      try {
+        const normalizedUrl = documentSourceUrl.trim();
+        if (!normalizedUrl) return;
+
+        const html = await invoke<string>('fetch_url_html', { url: normalizedUrl });
+        if (cancelled) return;
+
+        setRemoteArticleImages(extractArticleImagesFromHtml(html, normalizedUrl));
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load remote article images:', error);
+          setRemoteArticleImages([]);
+        }
+      }
+    };
+
+    void loadRemoteArticleImages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocumentType, documentSourceUrl, isMultimediaMode]);
+
   const renderTranslationCard = (content: ReactNode) => (
     <div
       className={`rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
@@ -625,9 +1014,34 @@ export function ReaderContent() {
       </div>
     </div>
   );
+  const markdownParagraphMeta = useMemo(
+    () => (currentDocumentType === 'markdown' ? buildMarkdownParagraphMeta(paragraphs) : {}),
+    [currentDocumentType, paragraphs]
+  );
+  const markdownFilterOptions = useMemo<MarkdownVisibilityFilterOptions>(
+    () => ({
+      dropLeadingBeforeFirstH1: isWebSourceDocument,
+      hideMediaLinksSection: !isMultimediaMode,
+    }),
+    [isMultimediaMode, isWebSourceDocument]
+  );
+  const visibleParagraphs = useMemo(
+    () =>
+      currentDocumentType === 'markdown' && (isMultimediaMode || isWebSourceDocument)
+        ? filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions)
+        : paragraphs,
+    [
+      currentDocumentType,
+      isMultimediaMode,
+      isWebSourceDocument,
+      markdownFilterOptions,
+      markdownParagraphMeta,
+      paragraphs,
+    ]
+  );
   const sourceWordCount = useMemo(
-    () => paragraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
-    [paragraphs]
+    () => visibleParagraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
+    [visibleParagraphs]
   );
   const translatedWordCount = useMemo(
     () =>
@@ -638,7 +1052,7 @@ export function ReaderContent() {
     [translations]
   );
   const doubleColumnPageSize = useMemo(() => {
-    if (!isTwoColumnLayout) return paragraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
+    if (!isTwoColumnLayout) return visibleParagraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
     const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
     const viewportWidth = contentViewport.width > 0 ? contentViewport.width : fallbackWidth;
@@ -653,19 +1067,38 @@ export function ReaderContent() {
     contentViewport.height,
     contentViewport.width,
     isTwoColumnLayout,
-    paragraphs.length,
+    visibleParagraphs.length,
     showTranslation,
     viewSettings.fontSize,
   ]);
   const totalColumnPages = useMemo(() => {
     if (!isTwoColumnLayout) return 1;
-    return Math.max(1, Math.ceil(paragraphs.length / doubleColumnPageSize));
-  }, [doubleColumnPageSize, isTwoColumnLayout, paragraphs.length]);
+    return Math.max(1, Math.ceil(visibleParagraphs.length / doubleColumnPageSize));
+  }, [doubleColumnPageSize, isTwoColumnLayout, visibleParagraphs.length]);
   const displayedParagraphs = useMemo(() => {
-    if (!isTwoColumnLayout) return paragraphs;
+    if (!isTwoColumnLayout) return visibleParagraphs;
     const start = columnPageIndex * doubleColumnPageSize;
-    return paragraphs.slice(start, start + doubleColumnPageSize);
-  }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, paragraphs]);
+    return visibleParagraphs.slice(start, start + doubleColumnPageSize);
+  }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, visibleParagraphs]);
+  const normalizedMarkdownTexts = useMemo(() => {
+    const cursor = { current: 0 };
+    const normalized: Record<string, string> = {};
+    const hasInlineImagePlaceholders = visibleParagraphs.some((paragraph) =>
+      paragraph.text.split('\n').some((line) => isReaderImagePlaceholderLine(line))
+    );
+    for (const paragraph of visibleParagraphs) {
+      normalized[paragraph.id] =
+        currentDocumentType === 'markdown'
+          ? normalizeMarkdownForReader(
+              paragraph.text,
+              isMultimediaMode ? remoteArticleImages : [],
+              isMultimediaMode ? cursor : undefined,
+              isMultimediaMode ? hasInlineImagePlaceholders : false
+            )
+          : paragraph.text;
+    }
+    return normalized;
+  }, [currentDocumentType, isMultimediaMode, remoteArticleImages, visibleParagraphs]);
 
   const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
   const openExternalUrl = (url: string) => {
@@ -745,17 +1178,32 @@ export function ReaderContent() {
       if (mode !== 'both' && mode !== 'source' && mode !== 'translation') return;
       setViewSettings((prev) => ({ ...prev, bilingualViewMode: mode }));
     };
+    const onSetMarkdownRenderMode = (
+      event: CustomEvent<{ mode?: 'text' | 'multimedia' }>
+    ) => {
+      const mode = event.detail?.mode;
+      if (mode !== 'text' && mode !== 'multimedia') return;
+      setViewSettings((prev) => ({ ...prev, markdownRenderMode: mode }));
+    };
     const onAnnotationsChanged = () => setAnnotationRefreshTick((prev) => prev + 1);
 
     window.addEventListener(
       'reader:set-bilingual-view-mode',
       onSetBilingualViewMode as EventListener
     );
+    window.addEventListener(
+      'reader:set-markdown-render-mode',
+      onSetMarkdownRenderMode as EventListener
+    );
     window.addEventListener('reader:annotations-changed', onAnnotationsChanged as EventListener);
     return () => {
       window.removeEventListener(
         'reader:set-bilingual-view-mode',
         onSetBilingualViewMode as EventListener
+      );
+      window.removeEventListener(
+        'reader:set-markdown-render-mode',
+        onSetMarkdownRenderMode as EventListener
       );
       window.removeEventListener('reader:annotations-changed', onAnnotationsChanged as EventListener);
     };
@@ -767,7 +1215,7 @@ export function ReaderContent() {
         detail: {
           sourceWords: sourceWordCount,
           translatedWords: translatedWordCount,
-          paragraphCount: paragraphs.length,
+          paragraphCount: visibleParagraphs.length,
           currentPage: isTwoColumnLayout ? columnPageIndex + 1 : 1,
           totalPages: isTwoColumnLayout ? totalColumnPages : 1,
         },
@@ -776,7 +1224,7 @@ export function ReaderContent() {
   }, [
     columnPageIndex,
     isTwoColumnLayout,
-    paragraphs.length,
+    visibleParagraphs.length,
     sourceWordCount,
     totalColumnPages,
     translatedWordCount,
@@ -796,11 +1244,11 @@ export function ReaderContent() {
 
   useEffect(() => {
     if (!isTwoColumnLayout || !focusedParagraphId) return;
-    const idx = paragraphs.findIndex((item) => item.id === focusedParagraphId);
+    const idx = visibleParagraphs.findIndex((item) => item.id === focusedParagraphId);
     if (idx < 0) return;
     const page = Math.floor(idx / doubleColumnPageSize);
     setColumnPageIndex(page);
-  }, [doubleColumnPageSize, focusedParagraphId, isTwoColumnLayout, paragraphs]);
+  }, [doubleColumnPageSize, focusedParagraphId, isTwoColumnLayout, visibleParagraphs]);
 
   useEffect(() => {
     const onFlipRequest = (event: Event) => {
@@ -930,6 +1378,7 @@ export function ReaderContent() {
   };
 
   const handleTranslateMarkdownParagraph = async (paragraphId: string, text: string) => {
+    if (!text.trim()) return;
     await translateSentence(markdownTranslationKey(paragraphId), text);
   };
 
@@ -940,13 +1389,20 @@ export function ReaderContent() {
     let cancelled = false;
     const pending: Array<{ key: string; text: string }> = [];
 
-    for (const paragraph of paragraphs) {
+    for (const paragraph of visibleParagraphs) {
       if (currentDocumentType === 'markdown') {
+        const meta = markdownParagraphMeta[paragraph.id];
+        const text =
+          isMultimediaMode
+            ? sanitizeMarkdownForTranslation(paragraph.text, {
+                inMediaLinks: meta?.inMediaLinks,
+              })
+            : paragraph.text;
         const key = markdownTranslationKey(paragraph.id);
         if (translationsRef.current[key]) continue;
         if (inFlightRef.current.has(key)) continue;
-        if (!paragraph.text.trim()) continue;
-        pending.push({ key, text: paragraph.text });
+        if (!text.trim()) continue;
+        pending.push({ key, text });
         continue;
       }
 
@@ -984,7 +1440,7 @@ export function ReaderContent() {
     return () => {
       cancelled = true;
     };
-  }, [translationMode, autoTranslate, paragraphs, currentDocumentType, translationParallelism]);
+  }, [translationMode, autoTranslate, visibleParagraphs, currentDocumentType, translationParallelism, markdownParagraphMeta, isMultimediaMode]);
 
   // 当章节或翻译方向变化时，清空翻译缓存并重建任务
   useEffect(() => {
@@ -1360,11 +1816,11 @@ export function ReaderContent() {
     if (!isTwoColumnLayout || !currentReadingSentenceKey) return;
     const parsed = parseSentenceKey(currentReadingSentenceKey);
     if (!parsed) return;
-    const idx = paragraphs.findIndex((item) => item.id === parsed.paragraphId);
+    const idx = visibleParagraphs.findIndex((item) => item.id === parsed.paragraphId);
     if (idx < 0) return;
     const page = Math.floor(idx / doubleColumnPageSize);
     setColumnPageIndex(page);
-  }, [currentReadingSentenceKey, doubleColumnPageSize, isTwoColumnLayout, paragraphs]);
+  }, [currentReadingSentenceKey, doubleColumnPageSize, isTwoColumnLayout, visibleParagraphs]);
 
   // 跟随当前朗读句子自动滚动
   useEffect(() => {
@@ -1525,9 +1981,23 @@ export function ReaderContent() {
           >
           {displayedParagraphs.map((paragraph) => {
             const isMarkdownParagraph = currentDocumentType === 'markdown';
+            const paragraphMeta = isMarkdownParagraph
+              ? markdownParagraphMeta[paragraph.id]
+              : undefined;
+            const isMediaLinksParagraph = paragraphMeta?.inMediaLinks || false;
             const normalizedMarkdownText = isMarkdownParagraph
-              ? normalizeMarkdownForReader(paragraph.text)
+              ? (normalizedMarkdownTexts[paragraph.id] || paragraph.text)
               : paragraph.text;
+            const translatableMarkdownText = isMarkdownParagraph
+              ? (
+                  isMultimediaMode
+                    ? sanitizeMarkdownForTranslation(paragraph.text, {
+                        inMediaLinks: isMediaLinksParagraph,
+                      })
+                    : paragraph.text
+                )
+              : paragraph.text;
+            const canTranslateMarkdownParagraph = Boolean(translatableMarkdownText.trim());
             const sentences = splitIntoSentences(paragraph.text);
             const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
             const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
@@ -1623,6 +2093,54 @@ export function ReaderContent() {
                                 {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `a-${paragraph.id}`)}
                               </a>
                             ),
+                            img: ({ src, alt }) => {
+                              if (!isMultimediaMode) {
+                                return (
+                                  <span
+                                    className="my-2 block text-sm italic"
+                                    style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                  >
+                                    {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
+                                  </span>
+                                );
+                              }
+
+                              if (isMediaLinksParagraph) {
+                                return (
+                                  <a
+                                    href={src}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="my-2 inline-flex max-w-full items-center gap-3 rounded-lg border p-2 no-underline"
+                                    style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}
+                                    onClick={(event) => openLinkInExternalBrowser(event, src)}
+                                  >
+                                    <img
+                                      src={src || ''}
+                                      alt={alt || 'Media thumbnail'}
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer"
+                                      className="h-16 w-24 shrink-0 rounded border object-cover"
+                                      style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
+                                    />
+                                    <span className="min-w-0 text-sm leading-5" style={{ color: currentTheme.foreground }}>
+                                      {alt || 'Open image'}
+                                    </span>
+                                  </a>
+                                );
+                              }
+
+                              return (
+                                <img
+                                  src={src || ''}
+                                  alt={alt || 'Article image'}
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                  className="my-4 max-h-[36rem] w-auto max-w-full rounded-lg border object-contain"
+                                  style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}
+                                />
+                              );
+                            },
                             table: ({ children }) => (
                               <div className="my-3 overflow-x-auto">
                                 <table className="min-w-full border text-left" style={{ borderColor: currentTheme.border }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `table-${paragraph.id}`)}</table>
@@ -1660,16 +2178,29 @@ export function ReaderContent() {
                                       {children}
                                     </a>
                                   ),
+                                  img: ({ alt }) => (
+                                    <span
+                                      className="my-1 block text-xs italic"
+                                      style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                    >
+                                      {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
+                                    </span>
+                                  ),
                                 }}
                               >
                                 {translations[markdownTranslationKey(paragraph.id)]}
                               </ReactMarkdown>
                             </div>
                           )
-                        ) : (
+                        ) : canTranslateMarkdownParagraph ? (
                           <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2 py-1`}>
                             <button
-                              onClick={() => void handleTranslateMarkdownParagraph(paragraph.id, paragraph.text)}
+                              onClick={() =>
+                                void handleTranslateMarkdownParagraph(
+                                  paragraph.id,
+                                  translatableMarkdownText
+                                )
+                              }
                               className="text-xs text-blue-600 hover:text-blue-800 underline"
                             >
                               {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
@@ -1680,7 +2211,7 @@ export function ReaderContent() {
                               </span>
                             )}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>

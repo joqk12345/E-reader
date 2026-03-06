@@ -53,6 +53,9 @@ export function Reader() {
   const [bilingualViewMode, setBilingualViewMode] = useState<'both' | 'source' | 'translation'>(
     () => loadReaderViewSettings(readerFontSize).bilingualViewMode
   );
+  const [markdownRenderMode, setMarkdownRenderMode] = useState<'text' | 'multimedia'>(
+    () => loadReaderViewSettings(readerFontSize).markdownRenderMode
+  );
   const [readingViewMenuOpen, setReadingViewMenuOpen] = useState(false);
   const [sourceLinkMenuOpen, setSourceLinkMenuOpen] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
@@ -321,6 +324,7 @@ export function Reader() {
     const refresh = () => {
       const settings = loadReaderViewSettings(readerFontSize);
       setBilingualViewMode(settings.bilingualViewMode);
+      setMarkdownRenderMode(settings.markdownRenderMode);
     };
     refresh();
     window.addEventListener('reader:view-settings-updated', refresh as EventListener);
@@ -374,6 +378,16 @@ export function Reader() {
       })
     );
     setBilingualViewMode(mode);
+    setReadingViewMenuOpen(false);
+  };
+
+  const setMarkdownRenderModeFromHeader = (mode: 'text' | 'multimedia') => {
+    window.dispatchEvent(
+      new CustomEvent('reader:set-markdown-render-mode', {
+        detail: { mode },
+      })
+    );
+    setMarkdownRenderMode(mode);
     setReadingViewMenuOpen(false);
   };
 
@@ -474,6 +488,29 @@ export function Reader() {
                 </button>
                 {readingViewMenuOpen && (
                   <div className="absolute left-0 top-11 z-40 min-w-[220px] rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
+                    <button
+                      onClick={() => setMarkdownRenderModeFromHeader('text')}
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                        markdownRenderMode === 'text'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Text Parse</span>
+                      <span>{markdownRenderMode === 'text' ? '✓' : ''}</span>
+                    </button>
+                    <button
+                      onClick={() => setMarkdownRenderModeFromHeader('multimedia')}
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                        markdownRenderMode === 'multimedia'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>Multimedia Parse</span>
+                      <span>{markdownRenderMode === 'multimedia' ? '✓' : ''}</span>
+                    </button>
+                    <div className="my-1 h-px bg-gray-200" />
                     <button
                       onClick={() => setBilingualModeFromHeader('source')}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
