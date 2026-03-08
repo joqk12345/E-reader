@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 
 ## 🆕 Recent Updates (2026-02)
 
+- **阅读理解工具链与术语表（2026-03-08）**:
+  - 选区浮层的理解类动作重构为：
+    - `Explain Simply`
+    - `With Context`
+    - `Term`
+    - `Takeaway`
+  - 右侧工具栏新增 `Understand` 面板：
+    - `Explain Simply` 输出白话解释 + 关键点
+    - `With Context` 会显示并利用邻近段落上下文
+    - `Term` 改为结构化术语分析（术语含义、为何重要、常用译法、概念标签）
+    - `Takeaway` 提炼为一句学习笔记
+  - `Term` 支持文内相关段落追踪：
+    - `Related Passages In This Document` 可点击跳转到对应 section / paragraph
+  - 新增本地术语表能力：
+    - 可将 `Common Renderings` pin 为当前文档的首选译法
+    - 首选译法与概念标签会反向注入后续 `Term` 分析，增强术语一致性
+  - 右侧工具栏新增独立 `Glossary` 面板：
+    - 浏览当前文档或全部文档的术语表条目
+    - 编辑 `Preferred Rendering`
+    - 编辑 `Concept Tags`
+    - 删除单条术语或清空当前 scope
+  - 新增共享术语表存储模块，统一本地持久化与跨面板同步事件
+
 - **AI Profiles 三层配置重构与稳定性修复（2026-03-01）**:
   - 设置页 `AI & Embedding` 升级为三页结构：`Providers / Models / Agents`
   - 新增后端命令：

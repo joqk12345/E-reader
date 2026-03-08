@@ -8,8 +8,10 @@ import { ChatPanel } from './ChatPanel';
 import { NotesPanel } from './NotesPanel';
 import { AnnotationPanel } from './AnnotationPanel';
 import { DictPanel } from './DictPanel';
+import { UnderstandPanel, type UnderstandMode } from './UnderstandPanel';
+import { GlossaryPanel } from './GlossaryPanel';
 
-type Tab = 'search' | 'summary' | 'translate' | 'deep' | 'chat' | 'notes' | 'annotations' | 'dict' | 'audiobook';
+type Tab = 'search' | 'summary' | 'understand' | 'glossary' | 'translate' | 'deep' | 'chat' | 'notes' | 'annotations' | 'dict' | 'audiobook';
 
 type ExplainEventDetail = {
   selectedText?: string;
@@ -33,6 +35,13 @@ type ChatQuestionEventDetail = {
 
 type DictOpenEventDetail = {
   mode?: 'dict' | 'sentence';
+  selectedText?: string;
+  sentence?: string;
+  paragraphId?: string;
+};
+
+type UnderstandOpenEventDetail = {
+  mode?: UnderstandMode;
   selectedText?: string;
   sentence?: string;
   paragraphId?: string;
@@ -76,11 +85,20 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     sentence: string;
     paragraphId?: string;
   } | null>(null);
+  const [understandRequest, setUnderstandRequest] = useState<{
+    id: number;
+    mode: UnderstandMode;
+    selectedText: string;
+    sentence: string;
+    paragraphId?: string;
+  } | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'search', label: 'Search', icon: '🔍' },
     { key: 'summary', label: 'Summary', icon: '📝' },
+    { key: 'understand', label: 'Understand', icon: '💡' },
+    { key: 'glossary', label: 'Glossary', icon: '🏷️' },
     { key: 'dict', label: 'Dict', icon: '📘' },
     { key: 'translate', label: 'Translate', icon: '🌐' },
     { key: 'deep', label: 'Deep', icon: '🧠' },
@@ -211,6 +229,32 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       }
     };
 
+    const onOpenUnderstand = (event: Event) => {
+      const customEvent = event as CustomEvent<UnderstandOpenEventDetail>;
+      const selectedText = customEvent.detail?.selectedText?.trim();
+      if (!selectedText) return;
+      const sentence = customEvent.detail?.sentence?.trim() || selectedText;
+      const mode = customEvent.detail?.mode || 'simple';
+      setActiveTab('understand');
+      setUnderstandRequest({
+        id: Date.now(),
+        mode,
+        selectedText,
+        sentence,
+        paragraphId: customEvent.detail?.paragraphId,
+      });
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    const onOpenGlossary = (_event: Event) => {
+      setActiveTab('glossary');
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
     window.addEventListener('reader:chat-explain', onExplain as EventListener);
     window.addEventListener('reader:take-note', onTakeNote as EventListener);
     window.addEventListener('reader:translate-selection', onTranslateSelection as EventListener);
@@ -218,6 +262,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     window.addEventListener('reader:open-search', onOpenSearch as EventListener);
     window.addEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
     window.addEventListener('reader:open-dict', onOpenDict as EventListener);
+    window.addEventListener('reader:open-understand', onOpenUnderstand as EventListener);
+    window.addEventListener('reader:open-glossary', onOpenGlossary as EventListener);
     return () => {
       window.removeEventListener('reader:chat-explain', onExplain as EventListener);
       window.removeEventListener('reader:take-note', onTakeNote as EventListener);
@@ -226,6 +272,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       window.removeEventListener('reader:open-search', onOpenSearch as EventListener);
       window.removeEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
       window.removeEventListener('reader:open-dict', onOpenDict as EventListener);
+      window.removeEventListener('reader:open-understand', onOpenUnderstand as EventListener);
+      window.removeEventListener('reader:open-glossary', onOpenGlossary as EventListener);
     };
   }, [collapsed, onToggleCollapse]);
 
@@ -324,6 +372,8 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           <div className={activeTab === 'audiobook' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto'}>
             <div className={activeTab === 'search' ? '' : 'hidden'}><SearchPanel /></div>
             <div className={activeTab === 'summary' ? '' : 'hidden'}><SummaryPanel /></div>
+            <div className={activeTab === 'understand' ? '' : 'hidden'}><UnderstandPanel request={understandRequest} /></div>
+            <div className={activeTab === 'glossary' ? '' : 'hidden'}><GlossaryPanel /></div>
             <div className={activeTab === 'translate' ? '' : 'hidden'}><TranslatePanel request={translateRequest} /></div>
             <div className={activeTab === 'deep' ? '' : 'hidden'}><DeepAnalysisPanel /></div>
             <div className={activeTab === 'chat' ? '' : 'hidden'}><ChatPanel request={chatRequest} /></div>

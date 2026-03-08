@@ -32,27 +32,29 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'ask' | 'play' | 'explain' | 'dict' | 'sentence' | 'copy' | 'share' | 'highlight' | 'note';
+type SelectionAction = 'simple' | 'context' | 'term' | 'takeaway' | 'ask' | 'play' | 'copy' | 'share' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['ask', 'play', 'explain', 'dict', 'sentence', 'copy', 'share', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['simple', 'context', 'term', 'takeaway', 'ask', 'play', 'copy', 'share', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
+  simple: 'Explain Simply',
+  context: 'With Context',
+  term: 'Term',
+  takeaway: 'Takeaway',
   ask: 'Ask',
   play: 'Read Aloud',
-  explain: 'Explain',
-  dict: 'Dict',
-  sentence: 'Sentence',
   copy: 'Copy',
   share: 'Share to X',
   highlight: 'Highlight',
   note: 'Take Note',
 };
 const selectionActionIcon: Record<SelectionAction, string> = {
+  simple: '⌕',
+  context: '⊹',
+  term: '◉',
+  takeaway: '≡',
   ask: '✦',
   play: '▶',
-  explain: '⌕',
-  dict: '📘',
-  sentence: '∑',
   copy: '⧉',
   share: '↗',
   highlight: '＿',
@@ -202,8 +204,8 @@ type AudiobookStartEventDetail = {
   paragraphId?: string;
 };
 
-type DictRequestEventDetail = {
-  mode: 'dict' | 'sentence';
+type UnderstandRequestEventDetail = {
+  mode: 'simple' | 'context' | 'term' | 'takeaway';
   selectedText: string;
   sentence: string;
   paragraphId?: string;
@@ -1576,16 +1578,6 @@ export function ReaderContent() {
     }
   };
 
-  const handleExplainSelection = () => {
-    if (!selectionDraft?.selectedText?.trim()) return;
-    window.dispatchEvent(
-      new CustomEvent<{ selectedText: string }>('reader:chat-explain', {
-        detail: { selectedText: selectionDraft.selectedText.trim() },
-      })
-    );
-    clearSelectionDraft();
-  };
-
   const handleSaveNoteSelection = () => {
     if (!selectionDraft?.selectedText?.trim()) return;
     window.dispatchEvent(
@@ -1614,12 +1606,12 @@ export function ReaderContent() {
     return match || sentenceList[0] || source || selectedText;
   };
 
-  const openDictPanel = (mode: 'dict' | 'sentence') => {
+  const openUnderstandPanel = (mode: 'simple' | 'context' | 'term' | 'takeaway') => {
     if (!selectionDraft?.selectedText?.trim()) return;
     const selectedText = selectionDraft.selectedText.trim();
     const sentence = getSentenceForSelection(selectionDraft.paragraphId, selectedText);
     window.dispatchEvent(
-      new CustomEvent<DictRequestEventDetail>('reader:open-dict', {
+      new CustomEvent<UnderstandRequestEventDetail>('reader:open-understand', {
         detail: {
           mode,
           selectedText,
@@ -1717,24 +1709,28 @@ export function ReaderContent() {
 
   const handleSelectionAction = (action: SelectionAction) => {
     if (!selectionDraft) return;
+    if (action === 'simple') {
+      openUnderstandPanel('simple');
+      return;
+    }
+    if (action === 'context') {
+      openUnderstandPanel('context');
+      return;
+    }
+    if (action === 'term') {
+      openUnderstandPanel('term');
+      return;
+    }
+    if (action === 'takeaway') {
+      openUnderstandPanel('takeaway');
+      return;
+    }
     if (action === 'ask') {
       setIsQuestionInputExpanded(true);
       return;
     }
     if (action === 'play') {
       setTtsConfirmParagraphId(selectionDraft.paragraphId);
-      return;
-    }
-    if (action === 'explain') {
-      handleExplainSelection();
-      return;
-    }
-    if (action === 'dict') {
-      openDictPanel('dict');
-      return;
-    }
-    if (action === 'sentence') {
-      openDictPanel('sentence');
       return;
     }
     if (action === 'copy') {
