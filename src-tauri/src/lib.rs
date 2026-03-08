@@ -29,7 +29,9 @@ use commands::{
     test_model_profile, test_provider_profile, translate, tts_synthesize, update_config,
     upsert_embeddings_batch, validate_local_embedding_model_path,
 };
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::Menu;
+#[cfg(target_os = "macos")]
+use tauri::menu::{MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
 #[cfg(target_os = "macos")]
