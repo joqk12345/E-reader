@@ -5,6 +5,7 @@ pub mod embeddings;
 pub mod paragraphs;
 mod schema;
 mod sections;
+mod tags;
 
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
@@ -24,6 +25,15 @@ pub use documents::{
 pub use sections::SectionError;
 pub use sections::{
     get as get_section, insert as insert_section, list_by_document as list_sections,
+};
+pub use tags::TagError;
+pub use tags::{
+    add_tag_alias, apply_document_tags, cleanup_unused_tags, clear_pending_suggestions_for_doc,
+    ensure_tag, get_related_documents_by_tags, insert_tag_suggestion, list_batch_tag_review_items,
+    list_document_tags, list_tag_facets, list_tag_library, list_tag_suggestions, merge_tags,
+    normalize_tag_name, promote_temporary_tag, remove_document_tag, remove_tag_alias, rename_tag,
+    resolve_tag_by_name, review_tag_suggestions, NewTagSuggestion, ReviewTagSuggestionAction,
+    ReviewTagSuggestionResult,
 };
 
 // Paragraph operations
@@ -95,6 +105,18 @@ impl From<DocumentError> for crate::ReaderError {
 impl From<SectionError> for crate::ReaderError {
     fn from(err: SectionError) -> Self {
         crate::ReaderError::Internal(err.to_string())
+    }
+}
+
+impl From<TagError> for crate::ReaderError {
+    fn from(err: TagError) -> Self {
+        match err {
+            TagError::EmptyName
+            | TagError::Conflict(_)
+            | TagError::NotFound
+            | TagError::SuggestionNotFound => crate::ReaderError::InvalidArgument(err.to_string()),
+            TagError::DatabaseError(inner) => crate::ReaderError::Database(inner),
+        }
     }
 }
 

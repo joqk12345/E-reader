@@ -10,8 +10,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::{Hash, Hasher};
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 pub struct PdfParser {
@@ -41,8 +41,7 @@ impl PdfParser {
 
         if let Ok(file) = FileOptions::cached().open(&self.file_path) {
             if let Some(ref info) = file.trailer.info_dict {
-                if let Some(meta_title) = info.get("Title").and_then(|p| p.to_string_lossy().ok())
-                {
+                if let Some(meta_title) = info.get("Title").and_then(|p| p.to_string_lossy().ok()) {
                     let trimmed = meta_title.trim();
                     if !trimmed.is_empty() {
                         title = trimmed.to_string();
@@ -123,7 +122,9 @@ impl PdfParser {
                 let mut inline_image_index = 0usize;
                 for op in ops {
                     match op {
-                        Op::TextDraw { text } => append_text_fragment(&mut current_line, text.to_string_lossy()),
+                        Op::TextDraw { text } => {
+                            append_text_fragment(&mut current_line, text.to_string_lossy())
+                        }
                         Op::TextDrawAdjusted { array } => {
                             for part in array {
                                 if let TextDrawAdjusted::Text(text) = part {
@@ -228,9 +229,7 @@ fn normalize_whitespace(input: &str) -> String {
         .replace('\t', " ")
         .replace('\r', " ")
         .replace('\n', " ");
-    repair_garbled_pdf_text(&normalized)
-        .trim()
-        .to_string()
+    repair_garbled_pdf_text(&normalized).trim().to_string()
 }
 
 fn repair_garbled_pdf_text(input: &str) -> String {
@@ -271,7 +270,10 @@ fn looks_like_shifted_spaced_text(input: &str) -> bool {
         return false;
     }
 
-    let one_char_tokens = tokens.iter().filter(|token| token.chars().count() == 1).count();
+    let one_char_tokens = tokens
+        .iter()
+        .filter(|token| token.chars().count() == 1)
+        .count();
     if one_char_tokens * 100 < tokens.len() * 70 {
         return false;
     }
@@ -524,7 +526,9 @@ fn normalize_pdf_paragraph_text(text: &str) -> String {
             tokens.splice(i..=i + 1, [merged]);
             continue;
         }
-        if i + 2 < tokens.len() && should_merge_three_broken_tokens(&tokens[i], &tokens[i + 1], &tokens[i + 2]) {
+        if i + 2 < tokens.len()
+            && should_merge_three_broken_tokens(&tokens[i], &tokens[i + 1], &tokens[i + 2])
+        {
             let merged = format!("{}{}{}", tokens[i], tokens[i + 1], tokens[i + 2]);
             tokens.splice(i..=i + 2, [merged]);
             continue;
@@ -574,8 +578,7 @@ fn is_ascii_alpha_word(word: &str) -> bool {
 fn is_common_short_word(word: &str) -> bool {
     matches!(
         word.to_ascii_lowercase().as_str(),
-        "a"
-            | "an"
+        "a" | "an"
             | "and"
             | "as"
             | "at"
@@ -714,7 +717,11 @@ fn extract_page_image_markers_with_pdfimages(
     Some(result)
 }
 
-fn render_page_snapshot_marker(pdf_path: &str, page_number: usize, output_dir: &Path) -> Option<String> {
+fn render_page_snapshot_marker(
+    pdf_path: &str,
+    page_number: usize,
+    output_dir: &Path,
+) -> Option<String> {
     let prefix = output_dir.join(format!("page_{:04}", page_number));
     let prefix_string = prefix.to_string_lossy().to_string();
     let page_number_string = page_number.to_string();
@@ -836,24 +843,25 @@ fn needs_page_visual_fallback(lines: &[String]) -> bool {
         let replacement = trimmed.chars().filter(|&c| c == '�').count();
         let math_symbols = trimmed
             .chars()
-            .filter(|c| matches!(
-                c,
-                '='
-                    | '+'
-                    | '-'
-                    | '*'
-                    | '/'
-                    | '^'
-                    | '_'
-                    | '∑'
-                    | '∫'
-                    | '√'
-                    | '≈'
-                    | '≠'
-                    | '≤'
-                    | '≥'
-                    | '∞'
-            ))
+            .filter(|c| {
+                matches!(
+                    c,
+                    '=' | '+'
+                        | '-'
+                        | '*'
+                        | '/'
+                        | '^'
+                        | '_'
+                        | '∑'
+                        | '∫'
+                        | '√'
+                        | '≈'
+                        | '≠'
+                        | '≤'
+                        | '≥'
+                        | '∞'
+                )
+            })
             .count();
         if replacement > 0 || math_symbols >= 6 {
             has_formula_noise = true;
@@ -991,8 +999,7 @@ fn is_repeated_edge_noise(
 }
 
 fn is_pdf_image_marker(line: &str) -> bool {
-    line.starts_with(PDF_IMAGE_MARKER_PREFIX) && line.ends_with("]]"
-    )
+    line.starts_with(PDF_IMAGE_MARKER_PREFIX) && line.ends_with("]]")
 }
 
 fn is_tabular_line(line: &str) -> bool {
@@ -1066,13 +1073,9 @@ fn collect_page_image_markers<R: Resolve>(
         };
         match &*xobject {
             XObject::Image(image) => {
-                if let Some(marker) = build_image_marker(
-                    file,
-                    image,
-                    page_label.clone(),
-                    obj_name,
-                    output_dir,
-                ) {
+                if let Some(marker) =
+                    build_image_marker(file, image, page_label.clone(), obj_name, output_dir)
+                {
                     markers.insert(obj_name.to_string(), vec![marker]);
                 }
             }
@@ -1236,10 +1239,7 @@ fn encode_pdf_image_png(image: &ImageXObject, pixels: &[u8]) -> Option<Vec<u8>> 
         return None;
     }
     let bpc = image.bits_per_component.unwrap_or(8);
-    let color_space = image
-        .color_space
-        .as_ref()
-        .unwrap_or(&ColorSpace::DeviceRGB);
+    let color_space = image.color_space.as_ref().unwrap_or(&ColorSpace::DeviceRGB);
 
     let (buffer, color): (Vec<u8>, ColorType) = match (color_space, bpc) {
         (ColorSpace::DeviceRGB, 8) => {
@@ -1292,8 +1292,8 @@ fn expand_mono_bitmap(input: &[u8], target_pixels: usize) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{
-        append_pdf_line_to_paragraph, collapse_spaced_uppercase_letters, normalize_pdf_paragraph_text,
-        normalize_whitespace, PdfParser,
+        append_pdf_line_to_paragraph, collapse_spaced_uppercase_letters,
+        normalize_pdf_paragraph_text, normalize_whitespace, PdfParser,
     };
 
     #[test]
@@ -1350,12 +1350,16 @@ mod tests {
     fn normalize_split_words_in_paragraph() {
         let input = "1 Intr oduction The de v elopment of Lar ge Language Models";
         let fixed = normalize_pdf_paragraph_text(input);
-        assert_eq!(fixed, "1 Introduction The development of Large Language Models");
+        assert_eq!(
+            fixed,
+            "1 Introduction The development of Large Language Models"
+        );
     }
 
     #[test]
     fn decode_shifted_spaced_pdf_text() {
-        let input = "3 U H I D F H , Q \u{0003} W K H \u{0003} Y L E U D Q W \u{0003} V W U H H W V";
+        let input =
+            "3 U H I D F H , Q \u{0003} W K H \u{0003} Y L E U D Q W \u{0003} V W U H H W V";
         let fixed = normalize_whitespace(input);
         assert_eq!(fixed, "PrefaceIn the vibrant streets");
     }

@@ -205,7 +205,9 @@ impl AiProfiles {
     }
 
     pub fn has_provider_type(&self, provider_type: ProviderType) -> bool {
-        self.providers.iter().any(|p| p.provider_type == provider_type)
+        self.providers
+            .iter()
+            .any(|p| p.provider_type == provider_type)
     }
 }
 
@@ -390,7 +392,11 @@ fn default_keymap_next_page() -> Vec<String> {
 }
 
 fn default_keymap_prev_page() -> Vec<String> {
-    vec!["PageUp".to_string(), "Shift+Space".to_string(), "K".to_string()]
+    vec![
+        "PageUp".to_string(),
+        "Shift+Space".to_string(),
+        "K".to_string(),
+    ]
 }
 
 fn default_keymap_open_settings() -> Vec<String> {
@@ -649,10 +655,7 @@ fn ensure_quickstart_default_providers(config: &mut Config) -> bool {
     let mut changed = false;
     let now = now_ts();
 
-    if !config
-        .ai_profiles
-        .has_provider_type(ProviderType::LmStudio)
-    {
+    if !config.ai_profiles.has_provider_type(ProviderType::LmStudio) {
         config.ai_profiles.providers.push(ProviderProfile {
             id: Uuid::new_v4().to_string(),
             display_name: "LM Studio".to_string(),

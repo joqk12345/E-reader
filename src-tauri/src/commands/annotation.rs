@@ -72,13 +72,8 @@ pub async fn create_annotation(
     });
 
     let conn = database::get_connection(&app_handle)?;
-    let created = database::insert_annotation(
-        &conn,
-        &paragraph_id,
-        &text,
-        &style,
-        cleaned_note.as_deref(),
-    )?;
+    let created =
+        database::insert_annotation(&conn, &paragraph_id, &text, &style, cleaned_note.as_deref())?;
     Ok(AnnotationOutput {
         id: created.id,
         paragraph_id: created.paragraph_id,

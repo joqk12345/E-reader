@@ -10,8 +10,9 @@ import { AnnotationPanel } from './AnnotationPanel';
 import { DictPanel } from './DictPanel';
 import { UnderstandPanel, type UnderstandMode } from './UnderstandPanel';
 import { GlossaryPanel } from './GlossaryPanel';
+import { TagsPanel } from './TagsPanel';
 
-type Tab = 'search' | 'summary' | 'understand' | 'glossary' | 'translate' | 'deep' | 'chat' | 'notes' | 'annotations' | 'dict' | 'audiobook';
+type Tab = 'search' | 'summary' | 'understand' | 'glossary' | 'tags' | 'translate' | 'deep' | 'chat' | 'notes' | 'annotations' | 'dict' | 'audiobook';
 
 type ExplainEventDetail = {
   selectedText?: string;
@@ -99,6 +100,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     { key: 'summary', label: 'Summary', icon: '📝' },
     { key: 'understand', label: 'Understand', icon: '💡' },
     { key: 'glossary', label: 'Glossary', icon: '🏷️' },
+    { key: 'tags', label: 'Tags', icon: '#️⃣' },
     { key: 'dict', label: 'Dict', icon: '📘' },
     { key: 'translate', label: 'Translate', icon: '🌐' },
     { key: 'deep', label: 'Deep', icon: '🧠' },
@@ -374,6 +376,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             <div className={activeTab === 'summary' ? '' : 'hidden'}><SummaryPanel /></div>
             <div className={activeTab === 'understand' ? '' : 'hidden'}><UnderstandPanel request={understandRequest} /></div>
             <div className={activeTab === 'glossary' ? '' : 'hidden'}><GlossaryPanel /></div>
+            <div className={activeTab === 'tags' ? '' : 'hidden'}><TagsPanel /></div>
             <div className={activeTab === 'translate' ? '' : 'hidden'}><TranslatePanel request={translateRequest} /></div>
             <div className={activeTab === 'deep' ? '' : 'hidden'}><DeepAnalysisPanel /></div>
             <div className={activeTab === 'chat' ? '' : 'hidden'}><ChatPanel request={chatRequest} /></div>

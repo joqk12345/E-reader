@@ -166,9 +166,10 @@ impl AiClient for OpenAiClient {
                     .map_err(|e| ReaderError::ModelApi(format!("Failed to send request: {}", e)))?;
 
                 if fallback_response.status().is_success() {
-                    let chat_response: ChatResponse = fallback_response.json().await.map_err(|e| {
-                        ReaderError::ModelApi(format!("Failed to parse response: {}", e))
-                    })?;
+                    let chat_response: ChatResponse =
+                        fallback_response.json().await.map_err(|e| {
+                            ReaderError::ModelApi(format!("Failed to parse response: {}", e))
+                        })?;
 
                     if chat_response.choices.is_empty() {
                         return Err(ReaderError::ModelApi("No choices in response".to_string()));

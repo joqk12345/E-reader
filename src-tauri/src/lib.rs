@@ -12,21 +12,22 @@ mod search;
 pub use error::{ReaderError, Result};
 
 use commands::{
-    chat_with_context,
-    clear_embeddings_by_profile, create_annotation, delete_annotation, delete_document,
-    delete_model_profile, delete_provider_profile,
-    deep_analyze, download_embedding_model_files, fetch_url_html, get_config, get_document,
-    get_ai_profiles,
-    get_document_paragraphs, get_document_sections, get_embedding_profile_status,
-    get_document_previews, get_document_source_url, get_paragraph_context, get_section_paragraphs,
-    get_summary_cache, import_epub, import_markdown, import_markdown_content, import_pdf,
-    import_url, index_document, list_annotations, list_documents, list_tts_voices,
-    get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled, search, search_by_embedding, summarize,
-    resolve_agent_runtime,
-    save_agent_config, save_model_profile, save_provider_profile,
-    test_model_profile, test_provider_profile,
-    translate, tts_synthesize, update_config, test_model_connection, get_update_target, upsert_embeddings_batch,
-    validate_local_embedding_model_path,
+    add_tag_alias, apply_document_tags, chat_with_context, cleanup_unused_tags,
+    clear_embeddings_by_profile, create_annotation, deep_analyze, delete_annotation,
+    delete_document, delete_model_profile, delete_provider_profile, download_embedding_model_files,
+    fetch_url_html, get_ai_profiles, get_config, get_document, get_document_paragraphs,
+    get_document_previews, get_document_sections, get_document_source_url,
+    get_embedding_profile_status, get_mcp_status, get_paragraph_context,
+    get_related_documents_by_tags, get_section_paragraphs, get_summary_cache, get_update_target,
+    import_epub, import_markdown, import_markdown_content, import_pdf, import_url, index_document,
+    install_cli_shell_command, list_annotations, list_batch_tag_review_items, list_document_tags,
+    list_documents, list_tag_facets, list_tag_library, list_tag_suggestions, list_tts_voices,
+    mcp_request, merge_tags, promote_temporary_tag, remove_document_tag, remove_tag_alias,
+    rename_tag, resolve_agent_runtime, review_tag_suggestions, save_agent_config,
+    save_model_profile, save_provider_profile, search, search_by_embedding, set_mcp_reader_enabled,
+    suggest_document_tags, suggest_tags_for_documents, summarize, test_model_connection,
+    test_model_profile, test_provider_profile, translate, tts_synthesize, update_config,
+    upsert_embeddings_batch, validate_local_embedding_model_path,
 };
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
@@ -105,7 +106,10 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
     )?;
     let help_menu = Submenu::with_items(app, "Help", true, &[&install_cli_item])?;
 
-    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &window_menu, &help_menu])
+    Menu::with_items(
+        app,
+        &[&app_menu, &file_menu, &edit_menu, &window_menu, &help_menu],
+    )
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -158,6 +162,23 @@ pub fn run() {
             get_document,
             get_document_source_url,
             delete_document,
+            list_document_tags,
+            list_tag_library,
+            list_tag_facets,
+            list_tag_suggestions,
+            list_batch_tag_review_items,
+            get_related_documents_by_tags,
+            apply_document_tags,
+            remove_document_tag,
+            suggest_document_tags,
+            suggest_tags_for_documents,
+            review_tag_suggestions,
+            rename_tag,
+            merge_tags,
+            add_tag_alias,
+            remove_tag_alias,
+            promote_temporary_tag,
+            cleanup_unused_tags,
             get_document_sections,
             get_section_paragraphs,
             index_document,

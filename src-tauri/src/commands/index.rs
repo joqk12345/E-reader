@@ -63,7 +63,9 @@ pub async fn index_document(app_handle: AppHandle, doc_id: String) -> Result<usi
                 // No embedding exists, generate one
                 info!("Generating embedding for paragraph {}", paragraph.id);
 
-                match embedding_with_agent_slot(&config, AgentSlot::Embedding, &paragraph.text).await {
+                match embedding_with_agent_slot(&config, AgentSlot::Embedding, &paragraph.text)
+                    .await
+                {
                     Ok(embedding_vector) => {
                         // Store the embedding
                         match insert_embedding(

@@ -515,7 +515,9 @@ async fn synthesize_cosyvoice(
             let audio = response
                 .bytes()
                 .await
-                .map_err(|e| ReaderError::ModelApi(format!("CosyVoice audio decode failed: {}", e)))?
+                .map_err(|e| {
+                    ReaderError::ModelApi(format!("CosyVoice audio decode failed: {}", e))
+                })?
                 .to_vec();
 
             return Ok(TtsAudio {
@@ -532,7 +534,10 @@ async fn synthesize_cosyvoice(
             last_error = detail;
             continue;
         }
-        return Err(ReaderError::ModelApi(format!("CosyVoice returned {}", detail)));
+        return Err(ReaderError::ModelApi(format!(
+            "CosyVoice returned {}",
+            detail
+        )));
     }
 
     Err(ReaderError::ModelApi(format!(

@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## 🆕 Recent Updates (2026-02)
 
+- **文档标签系统与批量标签工作流（2026-03-09）**:
+  - 新增完整标签基础设施：
+    - 数据库新增 `tags`、`tag_aliases`、`document_tags`、`tag_suggestions` 表及相关索引
+    - Tauri 后端新增标签命令与类型导出，支持标签、别名、文档绑定、建议审核与关联文档查询
+  - Library 升级为真实标签驱动：
+    - 左侧新增标签分面筛选，支持 `Any / All` 匹配
+    - 文档卡片改为展示已应用标签，而非本地静态规则推断
+    - 删除文档后会同步刷新标签数据
+  - 新增 `Batch Tags` 工作流：
+    - 支持按当前结果集、日期范围、文档搜索与标签条件批量筛选文档
+    - 支持批量应用已有标签
+    - 支持批量生成 AI 标签建议，并集中审核 `Accept / Create Temp / Map / Reject`
+    - 批量预览中可直接替换或移除单文档标签
+  - 新增 `Tag Library` 管理界面：
+    - 支持搜索标签/别名
+    - 支持 `Rename`、`Merge`、`Add Alias`
+    - 临时标签可一键 `Promote`
+    - 支持清理未使用标签
+  - 右侧工具栏新增独立 `Tags` 面板：
+    - 查看当前文档已打标签与待审核建议
+    - 支持手动打标签、应用已有标签、刷新 AI 推荐
+    - 支持接受匹配建议、映射到既有标签或创建临时标签
+    - 支持按共享标签发现 `Related Documents` 并跳转
+
 - **阅读理解工具链与术语表（2026-03-08）**:
   - 选区浮层的理解类动作重构为：
     - `Explain Simply`

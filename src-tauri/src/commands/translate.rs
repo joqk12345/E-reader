@@ -504,7 +504,8 @@ pub async fn deep_analyze(
     ];
 
     let config = load_config()?;
-    let analysis = chat_with_agent_slot(&config, AgentSlot::DeepAnalyze, messages, 0.3, 3600).await?;
+    let analysis =
+        chat_with_agent_slot(&config, AgentSlot::DeepAnalyze, messages, 0.3, 3600).await?;
 
     let conn = get_connection(&app_handle)?;
     save_summary(&conn, &target_id, &target_type, analysis_style, &analysis)?;
@@ -552,7 +553,10 @@ pub async fn chat_with_context(
         use crate::database::list_paragraphs_by_section;
         let paragraphs = list_paragraphs_by_section(&conn, sid)?;
         if paragraphs.is_empty() {
-            return Err(ReaderError::NotFound(format!("Section {} has no content", sid)));
+            return Err(ReaderError::NotFound(format!(
+                "Section {} has no content",
+                sid
+            )));
         }
         let text = paragraphs
             .iter()
@@ -564,7 +568,10 @@ pub async fn chat_with_context(
         use crate::database::list_paragraphs;
         let paragraphs = list_paragraphs(&conn, did)?;
         if paragraphs.is_empty() {
-            return Err(ReaderError::NotFound(format!("Document {} has no content", did)));
+            return Err(ReaderError::NotFound(format!(
+                "Document {} has no content",
+                did
+            )));
         }
         let text = paragraphs
             .iter()
@@ -578,7 +585,10 @@ pub async fn chat_with_context(
     };
 
     let max_context_chars = 24_000;
-    let trimmed_context = context_text.chars().take(max_context_chars).collect::<String>();
+    let trimmed_context = context_text
+        .chars()
+        .take(max_context_chars)
+        .collect::<String>();
 
     let mut messages = vec![
         ChatMessage {
@@ -595,7 +605,14 @@ pub async fn chat_with_context(
     ];
 
     if let Some(hist) = history {
-        for turn in hist.into_iter().rev().take(8).collect::<Vec<_>>().into_iter().rev() {
+        for turn in hist
+            .into_iter()
+            .rev()
+            .take(8)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+        {
             let role = turn.role.to_lowercase();
             if !matches!(role.as_str(), "user" | "assistant") {
                 continue;

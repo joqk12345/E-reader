@@ -59,7 +59,8 @@ pub async fn get_mcp_status(check_connection: Option<bool>) -> Result<McpStatus>
     let config_exists = config_path.exists();
     let launcher_exists = launcher_path.exists();
 
-    let (reader_configured, configured_command, configured_args) = read_reader_server_config(&config_path);
+    let (reader_configured, configured_command, configured_args) =
+        read_reader_server_config(&config_path);
     let tool_names = read_tool_names(&tools_path);
     let resource_uris = read_resource_uris(&tools_path);
     let tools_available = tool_names.len();
@@ -239,7 +240,10 @@ fn ensure_dir_in_path_for_zsh(dir: &Path) -> Result<(bool, Option<String>)> {
 fn resolve_mcp_paths() -> McpPaths {
     let project_root = detect_project_root();
     let config_path = detect_config_path(&project_root);
-    let launcher_path = project_root.join("mcp-server").join("bin").join("reader-mcp-server.sh");
+    let launcher_path = project_root
+        .join("mcp-server")
+        .join("bin")
+        .join("reader-mcp-server.sh");
     let tools_path = project_root
         .join("mcp-server")
         .join("src")
@@ -453,7 +457,11 @@ fn count_connected_clients(project_root: &Path) -> Option<usize> {
     Some(count)
 }
 
-fn upsert_reader_server_entry(config_path: &Path, launcher_path: &Path, enabled: bool) -> Result<()> {
+fn upsert_reader_server_entry(
+    config_path: &Path,
+    launcher_path: &Path,
+    enabled: bool,
+) -> Result<()> {
     let root_value = if config_path.exists() {
         let raw = std::fs::read_to_string(config_path)?;
         serde_json::from_str::<Value>(&raw).unwrap_or_else(|_| Value::Object(Map::new()))
@@ -498,8 +506,9 @@ fn upsert_reader_server_entry(config_path: &Path, launcher_path: &Path, enabled:
     }
 
     root_obj.insert("mcpServers".to_string(), Value::Object(servers_obj));
-    let output = serde_json::to_string_pretty(&Value::Object(root_obj))
-        .map_err(|error| crate::ReaderError::Internal(format!("Failed to serialize .mcp.json: {error}")))?;
+    let output = serde_json::to_string_pretty(&Value::Object(root_obj)).map_err(|error| {
+        crate::ReaderError::Internal(format!("Failed to serialize .mcp.json: {error}"))
+    })?;
 
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -586,7 +595,10 @@ async fn probe_reader_server(
         let detail = if stderr.is_empty() {
             format!("process exited with status {}", output.status)
         } else {
-            format!("process exited with status {}; stderr: {stderr}", output.status)
+            format!(
+                "process exited with status {}; stderr: {stderr}",
+                output.status
+            )
         };
         return Err(detail);
     }
@@ -642,18 +654,16 @@ fn parse_mcp_messages(stdout: &str) -> Vec<Value> {
             Err(_) => break,
         };
 
-        let content_length = header_text
-            .split('\n')
-            .find_map(|line| {
-                let trimmed = line.trim();
-                if trimmed.to_ascii_lowercase().starts_with("content-length:") {
-                    trimmed
-                        .split_once(':')
-                        .and_then(|(_, rhs)| rhs.trim().parse::<usize>().ok())
-                } else {
-                    None
-                }
-            });
+        let content_length = header_text.split('\n').find_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.to_ascii_lowercase().starts_with("content-length:") {
+                trimmed
+                    .split_once(':')
+                    .and_then(|(_, rhs)| rhs.trim().parse::<usize>().ok())
+            } else {
+                None
+            }
+        });
         let Some(content_length) = content_length else {
             break;
         };

@@ -4,8 +4,10 @@ use tracing::info;
 /// Creates all tables and indexes for the reader database
 ///
 /// This function sets up the complete database schema including:
-/// - 6 tables: documents, sections, paragraphs, embeddings, cache_summaries, cache_translations
-/// - 3 indexes for performance optimization
+/// - core content tables
+/// - cache and embedding tables
+/// - tag system tables
+/// - indexes for performance optimization
 /// - Foreign key constraints with CASCADE deletes
 pub fn create_tables(conn: &Connection) -> Result<()> {
     info!("Creating database schema");
@@ -174,6 +176,58 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS tags (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            normalized_name TEXT NOT NULL UNIQUE,
+            is_temporary INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS tag_aliases (
+            id TEXT PRIMARY KEY,
+            tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            alias TEXT NOT NULL,
+            normalized_alias TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS document_tags (
+            doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            source TEXT NOT NULL,
+            applied_at INTEGER NOT NULL,
+            PRIMARY KEY (doc_id, tag_id)
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS tag_suggestions (
+            id TEXT PRIMARY KEY,
+            doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            proposed_name TEXT NOT NULL,
+            normalized_name TEXT NOT NULL,
+            matched_tag_id TEXT REFERENCES tags(id) ON DELETE SET NULL,
+            source TEXT NOT NULL,
+            status TEXT NOT NULL,
+            reason TEXT,
+            confidence REAL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )?;
+
     // Create indexes for performance (only 3 indexes as per spec)
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_sections_doc_id ON sections(doc_id)",
@@ -207,6 +261,26 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_annotations_paragraph_id ON annotations(paragraph_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_document_tags_tag_id ON document_tags(tag_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tag_aliases_tag_id ON tag_aliases(tag_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tag_suggestions_doc_id_status ON tag_suggestions(doc_id, status)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tag_suggestions_match_status ON tag_suggestions(matched_tag_id, status)",
         [],
     )?;
 

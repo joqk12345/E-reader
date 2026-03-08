@@ -46,11 +46,9 @@ pub async fn import_url(app_handle: AppHandle, url: String) -> Result<String> {
         .build()
         .map_err(|e| ReaderError::ModelApi(format!("Failed to create HTTP client: {}", e)))?;
 
-    let response = client
-        .get(&reader_url)
-        .send()
-        .await
-        .map_err(|e| ReaderError::ModelApi(format!("Failed to fetch URL via jina reader: {}", e)))?;
+    let response = client.get(&reader_url).send().await.map_err(|e| {
+        ReaderError::ModelApi(format!("Failed to fetch URL via jina reader: {}", e))
+    })?;
 
     if !response.status().is_success() {
         return Err(ReaderError::ModelApi(format!(
@@ -114,13 +112,7 @@ pub async fn import_url(app_handle: AppHandle, url: String) -> Result<String> {
          {}\n\n\
          ## Content\n\n\
          {}",
-        extracted_title,
-        normalized_url,
-        author,
-        published,
-        summary,
-        media_section,
-        cleaned_body
+        extracted_title, normalized_url, author, published, summary, media_section, cleaned_body
     );
 
     let markdown_path = build_import_markdown_path(&app_handle, &normalized_url)?;
@@ -183,7 +175,11 @@ pub async fn import_markdown_content(
 
     let markdown_path = build_import_markdown_path(
         &app_handle,
-        &normalize_http_url(source_url_normalized.as_deref().unwrap_or("https://example.com"))?,
+        &normalize_http_url(
+            source_url_normalized
+                .as_deref()
+                .unwrap_or("https://example.com"),
+        )?,
     )?;
     if let Some(parent) = markdown_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -318,7 +314,10 @@ pub async fn get_document(
 }
 
 #[tauri::command]
-pub async fn get_document_source_url(app_handle: AppHandle, doc_id: String) -> Result<Option<String>> {
+pub async fn get_document_source_url(
+    app_handle: AppHandle,
+    doc_id: String,
+) -> Result<Option<String>> {
     let conn = database::get_connection(&app_handle)?;
     let Some(doc) = database::get_document(&conn, &doc_id)? else {
         return Ok(None);
@@ -366,7 +365,9 @@ pub async fn get_section_paragraphs(
 fn normalize_http_url(input: &str) -> Result<Url> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
-        return Err(ReaderError::InvalidArgument("URL cannot be empty".to_string()));
+        return Err(ReaderError::InvalidArgument(
+            "URL cannot be empty".to_string(),
+        ));
     }
 
     let with_scheme = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
@@ -718,8 +719,12 @@ fn is_probable_article_line(line: &str) -> bool {
 }
 
 fn contains_sentence_punctuation(text: &str) -> bool {
-    text.chars()
-        .any(|c| matches!(c, '.' | ',' | ';' | ':' | '!' | '?' | '。' | '，' | '；' | '：' | '！' | '？'))
+    text.chars().any(|c| {
+        matches!(
+            c,
+            '.' | ',' | ';' | ':' | '!' | '?' | '。' | '，' | '；' | '：' | '！' | '？'
+        )
+    })
 }
 
 fn collapse_blank_lines(lines: &[String]) -> String {
@@ -788,7 +793,8 @@ fn extract_media_links(body: &str) -> Vec<String> {
         }
 
         for token in line.split_whitespace() {
-            let token = token.trim_matches(|c: char| matches!(c, '(' | ')' | '[' | ']' | '"' | '\''));
+            let token =
+                token.trim_matches(|c: char| matches!(c, '(' | ')' | '[' | ']' | '"' | '\''));
             if is_media_url(token) && seen.insert(token.to_string()) {
                 out.push(token.to_string());
             }

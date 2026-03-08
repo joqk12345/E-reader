@@ -158,7 +158,8 @@ fn model_matches_slot_capability(model: &ModelProfile, slot: &AgentSlot) -> bool
     match slot.required_capability() {
         ModelCapability::Embedding => model.capability == ModelCapability::Embedding,
         ModelCapability::Chat => {
-            model.capability == ModelCapability::Chat || model.capability == ModelCapability::Multimodal
+            model.capability == ModelCapability::Chat
+                || model.capability == ModelCapability::Multimodal
         }
         ModelCapability::Multimodal => model.capability == ModelCapability::Multimodal,
     }
@@ -176,7 +177,10 @@ fn validate_agent_config(config: &Config, agent: &AgentConfig) -> Result<()> {
         }
     }
 
-    for model_id in [agent.primary_model_id.as_ref(), agent.fallback_model_id.as_ref()] {
+    for model_id in [
+        agent.primary_model_id.as_ref(),
+        agent.fallback_model_id.as_ref(),
+    ] {
         if let Some(model_id) = model_id {
             let model = config
                 .ai_profiles
@@ -234,7 +238,12 @@ pub async fn save_provider_profile(profile: ProviderProfile) -> Result<ProviderP
     next.updated_at = now;
     validate_provider(&next)?;
 
-    if let Some(existing) = config.ai_profiles.providers.iter_mut().find(|p| p.id == next.id) {
+    if let Some(existing) = config
+        .ai_profiles
+        .providers
+        .iter_mut()
+        .find(|p| p.id == next.id)
+    {
         *existing = next.clone();
     } else {
         config.ai_profiles.providers.push(next.clone());
@@ -257,7 +266,12 @@ pub async fn save_model_profile(model: ModelProfile) -> Result<ModelProfile> {
     next.updated_at = now;
     validate_model(&config, &next)?;
 
-    if let Some(existing) = config.ai_profiles.models.iter_mut().find(|m| m.id == next.id) {
+    if let Some(existing) = config
+        .ai_profiles
+        .models
+        .iter_mut()
+        .find(|m| m.id == next.id)
+    {
         *existing = next.clone();
     } else {
         config.ai_profiles.models.push(next.clone());
@@ -281,7 +295,12 @@ pub async fn save_agent_config(slot: AgentSlot, config_patch: AgentConfig) -> Re
     }
     validate_agent_config(&config, &normalized)?;
 
-    if let Some(existing) = config.ai_profiles.agents.iter_mut().find(|a| a.slot == slot) {
+    if let Some(existing) = config
+        .ai_profiles
+        .agents
+        .iter_mut()
+        .find(|a| a.slot == slot)
+    {
         *existing = normalized.clone();
     } else {
         config.ai_profiles.agents.push(normalized.clone());
@@ -319,8 +338,14 @@ pub async fn delete_provider_profile(id: String) -> Result<()> {
 pub async fn delete_model_profile(id: String) -> Result<()> {
     let mut config = load_config()?;
     if config.ai_profiles.agents.iter().any(|a| {
-        a.primary_model_id.as_ref().map(|m| m == &id).unwrap_or(false)
-            || a.fallback_model_id.as_ref().map(|m| m == &id).unwrap_or(false)
+        a.primary_model_id
+            .as_ref()
+            .map(|m| m == &id)
+            .unwrap_or(false)
+            || a.fallback_model_id
+                .as_ref()
+                .map(|m| m == &id)
+                .unwrap_or(false)
     }) {
         return Err(ReaderError::InvalidArgument(
             "Cannot delete model: agents still depend on it".to_string(),
@@ -395,7 +420,10 @@ pub async fn test_provider_profile(profile: ProviderProfile) -> Result<ProviderT
 }
 
 #[tauri::command]
-pub async fn test_model_profile(model_id: String, prompt: Option<String>) -> Result<ModelTestResult> {
+pub async fn test_model_profile(
+    model_id: String,
+    prompt: Option<String>,
+) -> Result<ModelTestResult> {
     let config = load_config()?;
     let model = config
         .ai_profiles
@@ -413,7 +441,10 @@ pub async fn test_model_profile(model_id: String, prompt: Option<String>) -> Res
         .cloned()
         .ok_or_else(|| ReaderError::NotFound("Provider not found".to_string()))?;
 
-    let endpoint = provider.base_url.clone().unwrap_or_else(|| "local".to_string());
+    let endpoint = provider
+        .base_url
+        .clone()
+        .unwrap_or_else(|| "local".to_string());
     let started = Instant::now();
 
     let client = create_client_for_profile(&provider, &model)?;
@@ -431,7 +462,8 @@ pub async fn test_model_profile(model_id: String, prompt: Option<String>) -> Res
                     vec![
                         ChatMessage {
                             role: "system".to_string(),
-                            content: "You are a connectivity probe. Reply with exactly: OK".to_string(),
+                            content: "You are a connectivity probe. Reply with exactly: OK"
+                                .to_string(),
                         },
                         ChatMessage {
                             role: "user".to_string(),
@@ -456,7 +488,10 @@ pub async fn test_model_profile(model_id: String, prompt: Option<String>) -> Res
     })
 }
 
-pub fn resolve_agent_runtime_with_config(config: &Config, slot: AgentSlot) -> Result<ResolvedRuntime> {
+pub fn resolve_agent_runtime_with_config(
+    config: &Config,
+    slot: AgentSlot,
+) -> Result<ResolvedRuntime> {
     let agent = config
         .ai_profiles
         .get_agent(&slot)
@@ -553,12 +588,20 @@ pub async fn chat_with_agent_slot(
     default_max_tokens: usize,
 ) -> Result<String> {
     let runtime = resolve_agent_runtime_with_config(config, slot.clone())?;
-    let (primary_provider, primary_model) = runtime
-        .primary
-        .ok_or_else(|| ReaderError::InvalidArgument(format!("No primary model configured for {:?}", slot)))?;
+    let (primary_provider, primary_model) = runtime.primary.ok_or_else(|| {
+        ReaderError::InvalidArgument(format!("No primary model configured for {:?}", slot))
+    })?;
 
-    let primary_temp = merge_temperature(runtime.temperature, primary_model.temperature, default_temperature);
-    let primary_max = merge_max_tokens(runtime.max_tokens, primary_model.max_tokens, default_max_tokens);
+    let primary_temp = merge_temperature(
+        runtime.temperature,
+        primary_model.temperature,
+        default_temperature,
+    );
+    let primary_max = merge_max_tokens(
+        runtime.max_tokens,
+        primary_model.max_tokens,
+        default_max_tokens,
+    );
 
     let primary_client = create_client_for_profile(&primary_provider, &primary_model)?;
     let first_attempt = primary_client
@@ -566,7 +609,11 @@ pub async fn chat_with_agent_slot(
         .await;
     let primary_result = match first_attempt {
         Ok(output) => Ok(output),
-        Err(_) => primary_client.chat(messages.clone(), primary_temp, primary_max).await,
+        Err(_) => {
+            primary_client
+                .chat(messages.clone(), primary_temp, primary_max)
+                .await
+        }
     };
 
     match primary_result {
@@ -607,9 +654,9 @@ pub async fn embedding_with_agent_slot(
     text: &str,
 ) -> Result<Vec<f32>> {
     let runtime = resolve_agent_runtime_with_config(config, slot.clone())?;
-    let (primary_provider, primary_model) = runtime
-        .primary
-        .ok_or_else(|| ReaderError::InvalidArgument(format!("No primary model configured for {:?}", slot)))?;
+    let (primary_provider, primary_model) = runtime.primary.ok_or_else(|| {
+        ReaderError::InvalidArgument(format!("No primary model configured for {:?}", slot))
+    })?;
 
     let primary_client = create_client_for_profile(&primary_provider, &primary_model)?;
     let primary_result = match primary_client.generate_embedding(text).await {
