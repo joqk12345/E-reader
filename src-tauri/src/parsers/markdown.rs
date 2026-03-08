@@ -1,5 +1,6 @@
 use crate::error::{ReaderError, Result};
 use crate::models::NewDocument;
+use crate::parsers::{ParsedChapters, ParsedDocument};
 use std::fs;
 use std::path::Path;
 
@@ -18,7 +19,7 @@ impl MarkdownParser {
         })
     }
 
-    pub fn parse_all(&self) -> Result<(NewDocument, Vec<(String, i32, String, Vec<String>)>)> {
+    pub fn parse_all(&self) -> Result<ParsedDocument> {
         let content = fs::read_to_string(&self.file_path)?;
         let (title, sections) = self.parse_markdown(&content);
 
@@ -33,31 +34,29 @@ impl MarkdownParser {
         Ok((metadata, sections))
     }
 
-    fn parse_markdown(&self, content: &str) -> (String, Vec<(String, i32, String, Vec<String>)>) {
+    fn parse_markdown(&self, content: &str) -> (String, ParsedChapters) {
         let mut title = Path::new(&self.file_path)
             .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("Untitled")
             .to_string();
 
-        let mut sections: Vec<(String, i32, String, Vec<String>)> = Vec::new();
+        let mut sections: ParsedChapters = Vec::new();
         let mut current_section_title = "Content".to_string();
         let mut current_buffer: Vec<String> = Vec::new();
         let mut section_order = 0;
         let mut in_code_block = false;
 
-        let push_section = |sections: &mut Vec<(String, i32, String, Vec<String>)>,
-                            title: &str,
-                            order: i32,
-                            buffer: &[String]| {
-            let paragraphs = split_paragraphs(buffer);
-            sections.push((
-                title.to_string(),
-                order,
-                format!("section{}", order + 1),
-                paragraphs,
-            ));
-        };
+        let push_section =
+            |sections: &mut ParsedChapters, title: &str, order: i32, buffer: &[String]| {
+                let paragraphs = split_paragraphs(buffer);
+                sections.push((
+                    title.to_string(),
+                    order,
+                    format!("section{}", order + 1),
+                    paragraphs,
+                ));
+            };
 
         for line in content.lines() {
             let trimmed = line.trim();

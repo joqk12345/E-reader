@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use rusqlite::params;
@@ -593,7 +593,7 @@ fn load_paragraph_map(
     Ok(map)
 }
 
-fn path_to_string(path: &PathBuf) -> String {
+fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().to_string()
 }
 

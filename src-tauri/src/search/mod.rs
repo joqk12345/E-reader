@@ -1,4 +1,4 @@
-use crate::database::{embeddings, get_connection, paragraphs};
+use crate::database::embeddings;
 use crate::error::{ReaderError, Result};
 use crate::llm::AiClient;
 use rusqlite::Connection;
@@ -147,7 +147,7 @@ pub async fn semantic_search(
         return Ok(Vec::new());
     }
 
-    let mut placeholders = top_paragraph_ids
+    let placeholders = top_paragraph_ids
         .iter()
         .map(|_| "?")
         .collect::<Vec<_>>()

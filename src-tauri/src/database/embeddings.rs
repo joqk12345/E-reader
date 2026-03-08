@@ -12,6 +12,7 @@ pub enum EmbeddingError {
     InvalidDimension { expected: usize, actual: usize },
 }
 
+#[allow(dead_code)]
 /// Represents an embedding vector stored in the database
 pub struct Embedding {
     pub id: String,
@@ -39,7 +40,7 @@ pub fn vec_f32_to_bytes(vec: &[f32]) -> Vec<u8> {
 ///
 /// Expects the byte array to contain 4-byte little-endian f32 values.
 pub fn bytes_to_vec_f32(bytes: &[u8]) -> Result<Vec<f32>, EmbeddingError> {
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return Err(EmbeddingError::InvalidDimension {
             expected: bytes.len() / 4 * 4,
             actual: bytes.len(),

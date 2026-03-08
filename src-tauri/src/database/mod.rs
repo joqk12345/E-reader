@@ -44,20 +44,18 @@ pub use paragraphs::{
 };
 
 // Embedding operations
-pub use embeddings::{bytes_to_vec_f32, vec_f32_to_bytes};
+pub use embeddings::EmbeddingError;
 pub use embeddings::{
     clear_by_profile as clear_embeddings_by_profile, get as get_embedding,
-    insert as insert_embedding, list_all_vectors, list_by_document, list_by_profile,
-    upsert_batch as upsert_embeddings_batch,
+    insert as insert_embedding, list_by_profile, upsert_batch as upsert_embeddings_batch,
 };
-pub use embeddings::{Embedding, EmbeddingError};
 
 // Cache operations
+pub use cache::CacheError;
 pub use cache::{
     get_summary, get_text_translation, get_translation, save_summary, save_text_translation,
     save_translation,
 };
-pub use cache::{CacheError, Summary, Translation};
 
 // Annotation operations
 pub use annotations::AnnotationError;
@@ -142,7 +140,7 @@ pub fn get_connection(handle: &AppHandle) -> Result<Connection> {
     let db_path = get_db_path(handle);
     info!("Opening database connection: {:?}", db_path);
 
-    let mut conn = Connection::open(db_path)?;
+    let conn = Connection::open(db_path)?;
 
     // Enable WAL mode for better concurrency
     // Note: journal_mode returns a value, so we use query_row

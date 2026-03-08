@@ -7,33 +7,23 @@ use uuid::Uuid;
 
 const AI_CONFIG_VERSION: u32 = 4;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AiProvider {
+    #[default]
     LmStudio,
     OpenAi,
 }
 
-impl Default for AiProvider {
-    fn default() -> Self {
-        AiProvider::LmStudio
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderType {
     OpenAiCompatible,
     OpenAi,
+    #[default]
     LmStudio,
     Ollama,
     LocalTransformers,
-}
-
-impl Default for ProviderType {
-    fn default() -> Self {
-        ProviderType::LmStudio
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

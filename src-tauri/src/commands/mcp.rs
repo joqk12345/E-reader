@@ -185,10 +185,7 @@ fn install_cli_shell_command_inner() -> Result<ShellCommandInstallResult> {
         format!(
             "Installed at {} and updated {}",
             installed_path.to_string_lossy(),
-            profile_file
-                .as_ref()
-                .map(|v| v.as_str())
-                .unwrap_or("shell profile")
+            profile_file.as_deref().unwrap_or("shell profile")
         )
     } else {
         format!("Installed at {}", installed_path.to_string_lossy())

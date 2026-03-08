@@ -1,5 +1,6 @@
 use crate::error::{ReaderError, Result};
 use crate::models::NewDocument;
+use crate::parsers::ParsedDocument;
 use image::codecs::png::PngEncoder;
 use image::{ColorType, ImageEncoder};
 use pdf::content::{Op, TextDrawAdjusted};
@@ -189,7 +190,7 @@ impl PdfParser {
         Ok(pages)
     }
 
-    pub fn parse_all(&self) -> Result<(NewDocument, Vec<(String, i32, String, Vec<String>)>)> {
+    pub fn parse_all(&self) -> Result<ParsedDocument> {
         let metadata = self.get_metadata()?;
         let pages = self.extract_text_by_page()?;
 
@@ -224,11 +225,7 @@ fn flush_line(lines: &mut Vec<String>, current_line: &mut String) {
 }
 
 fn normalize_whitespace(input: &str) -> String {
-    let normalized = input
-        .replace('\u{00A0}', " ")
-        .replace('\t', " ")
-        .replace('\r', " ")
-        .replace('\n', " ");
+    let normalized = input.replace(['\u{00A0}', '\t', '\r', '\n'], " ");
     repair_garbled_pdf_text(&normalized).trim().to_string()
 }
 
@@ -598,6 +595,7 @@ fn is_common_short_word(word: &str) -> bool {
     )
 }
 
+#[allow(dead_code)]
 fn extract_page_image_markers_with_pdfimages(
     pdf_path: &str,
     output_dir: &Path,
@@ -717,6 +715,7 @@ fn extract_page_image_markers_with_pdfimages(
     Some(result)
 }
 
+#[allow(dead_code)]
 fn render_page_snapshot_marker(
     pdf_path: &str,
     page_number: usize,
@@ -766,6 +765,7 @@ fn render_page_snapshot_marker(
     ))
 }
 
+#[allow(dead_code)]
 fn insert_markers_after_captions(lines: &mut Vec<String>, markers: Vec<String>) {
     if markers.is_empty() {
         return;
@@ -810,6 +810,7 @@ fn insert_markers_after_captions(lines: &mut Vec<String>, markers: Vec<String>) 
     *lines = merged;
 }
 
+#[allow(dead_code)]
 fn looks_like_figure_or_table_caption(line: &str) -> bool {
     let trimmed = line.trim();
     if trimmed.is_empty() {
@@ -828,6 +829,7 @@ fn looks_like_figure_or_table_caption(line: &str) -> bool {
     trimmed.chars().any(|c| c.is_ascii_digit())
 }
 
+#[allow(dead_code)]
 fn needs_page_visual_fallback(lines: &[String]) -> bool {
     let mut has_caption = false;
     let mut has_formula_noise = false;

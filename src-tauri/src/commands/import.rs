@@ -1,12 +1,13 @@
 use crate::database;
 use crate::error::{ReaderError, Result};
-use crate::parsers::{EpubParser, MarkdownParser, PdfParser};
+use crate::parsers::{EpubParser, MarkdownParser, ParsedChapters, PdfParser};
 use reqwest::Url;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tokio::time::Duration;
 
+#[allow(dead_code)]
 #[derive(Clone, serde::Serialize)]
 pub struct ImportProgress {
     pub current: usize,
@@ -192,7 +193,7 @@ pub async fn import_markdown_content(
 async fn import_document_internal(
     app_handle: AppHandle,
     metadata: crate::models::NewDocument,
-    chapters: Vec<(String, i32, String, Vec<String>)>,
+    chapters: ParsedChapters,
 ) -> Result<String> {
     // Get database connection
     let conn = database::get_connection(&app_handle)?;
@@ -412,7 +413,7 @@ fn inferred_title_from_url(url: &Url) -> String {
         .and_then(|mut segs| segs.next_back())
         .filter(|s| !s.is_empty())
         .unwrap_or("article");
-    let tail = tail.replace('-', " ").replace('_', " ");
+    let tail = tail.replace(['-', '_'], " ");
     format!("{} - {}", host, tail)
 }
 

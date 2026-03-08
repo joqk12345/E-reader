@@ -12,6 +12,7 @@ pub enum CacheError {
     DatabaseError(#[from] rusqlite::Error),
 }
 
+#[allow(dead_code)]
 /// Represents a cached translation
 pub struct Translation {
     pub id: String,
@@ -21,6 +22,7 @@ pub struct Translation {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 /// Represents a cached text translation
 pub struct TextTranslation {
     pub id: String,
@@ -30,6 +32,7 @@ pub struct TextTranslation {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 /// Represents a cached summary
 pub struct Summary {
     pub id: String,

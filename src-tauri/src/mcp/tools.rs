@@ -118,7 +118,7 @@ struct SearchArgs {
     #[serde(rename = "doc_id", default)]
     doc_id: Option<String>,
     #[serde(rename = "section_id", default)]
-    section_id: Option<String>,
+    _section_id: Option<String>,
 }
 
 fn default_top_k() -> usize {
@@ -168,7 +168,7 @@ pub async fn handle_search(app_handle: &AppHandle, args: Value) -> Result<Value>
 #[derive(Deserialize)]
 struct GetSectionArgs {
     #[serde(rename = "doc_id")]
-    doc_id: String,
+    _doc_id: String,
     #[serde(rename = "section_id")]
     section_id: String,
 }
@@ -342,8 +342,8 @@ pub async fn handle_bilingual_view(app_handle: &AppHandle, args: Value) -> Resul
 #[derive(Deserialize)]
 struct OpenLocationArgs {
     #[serde(rename = "doc_id")]
-    doc_id: String,
-    location: String,
+    _doc_id: String,
+    _location: String,
 }
 
 pub async fn handle_open_location(_app_handle: &AppHandle, args: Value) -> Result<Value> {

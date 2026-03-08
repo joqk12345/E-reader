@@ -1,5 +1,6 @@
 use crate::error::{ReaderError, Result};
 use crate::models::NewDocument;
+use crate::parsers::ParsedDocument;
 use epub::doc::EpubDoc;
 use std::path::Path;
 
@@ -105,7 +106,7 @@ impl EpubParser {
             title.push(c);
 
             // Handle numbers
-            if c.is_alphabetic() && chars.peek().map_or(false, |&next| next.is_numeric()) {
+            if c.is_alphabetic() && chars.peek().is_some_and(|&next| next.is_numeric()) {
                 while let Some(next_c) = chars.peek() {
                     if next_c.is_numeric() {
                         title.push(chars.next().unwrap());
@@ -179,7 +180,7 @@ impl EpubParser {
         }
 
         // If href contains a path component, try just the filename
-        if let Some(filename) = base_href.split('/').last() {
+        if let Some(filename) = base_href.split('/').next_back() {
             if !filename.is_empty() && filename != base_href {
                 tracing::info!("Trying filename match: '{}'", filename);
                 for (path, resource_id) in &path_to_id {
@@ -238,7 +239,7 @@ impl EpubParser {
             .collect()
     }
 
-    pub fn parse_all(&mut self) -> Result<(NewDocument, Vec<(String, i32, String, Vec<String>)>)> {
+    pub fn parse_all(&mut self) -> Result<ParsedDocument> {
         let metadata = self.get_metadata()?;
         let toc = self.get_table_of_contents()?;
 

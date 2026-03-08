@@ -21,7 +21,7 @@ pub use config::{get_config, test_model_connection, update_config};
 pub use embedding::{
     clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,
     get_embedding_profile_status, search_by_embedding, upsert_embeddings_batch,
-    validate_local_embedding_model_path, EmbeddingProfileStatus, SearchByEmbeddingResult,
+    validate_local_embedding_model_path,
 };
 pub use import::{
     delete_document, fetch_url_html, get_document, get_document_previews, get_document_sections,
@@ -30,7 +30,7 @@ pub use import::{
 };
 pub use index::index_document;
 pub use mcp::{get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled};
-pub use search::{get_paragraph_context, search, ParagraphContextOutput, SearchResultOutput};
+pub use search::{get_paragraph_context, search};
 pub use tags::{
     add_tag_alias, apply_document_tags, cleanup_unused_tags, get_related_documents_by_tags,
     list_batch_tag_review_items, list_document_tags, list_tag_facets, list_tag_library,

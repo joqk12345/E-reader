@@ -93,7 +93,7 @@ pub async fn search(
             embeddings::list_by_document(&conn, doc_id)?
                 .into_iter()
                 .filter_map(|emb| {
-                    if emb.vector.len() > 0 {
+                    if !emb.vector.is_empty() {
                         Some((emb.paragraph_id, emb.vector))
                     } else {
                         tracing::warn!("Empty embedding for paragraph {}", emb.paragraph_id);
@@ -105,7 +105,7 @@ pub async fn search(
             embeddings::list_all_vectors(&conn)?
                 .into_iter()
                 .filter_map(|emb| {
-                    if emb.vector.len() > 0 {
+                    if !emb.vector.is_empty() {
                         Some((emb.paragraph_id, emb.vector))
                     } else {
                         tracing::warn!("Empty embedding for paragraph {}", emb.paragraph_id);

@@ -180,27 +180,28 @@ fn validate_agent_config(config: &Config, agent: &AgentConfig) -> Result<()> {
     for model_id in [
         agent.primary_model_id.as_ref(),
         agent.fallback_model_id.as_ref(),
-    ] {
-        if let Some(model_id) = model_id {
-            let model = config
-                .ai_profiles
-                .models
-                .iter()
-                .find(|m| &m.id == model_id)
-                .ok_or_else(|| {
-                    ReaderError::InvalidArgument(format!("Model {} does not exist", model_id))
-                })?;
-            if !model_matches_slot_capability(model, &agent.slot) {
-                return Err(ReaderError::InvalidArgument(format!(
-                    "Model capability does not match slot {:?}",
-                    agent.slot
-                )));
-            }
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let model = config
+            .ai_profiles
+            .models
+            .iter()
+            .find(|m| &m.id == model_id)
+            .ok_or_else(|| {
+                ReaderError::InvalidArgument(format!("Model {} does not exist", model_id))
+            })?;
+        if !model_matches_slot_capability(model, &agent.slot) {
+            return Err(ReaderError::InvalidArgument(format!(
+                "Model capability does not match slot {:?}",
+                agent.slot
+            )));
         }
     }
 
     if let Some(parallelism) = agent.translation_parallelism {
-        if parallelism < 1 || parallelism > 10 {
+        if !(1..=10).contains(&parallelism) {
             return Err(ReaderError::InvalidArgument(
                 "translation_parallelism must be in range 1..=10".to_string(),
             ));

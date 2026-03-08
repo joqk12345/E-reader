@@ -165,7 +165,7 @@ fn get_tag_pending_count(conn: &Connection, tag_id: &str) -> Result<usize, TagEr
 fn attach_tag_details(conn: &Connection, tag: &mut TagRecord) -> Result<(), TagError> {
     tag.usage_count = get_tag_usage_count(conn, &tag.id)?;
     tag.pending_suggestion_count = get_tag_pending_count(conn, &tag.id)?;
-    tag.aliases = load_aliases_by_tag_ids(conn, &[tag.id.clone()])?
+    tag.aliases = load_aliases_by_tag_ids(conn, std::slice::from_ref(&tag.id))?
         .remove(&tag.id)
         .unwrap_or_default();
     Ok(())
@@ -816,7 +816,7 @@ pub fn review_tag_suggestions(
                     .map(|item| item.source.clone())
                     .unwrap_or_else(|| "ai_batch".to_string());
                 result.mapped_to_existing +=
-                    apply_document_tags(conn, &doc_ids, &[tag_id.clone()], &source)?;
+                    apply_document_tags(conn, &doc_ids, std::slice::from_ref(&tag_id), &source)?;
                 conn.execute(
                     &format!(
                         "UPDATE tag_suggestions
@@ -847,7 +847,8 @@ pub fn review_tag_suggestions(
                     .map(|item| item.source.clone())
                     .unwrap_or_else(|| "ai_batch".to_string());
                 result.created_tags += 1;
-                result.accepted += apply_document_tags(conn, &doc_ids, &[tag.id.clone()], &source)?;
+                result.accepted +=
+                    apply_document_tags(conn, &doc_ids, std::slice::from_ref(&tag.id), &source)?;
                 conn.execute(
                     &format!(
                         "UPDATE tag_suggestions
@@ -1184,8 +1185,20 @@ mod tests {
         let doc_id = insert_doc(&conn, "Doc A", "/tmp/doc-a.md");
         let source = ensure_tag(&conn, "AI", false).unwrap();
         let target = ensure_tag(&conn, "Machine Learning", false).unwrap();
-        apply_document_tags(&conn, &[doc_id.clone()], &[source.id.clone()], "manual").unwrap();
-        apply_document_tags(&conn, &[doc_id.clone()], &[target.id.clone()], "manual").unwrap();
+        apply_document_tags(
+            &conn,
+            std::slice::from_ref(&doc_id),
+            std::slice::from_ref(&source.id),
+            "manual",
+        )
+        .unwrap();
+        apply_document_tags(
+            &conn,
+            std::slice::from_ref(&doc_id),
+            std::slice::from_ref(&target.id),
+            "manual",
+        )
+        .unwrap();
         merge_tags(&conn, &source.id, &target.id).unwrap();
         let assignments = list_document_tags(&conn, Some(&doc_id)).unwrap();
         assert_eq!(assignments.len(), 1);
@@ -1224,19 +1237,25 @@ mod tests {
 
         apply_document_tags(
             &conn,
-            &[current.clone()],
+            std::slice::from_ref(&current),
             &[tag_ai.id.clone(), tag_rust.id.clone()],
             "manual",
         )
         .unwrap();
         apply_document_tags(
             &conn,
-            &[related_a.clone()],
+            std::slice::from_ref(&related_a),
             &[tag_ai.id.clone(), tag_rust.id.clone()],
             "manual",
         )
         .unwrap();
-        apply_document_tags(&conn, &[related_b.clone()], &[tag_ai.id.clone()], "manual").unwrap();
+        apply_document_tags(
+            &conn,
+            std::slice::from_ref(&related_b),
+            std::slice::from_ref(&tag_ai.id),
+            "manual",
+        )
+        .unwrap();
 
         let related = get_related_documents_by_tags(&conn, &current, 10).unwrap();
         assert_eq!(related.len(), 2);
