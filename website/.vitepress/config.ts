@@ -6,7 +6,7 @@ const base = process.env.GITHUB_ACTIONS === 'true' && repoName ? `/${repoName}/`
 export default defineConfig({
   base,
   title: 'Reader',
-  description: 'Local-first EPUB/PDF/Markdown reader with AI-powered tools',
+  description: 'Local-first EPUB/PDF/Markdown reader with AI-powered reading, glossary, and tag workflows',
   lang: 'en-US',
   lastUpdated: true,
 
@@ -20,6 +20,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Download', link: '/download' },
       { text: 'Guide', link: '/guide/' },
+      { text: 'What\'s New', link: '/guide/whats-new' },
     ],
 
     sidebar: {
@@ -29,6 +30,8 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/guide/' },
             { text: 'Installation', link: '/guide/install' },
+            { text: 'User Manual', link: '/guide/usage' },
+            { text: 'What\'s New', link: '/guide/whats-new' },
             { text: 'MCP Tools Reference', link: '/guide/mcp-tools' },
           ],
         },
