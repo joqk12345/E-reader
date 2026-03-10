@@ -139,6 +139,19 @@ export const SearchPanel: React.FC = () => {
   const getFriendlyError = (err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     const normalized = message.toLowerCase();
+    if (normalized.includes('agent slot embedding is disabled')) {
+      return isZh
+        ? 'Embedding Agent 已禁用。请先在 Settings -> AI & Embedding 中启用。'
+        : 'Embedding agent is disabled. Enable it in Settings -> AI & Embedding first.';
+    }
+    if (
+      normalized.includes('no primary model configured') ||
+      normalized.includes('enabled agent requires a primary model')
+    ) {
+      return isZh
+        ? 'Embedding Agent 还没有可用的主模型。请先在 Settings -> AI & Embedding 中配置。'
+        : 'Embedding agent does not have a usable primary model yet. Configure it in Settings -> AI & Embedding first.';
+    }
     if (normalized.includes('timed out')) {
       return t.searchTimeout;
     }
@@ -198,6 +211,10 @@ export const SearchPanel: React.FC = () => {
     };
   };
 
+  const ensureEmbeddingAgentReady = async () => {
+    await invoke('resolve_agent_runtime', { slot: 'embedding' });
+  };
+
   const refreshStatus = async () => {
     try {
       const status = await getEmbeddingStatus(selectedDocumentId || undefined);
@@ -252,6 +269,7 @@ export const SearchPanel: React.FC = () => {
       const config = await loadConfig();
       const provider = config.embedding_provider || 'local_transformers';
       if (provider === 'local_transformers') {
+        await ensureEmbeddingAgentReady();
         await validateLocalModelPath(config.embedding_local_model_path);
         const profile = await getCurrentProfile();
         const vector = await withTimeout(
@@ -305,6 +323,7 @@ export const SearchPanel: React.FC = () => {
     const abort = new AbortController();
     abortRef.current = abort;
     try {
+      await ensureEmbeddingAgentReady();
       const profile = await getCurrentProfile();
       const config = await loadConfig();
       await validateLocalModelPath(config.embedding_local_model_path);

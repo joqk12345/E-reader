@@ -32,14 +32,15 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'simple' | 'context' | 'term' | 'takeaway' | 'ask' | 'play' | 'copy' | 'share' | 'highlight' | 'note';
+type SelectionAction = 'simple' | 'context' | 'term' | 'dict' | 'takeaway' | 'ask' | 'play' | 'copy' | 'share' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['simple', 'context', 'term', 'takeaway', 'ask', 'play', 'copy', 'share', 'highlight', 'note'];
+const ALL_SELECTION_ACTIONS: SelectionAction[] = ['simple', 'context', 'term', 'dict', 'takeaway', 'ask', 'play', 'copy', 'share', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   simple: 'Explain Simply',
   context: 'With Context',
   term: 'Term',
+  dict: 'Dict',
   takeaway: 'Takeaway',
   ask: 'Ask',
   play: 'Read Aloud',
@@ -52,6 +53,7 @@ const selectionActionIcon: Record<SelectionAction, string> = {
   simple: '⌕',
   context: '⊹',
   term: '◉',
+  dict: '📘',
   takeaway: '≡',
   ask: '✦',
   play: '▶',
@@ -223,6 +225,7 @@ type MarkdownParagraphMeta = {
 
 type MarkdownVisibilityFilterOptions = {
   dropLeadingBeforeFirstH1?: boolean;
+  dropLeadingSummarySection?: boolean;
   hideMediaLinksSection?: boolean;
 };
 
@@ -697,8 +700,24 @@ const normalizeInlineText = (value: string): string =>
   value.replace(/\s+/g, ' ').trim();
 
 const markdownHeadingRe = /^#{1,6}\s+(.+)$/;
+const markdownHeadingPrefixRe = /^#{1,6}/;
 const markdownImageSyntaxRe = /!\[[^\]]*\]\([^)\n]+\)/g;
 const bareMediaLinkLineRe = /^\s*[-*]?\s*https?:\/\/\S+\s*$/i;
+const summarySectionLabels = new Set([
+  'summary',
+  'executive summary',
+  'abstract',
+  'overview',
+  'tldr',
+  'tl dr',
+  'tl;dr',
+]);
+const contentSectionLabels = new Set([
+  'content',
+  'main content',
+  '正文',
+  '内容',
+]);
 const articleStopHeadings = new Set([
   'keep reading',
   'related posts',
@@ -715,6 +734,47 @@ const standaloneNoiseParagraphs = new Set([
   'view all',
   'openai',
 ]);
+
+const normalizeSectionLabel = (value: string): string =>
+  normalizeInlineText(
+    value
+      .replace(/[*_`~]/g, '')
+      .replace(/^[\s"'`“”‘’()[\]{}:：\-]+/, '')
+      .replace(/[\s"'`“”‘’()[\]{}:：\-]+$/, '')
+  ).toLowerCase();
+
+const extractSectionMarker = (
+  text: string
+): { label: string; level: number; kind: 'heading' | 'standalone' } | null => {
+  const trimmed = text.trim();
+  const headingMatch = trimmed.match(markdownHeadingRe);
+  if (headingMatch) {
+    return {
+      label: normalizeSectionLabel(headingMatch[1] || ''),
+      level: trimmed.match(markdownHeadingPrefixRe)?.[0].length || 1,
+      kind: 'heading',
+    };
+  }
+
+  if (trimmed.includes('\n')) {
+    return null;
+  }
+
+  const label = normalizeSectionLabel(trimmed);
+  if (!label) {
+    return null;
+  }
+
+  if (summarySectionLabels.has(label) || contentSectionLabels.has(label)) {
+    return {
+      label,
+      level: 7,
+      kind: 'standalone',
+    };
+  }
+
+  return null;
+};
 
 const buildMarkdownParagraphMeta = (
   paragraphs: Paragraph[]
@@ -807,18 +867,41 @@ const filterVisibleMarkdownParagraphs = (
   const visible: Paragraph[] = [];
   let stop = false;
   let seenPrimaryHeading = false;
+  let seenVisibleBodyAfterPrimaryHeading = false;
+  let skipLeadingSectionLevel: number | null = null;
 
   for (const paragraph of paragraphs) {
     const meta = metaById[paragraph.id];
     const trimmed = paragraph.text.trim();
-    const headingMatch = trimmed.match(markdownHeadingRe);
-    const heading = normalizeInlineText(headingMatch?.[1] || '').toLowerCase();
-    const isPrimaryHeading = trimmed.startsWith('# ');
+    const sectionMarker = extractSectionMarker(trimmed);
+    const heading = sectionMarker?.label || '';
+    const headingLevel = sectionMarker?.level ?? null;
+    const isPrimaryHeading = sectionMarker?.kind === 'heading' && sectionMarker.level === 1;
+    const isAtDocumentLead =
+      visible.length === 0 || (seenPrimaryHeading && !seenVisibleBodyAfterPrimaryHeading);
 
     if (!seenPrimaryHeading && isPrimaryHeading) {
       seenPrimaryHeading = true;
     }
     if (options?.dropLeadingBeforeFirstH1 && !seenPrimaryHeading) {
+      continue;
+    }
+
+    if (skipLeadingSectionLevel !== null) {
+      if (headingLevel !== null && headingLevel <= skipLeadingSectionLevel) {
+        skipLeadingSectionLevel = null;
+      } else {
+        continue;
+      }
+    }
+
+    if (
+      options?.dropLeadingSummarySection &&
+      isAtDocumentLead &&
+      headingLevel !== null &&
+      summarySectionLabels.has(heading)
+    ) {
+      skipLeadingSectionLevel = headingLevel;
       continue;
     }
 
@@ -832,6 +915,40 @@ const filterVisibleMarkdownParagraphs = (
       continue;
     }
     visible.push(paragraph);
+    if (seenPrimaryHeading && !isPrimaryHeading) {
+      seenVisibleBodyAfterPrimaryHeading = true;
+    }
+  }
+
+  return visible;
+};
+
+const filterLeadingSummaryParagraphs = (paragraphs: Paragraph[]): Paragraph[] => {
+  const visible: Paragraph[] = [];
+  let skipLeadingSummary = false;
+  let seenLeadContent = false;
+
+  for (const paragraph of paragraphs) {
+    const marker = extractSectionMarker(paragraph.text.trim());
+    const label = marker?.label || '';
+
+    if (skipLeadingSummary) {
+      if (marker && !summarySectionLabels.has(label)) {
+        skipLeadingSummary = false;
+      } else {
+        continue;
+      }
+    }
+
+    if (!seenLeadContent && marker && summarySectionLabels.has(label)) {
+      skipLeadingSummary = true;
+      continue;
+    }
+
+    visible.push(paragraph);
+    if (!marker) {
+      seenLeadContent = true;
+    }
   }
 
   return visible;
@@ -1023,19 +1140,18 @@ export function ReaderContent() {
   const markdownFilterOptions = useMemo<MarkdownVisibilityFilterOptions>(
     () => ({
       dropLeadingBeforeFirstH1: isWebSourceDocument,
+      dropLeadingSummarySection: true,
       hideMediaLinksSection: !isMultimediaMode,
     }),
     [isMultimediaMode, isWebSourceDocument]
   );
   const visibleParagraphs = useMemo(
     () =>
-      currentDocumentType === 'markdown' && (isMultimediaMode || isWebSourceDocument)
+      currentDocumentType === 'markdown'
         ? filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions)
-        : paragraphs,
+        : filterLeadingSummaryParagraphs(paragraphs),
     [
       currentDocumentType,
-      isMultimediaMode,
-      isWebSourceDocument,
       markdownFilterOptions,
       markdownParagraphMeta,
       paragraphs,
@@ -1623,6 +1739,23 @@ export function ReaderContent() {
     clearSelectionDraft();
   };
 
+  const openDictPanel = () => {
+    if (!selectionDraft?.selectedText?.trim()) return;
+    const selectedText = selectionDraft.selectedText.trim();
+    const sentence = getSentenceForSelection(selectionDraft.paragraphId, selectedText);
+    window.dispatchEvent(
+      new CustomEvent('reader:open-dict', {
+        detail: {
+          mode: 'dict',
+          selectedText,
+          sentence,
+          paragraphId: selectionDraft.paragraphId,
+        },
+      })
+    );
+    clearSelectionDraft();
+  };
+
   const handleCopySelection = async () => {
     const selectedNow = window.getSelection()?.toString().trim() || '';
     const textToCopy = selectedNow || selectionDraft?.selectedText?.trim() || '';
@@ -1719,6 +1852,10 @@ export function ReaderContent() {
     }
     if (action === 'term') {
       openUnderstandPanel('term');
+      return;
+    }
+    if (action === 'dict') {
+      openDictPanel();
       return;
     }
     if (action === 'takeaway') {

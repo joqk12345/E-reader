@@ -151,6 +151,21 @@ fn validate_model(config: &Config, model: &ModelProfile) -> Result<()> {
             "Embedding model requires embedding_dimension".to_string(),
         ));
     }
+    if model.enabled {
+        let provider = config
+            .ai_profiles
+            .providers
+            .iter()
+            .find(|p| p.id == model.provider_profile_id)
+            .ok_or_else(|| {
+                ReaderError::InvalidArgument("Provider profile does not exist".to_string())
+            })?;
+        if !provider.enabled {
+            return Err(ReaderError::InvalidArgument(
+                "Enabled model cannot use a disabled provider".to_string(),
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -166,6 +181,12 @@ fn model_matches_slot_capability(model: &ModelProfile, slot: &AgentSlot) -> bool
 }
 
 fn validate_agent_config(config: &Config, agent: &AgentConfig) -> Result<()> {
+    if agent.enabled && agent.primary_model_id.is_none() {
+        return Err(ReaderError::InvalidArgument(
+            "Enabled agent requires a primary model".to_string(),
+        ));
+    }
+
     if let (Some(primary), Some(fallback)) = (
         agent.primary_model_id.as_ref(),
         agent.fallback_model_id.as_ref(),
@@ -197,6 +218,31 @@ fn validate_agent_config(config: &Config, agent: &AgentConfig) -> Result<()> {
                 "Model capability does not match slot {:?}",
                 agent.slot
             )));
+        }
+        if agent.enabled && !model.enabled {
+            return Err(ReaderError::InvalidArgument(format!(
+                "Model {} is disabled",
+                model_id
+            )));
+        }
+        if agent.enabled {
+            let provider = config
+                .ai_profiles
+                .providers
+                .iter()
+                .find(|p| p.id == model.provider_profile_id)
+                .ok_or_else(|| {
+                    ReaderError::InvalidArgument(format!(
+                        "Provider {} does not exist",
+                        model.provider_profile_id
+                    ))
+                })?;
+            if !provider.enabled {
+                return Err(ReaderError::InvalidArgument(format!(
+                    "Provider {} is disabled",
+                    provider.display_name
+                )));
+            }
         }
     }
 
@@ -499,6 +545,13 @@ pub fn resolve_agent_runtime_with_config(
         .ok_or_else(|| ReaderError::NotFound(format!("Agent slot {:?} not found", slot)))?
         .clone();
 
+    if !agent.enabled {
+        return Err(ReaderError::InvalidArgument(format!(
+            "Agent slot {:?} is disabled",
+            slot
+        )));
+    }
+
     let resolve_model = |model_id: &str| -> Result<(ProviderProfile, ModelProfile)> {
         let model = config
             .ai_profiles
@@ -507,6 +560,13 @@ pub fn resolve_agent_runtime_with_config(
             .find(|m| m.id == model_id)
             .cloned()
             .ok_or_else(|| ReaderError::NotFound(format!("Model {} not found", model_id)))?;
+
+        if !model.enabled {
+            return Err(ReaderError::InvalidArgument(format!(
+                "Model {} is disabled",
+                model.profile_name
+            )));
+        }
 
         if !model_matches_slot_capability(&model, &slot) {
             return Err(ReaderError::InvalidArgument(format!(
@@ -527,6 +587,13 @@ pub fn resolve_agent_runtime_with_config(
                     model.provider_profile_id, model.id
                 ))
             })?;
+
+        if !provider.enabled {
+            return Err(ReaderError::InvalidArgument(format!(
+                "Provider {} is disabled",
+                provider.display_name
+            )));
+        }
 
         Ok((provider, model))
     };
