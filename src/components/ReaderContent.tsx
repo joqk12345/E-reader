@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, useMemo, type MouseEvent, type ReactNode, 
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
+import katex from 'katex';
 import ReactMarkdown from 'react-markdown';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/sentences';
 import type { Annotation, AnnotationStyle, Paragraph } from '../types';
 import {
@@ -13,6 +16,8 @@ import {
   loadReaderViewSettings,
   type ReaderViewSettings,
 } from './readerTheme';
+import { ThinkingDisclosure } from './ThinkingDisclosure';
+import { parseThinkingBlocks } from '../utils/thinking';
 
 const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
@@ -80,6 +85,84 @@ const inferCodeLanguage = (className?: string): string => {
 
 const toCodeText = (value: ReactNode): string =>
   typeof value === 'string' ? value : String(value ?? '');
+
+const looksLikeLatexMath = (value: string): boolean => {
+  const text = value.trim();
+  if (!text) return false;
+  if (text.includes('\\text{') || text.includes('\\frac') || text.includes('\\math')) return true;
+  if (/[\\^_{}]/.test(text) && /[A-Za-z]/.test(text)) return true;
+  if (/[α-ωΑ-Ωπγτλσμ]/.test(text)) return true;
+  return false;
+};
+
+const normalizeArxivAssetUrl = (
+  assetUrl: string | null | undefined,
+  documentUrl: string | null | undefined
+): string => {
+  const trimmed = assetUrl?.trim() || '';
+  const source = documentUrl?.trim() || '';
+  if (!trimmed || !source) return trimmed;
+
+  let docUrl: URL;
+  try {
+    docUrl = new URL(source);
+  } catch {
+    return trimmed;
+  }
+
+  const isArxivHtmlDoc =
+    /(^|\.)arxiv\.org$/i.test(docUrl.hostname) && docUrl.pathname.startsWith('/html/');
+  if (!isArxivHtmlDoc) return trimmed;
+
+  const resourceBase = new URL(docUrl.toString());
+  if (!resourceBase.pathname.endsWith('/')) {
+    resourceBase.pathname = `${resourceBase.pathname}/`;
+  }
+
+  try {
+    const asset = new URL(trimmed);
+    const filename = asset.pathname.split('/').pop() || '';
+    const looksLikeBareHtmlAsset =
+      /(^|\.)arxiv\.org$/i.test(asset.hostname) &&
+      /^\/html\/[^/]+\.(png|jpe?g|gif|webp|svg)$/i.test(asset.pathname);
+    if (looksLikeBareHtmlAsset && filename) {
+      return new URL(filename, resourceBase).toString();
+    }
+    return asset.toString();
+  } catch {
+    try {
+      return new URL(trimmed, resourceBase).toString();
+    } catch {
+      return trimmed;
+    }
+  }
+};
+
+const stripMathDelimiters = (value: string, displayMode: boolean): string => {
+  const text = value.trim();
+  if (displayMode) {
+    if (text.startsWith('$$') && text.endsWith('$$')) return text.slice(2, -2).trim();
+    if (text.startsWith('\\[') && text.endsWith('\\]')) return text.slice(2, -2).trim();
+    return text;
+  }
+  if (text.startsWith('$') && text.endsWith('$') && text.length > 2) return text.slice(1, -1).trim();
+  if (text.startsWith('\\(') && text.endsWith('\\)')) return text.slice(2, -2).trim();
+  return text;
+};
+
+const renderKatexHtml = (value: string, displayMode: boolean): string | null => {
+  const formula = stripMathDelimiters(value, displayMode);
+  if (!formula) return null;
+  try {
+    return katex.renderToString(formula, {
+      displayMode,
+      throwOnError: false,
+      strict: 'ignore',
+    });
+  } catch {
+    return null;
+  }
+};
 
 const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
   const baseText = isDark ? '#d6d9de' : '#1f2937';
@@ -587,7 +670,7 @@ const extractArticleImagesFromHtml = (html: string, sourceUrl: string): RemoteAr
 
     let resolvedSrc = '';
     try {
-      resolvedSrc = new URL(rawSrc, sourceUrl).toString();
+      resolvedSrc = normalizeArxivAssetUrl(rawSrc, sourceUrl);
     } catch {
       continue;
     }
@@ -954,6 +1037,95 @@ const filterLeadingSummaryParagraphs = (paragraphs: Paragraph[]): Paragraph[] =>
   return visible;
 };
 
+const hasEmptyReferencesSection = (paragraphs: Paragraph[]): boolean => {
+  let inReferences = false;
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.text.trim();
+    const marker = extractSectionMarker(trimmed);
+    if (marker?.kind === 'heading') {
+      if (marker.label === 'references') {
+        inReferences = true;
+        continue;
+      }
+      if (inReferences) {
+        return true;
+      }
+      continue;
+    }
+
+    if (!inReferences) {
+      continue;
+    }
+
+    if (trimmed) {
+      return false;
+    }
+  }
+
+  return inReferences;
+};
+
+const extractArxivReferencesFromHtml = (html: string): string[] => {
+  if (typeof DOMParser === 'undefined') return [];
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const bibliography =
+    doc.querySelector('section.ltx_bibliography') ||
+    doc.querySelector('.ltx_bibliography');
+  if (!bibliography) return [];
+
+  const items = Array.from(bibliography.querySelectorAll('li.ltx_bibitem'));
+  return items
+    .map((item) => {
+      const authorYear = normalizeInlineText(
+        item.querySelector('.ltx_tag_bibitem')?.textContent || ''
+      );
+      const title = normalizeInlineText(
+        item.querySelector('.ltx_bib_title')?.textContent || ''
+      );
+      const journal = normalizeInlineText(
+        item.querySelector('.ltx_bib_journal')?.textContent || ''
+      );
+      const publisher = normalizeInlineText(
+        item.querySelector('.ltx_bib_publisher')?.textContent || ''
+      );
+      const note = normalizeInlineText(
+        item.querySelector('.ltx_bib_note')?.textContent || ''
+      );
+      const link = (item.querySelector('a.ltx_bib_external[href]') as HTMLAnchorElement | null)?.href || '';
+
+      const parts = [authorYear, title, journal || publisher, note].filter(Boolean);
+      if (parts.length === 0) return '';
+
+      const body = parts.join('. ');
+      return link ? `- ${body}. [Link](${link})` : `- ${body}.`;
+    })
+    .filter(Boolean);
+};
+
+const injectSupplementalReferencesParagraph = (
+  paragraphs: Paragraph[],
+  referencesMarkdown: string[]
+): Paragraph[] => {
+  if (referencesMarkdown.length === 0) return paragraphs;
+
+  const next = [...paragraphs];
+  for (let i = 0; i < next.length; i += 1) {
+    const marker = extractSectionMarker(next[i].text.trim());
+    if (marker?.kind === 'heading' && marker.label === 'references') {
+      next.splice(i + 1, 0, {
+        ...next[i],
+        id: `${next[i].id}__supplemental_refs`,
+        order_index: next[i].order_index + 0.1,
+        text: referencesMarkdown.join('\n'),
+      });
+      break;
+    }
+  }
+  return next;
+};
+
 export function ReaderContent() {
   const {
     documents,
@@ -966,6 +1138,7 @@ export function ReaderContent() {
     translationMode,
     readerFontSize,
     setReaderFontSize,
+    setVisibleParagraphs,
     currentReadingSentenceKey,
     focusedParagraphId,
     setFocusedParagraphId,
@@ -1004,6 +1177,7 @@ export function ReaderContent() {
   );
   const [documentSourceUrl, setDocumentSourceUrl] = useState<string | null>(null);
   const [remoteArticleImages, setRemoteArticleImages] = useState<RemoteArticleImage[]>([]);
+  const [supplementalReferences, setSupplementalReferences] = useState<string[]>([]);
   const sentenceRefs = useRef<Record<string, HTMLParagraphElement | null>>({});
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -1026,6 +1200,7 @@ export function ReaderContent() {
   const isTwoColumnLayout = viewSettings.layoutMode === 'double';
   const isMultimediaMode = viewSettings.markdownRenderMode === 'multimedia';
   const isWebSourceDocument = /^https?:\/\//i.test(documentSourceUrl || '');
+  const isArxivHtmlDocument = /^https?:\/\/(www\.)?arxiv\.org\/html\//i.test(documentSourceUrl || '');
   const isTranslationEnabled = translationMode !== 'off';
   const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
   const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
@@ -1120,6 +1295,39 @@ export function ReaderContent() {
     };
   }, [currentDocumentType, documentSourceUrl, isMultimediaMode]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setSupplementalReferences([]);
+
+    if (
+      currentDocumentType !== 'markdown' ||
+      !documentSourceUrl ||
+      !/^https?:\/\/(www\.)?arxiv\.org\/html\//i.test(documentSourceUrl) ||
+      !hasEmptyReferencesSection(paragraphs)
+    ) {
+      return;
+    }
+
+    const loadSupplementalReferences = async () => {
+      try {
+        const html = await invoke<string>('fetch_url_html', { url: documentSourceUrl });
+        if (cancelled) return;
+        setSupplementalReferences(extractArxivReferencesFromHtml(html));
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('Failed to load supplemental arXiv references:', error);
+          setSupplementalReferences([]);
+        }
+      }
+    };
+
+    void loadSupplementalReferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocumentType, documentSourceUrl, paragraphs]);
+
   const renderTranslationCard = (content: ReactNode) => (
     <div
       className={`rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
@@ -1133,6 +1341,22 @@ export function ReaderContent() {
       </div>
     </div>
   );
+  const renderTranslationOutput = (
+    rawTranslation: string,
+    renderVisible: (visibleText: string) => ReactNode
+  ) => {
+    const parsed = parseThinkingBlocks(rawTranslation);
+
+    return (
+      <div className="space-y-2">
+        {parsed.visibleText ? renderVisible(parsed.visibleText) : null}
+        <ThinkingDisclosure
+          thinkingBlocks={parsed.thinkingBlocks}
+          summaryLabel="Show model thinking"
+        />
+      </div>
+    );
+  };
   const markdownParagraphMeta = useMemo(
     () => (currentDocumentType === 'markdown' ? buildMarkdownParagraphMeta(paragraphs) : {}),
     [currentDocumentType, paragraphs]
@@ -1148,13 +1372,17 @@ export function ReaderContent() {
   const visibleParagraphs = useMemo(
     () =>
       currentDocumentType === 'markdown'
-        ? filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions)
+        ? injectSupplementalReferencesParagraph(
+            filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions),
+            supplementalReferences
+          )
         : filterLeadingSummaryParagraphs(paragraphs),
     [
       currentDocumentType,
       markdownFilterOptions,
       markdownParagraphMeta,
       paragraphs,
+      supplementalReferences,
     ]
   );
   const sourceWordCount = useMemo(
@@ -1169,6 +1397,11 @@ export function ReaderContent() {
       ),
     [translations]
   );
+
+  useEffect(() => {
+    setVisibleParagraphs(visibleParagraphs);
+  }, [setVisibleParagraphs, visibleParagraphs]);
+
   const doubleColumnPageSize = useMemo(() => {
     if (!isTwoColumnLayout) return visibleParagraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
     const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
@@ -2170,7 +2403,8 @@ export function ReaderContent() {
                         style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                       >
                         <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
                           components={{
                             h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
                             h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
@@ -2183,17 +2417,84 @@ export function ReaderContent() {
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
                             li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
                             blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
-                            code: ({ className, children }) => (
-                              <code className={className ? `${className} rounded px-1 py-0.5` : 'rounded px-1 py-0.5'} style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
-                                {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
-                              </code>
-                            ),
+                            code: ({ className, children }) => {
+                              const rawCode = toCodeText(children).replace(/\n$/, '');
+                              const language = inferCodeLanguage(className);
+                              const displayMathHtml =
+                                language === 'math' ? renderKatexHtml(rawCode, true) : null;
+                              if (displayMathHtml) {
+                                return (
+                                  <span
+                                    className="my-2 block overflow-x-auto rounded-xl border px-4 py-3 text-center"
+                                    style={{
+                                      backgroundColor: currentTheme.secondary,
+                                      borderColor: currentTheme.border,
+                                    }}
+                                    dangerouslySetInnerHTML={{ __html: displayMathHtml }}
+                                  />
+                                );
+                              }
+
+                              const inlineMathHtml =
+                                !className && isArxivHtmlDocument && looksLikeLatexMath(rawCode)
+                                  ? renderKatexHtml(rawCode, false)
+                                  : null;
+                              if (inlineMathHtml) {
+                                return (
+                                  <span
+                                    className="inline-block align-middle"
+                                    dangerouslySetInnerHTML={{ __html: inlineMathHtml }}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <code className={className ? `${className} rounded px-1 py-0.5` : 'rounded px-1 py-0.5'} style={{ backgroundColor: currentTheme.codeBg, color: currentTheme.codeText }}>
+                                  {renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `code-${paragraph.id}`)}
+                                </code>
+                              );
+                            },
                             pre: ({ children }) => {
                               const codeNode = Children.toArray(children)[0];
                               if (isValidElement(codeNode)) {
                                 const props = codeNode.props as { className?: string; children?: ReactNode };
                                 const rawCode = toCodeText(props.children).replace(/\n$/, '');
                                 const language = inferCodeLanguage(props.className);
+                                const displayMathHtml =
+                                  language === 'math' ? renderKatexHtml(rawCode, true) : null;
+                                if (displayMathHtml) {
+                                  return (
+                                    <div
+                                      className="my-4 overflow-x-auto rounded-xl border px-4 py-3 text-center"
+                                      style={{
+                                        fontSize: `${Math.max(viewSettings.fontSize - 1, 13)}px`,
+                                        backgroundColor: currentTheme.secondary,
+                                        color: currentTheme.foreground,
+                                        borderColor: currentTheme.border,
+                                        fontFamily: 'Georgia, Times, serif',
+                                        lineHeight: 1.8,
+                                      }}
+                                      dangerouslySetInnerHTML={{ __html: displayMathHtml }}
+                                    />
+                                  );
+                                }
+                                if (language === 'math') {
+                                  return (
+                                    <div
+                                      className="my-4 overflow-x-auto rounded-xl border px-4 py-3 text-center"
+                                      style={{
+                                        fontSize: `${Math.max(viewSettings.fontSize - 1, 13)}px`,
+                                        backgroundColor: currentTheme.secondary,
+                                        color: currentTheme.foreground,
+                                        borderColor: currentTheme.border,
+                                        fontFamily: 'Georgia, Times, serif',
+                                        lineHeight: 1.8,
+                                      }}
+                                    >
+                                      {rawCode}
+                                    </div>
+                                  );
+                                }
                                 return (
                                   <pre
                                     className="my-3 overflow-x-auto rounded border p-3"
@@ -2227,7 +2528,8 @@ export function ReaderContent() {
                               </a>
                             ),
                             img: ({ src, alt }) => {
-                              if (!isMultimediaMode) {
+                              const normalizedSrc = normalizeArxivAssetUrl(src, documentSourceUrl);
+                              if (!isMultimediaMode && !isArxivHtmlDocument) {
                                 return (
                                   <span
                                     className="my-2 block text-sm italic"
@@ -2241,15 +2543,15 @@ export function ReaderContent() {
                               if (isMediaLinksParagraph) {
                                 return (
                                   <a
-                                    href={src}
+                                    href={normalizedSrc}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="my-2 inline-flex max-w-full items-center gap-3 rounded-lg border p-2 no-underline"
                                     style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}
-                                    onClick={(event) => openLinkInExternalBrowser(event, src)}
+                                    onClick={(event) => openLinkInExternalBrowser(event, normalizedSrc)}
                                   >
                                     <img
-                                      src={src || ''}
+                                      src={normalizedSrc}
                                       alt={alt || 'Media thumbnail'}
                                       loading="lazy"
                                       referrerPolicy="no-referrer"
@@ -2265,7 +2567,7 @@ export function ReaderContent() {
 
                               return (
                                 <img
-                                  src={src || ''}
+                                  src={normalizedSrc}
                                   alt={alt || 'Article image'}
                                   loading="lazy"
                                   referrerPolicy="no-referrer"
@@ -2292,38 +2594,44 @@ export function ReaderContent() {
                       <div className="mt-2">
                         {translations[markdownTranslationKey(paragraph.id)] ? (
                           renderTranslationCard(
-                            <div
-                              className="markdown-content"
-                              style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
-                            >
+                            renderTranslationOutput(
+                              translations[markdownTranslationKey(paragraph.id)],
+                              (visibleText) => (
+                                <div
+                                  className="markdown-content"
+                                  style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
+                                >
                               <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  a: ({ href, children }) => (
-                                    <a
-                                      href={href}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="underline"
-                                      style={{ color: currentTheme.link }}
-                                      onClick={(event) => openLinkInExternalBrowser(event, href)}
-                                    >
-                                      {children}
-                                    </a>
-                                  ),
-                                  img: ({ alt }) => (
-                                    <span
-                                      className="my-1 block text-xs italic"
-                                      style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
-                                    >
-                                      {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
-                                    </span>
-                                  ),
-                                }}
-                              >
-                                {translations[markdownTranslationKey(paragraph.id)]}
-                              </ReactMarkdown>
-                            </div>
+                                    remarkPlugins={[remarkGfm, remarkMath]}
+                                    rehypePlugins={[rehypeKatex]}
+                                    components={{
+                                      a: ({ href, children }) => (
+                                        <a
+                                          href={href}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="underline"
+                                          style={{ color: currentTheme.link }}
+                                          onClick={(event) => openLinkInExternalBrowser(event, href)}
+                                        >
+                                          {children}
+                                        </a>
+                                      ),
+                                      img: ({ alt }) => (
+                                        <span
+                                          className="my-1 block text-xs italic"
+                                          style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                        >
+                                          {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
+                                        </span>
+                                      ),
+                                    }}
+                                  >
+                                    {visibleText}
+                                  </ReactMarkdown>
+                                </div>
+                              )
+                            )
                           )
                         ) : canTranslateMarkdownParagraph ? (
                           <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2 py-1`}>
@@ -2382,11 +2690,13 @@ export function ReaderContent() {
                           <div className="mt-2">
                             {translations[key] ? (
                               renderTranslationCard(
-                                <p
-                                  style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
-                                >
-                                  {translations[key]}
-                                </p>
+                                renderTranslationOutput(translations[key], (visibleText) => (
+                                  <p
+                                    style={{ fontSize: `${Math.max(viewSettings.fontSize - 3, 12)}px`, lineHeight: translationLineHeight, color: currentTheme.foreground }}
+                                  >
+                                    {visibleText}
+                                  </p>
+                                ))
                               )
                             ) : (
                               <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>

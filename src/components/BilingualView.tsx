@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { ThinkingDisclosure } from './ThinkingDisclosure';
+import { parseThinkingBlocks } from '../utils/thinking';
 
 interface BilingualViewProps {
   paragraphId: string;
@@ -11,6 +13,7 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targetLang, setTargetLang] = useState<'zh' | 'en'>('en');
+  const parsedTranslation = parseThinkingBlocks(translation);
 
   useEffect(() => {
     loadTranslation();
@@ -107,9 +110,19 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                 </div>
               ) : translation ? (
-                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {translation}
-                </p>
+                <div className="space-y-3">
+                  {parsedTranslation.visibleText ? (
+                    <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      {parsedTranslation.visibleText}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">No translation available</p>
+                  )}
+                  <ThinkingDisclosure
+                    thinkingBlocks={parsedTranslation.thinkingBlocks}
+                    summaryLabel="Show model thinking"
+                  />
+                </div>
               ) : (
                 <p className="text-sm text-gray-400 italic">No translation available</p>
               )}

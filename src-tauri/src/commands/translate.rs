@@ -14,6 +14,12 @@ use tokio::time::{timeout, Duration};
 const TRANSLATE_TIMEOUT_SECS: u64 = 30;
 const CHAT_TIMEOUT_SECS: u64 = 45;
 
+fn hash_text(value: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(value.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct ChatTurnInput {
     pub role: String,
@@ -36,12 +42,6 @@ pub async fn translate(
     paragraph_id: Option<String>,
     target_lang: String,
 ) -> Result<String> {
-    fn hash_text(value: &str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(value.as_bytes());
-        format!("{:x}", hasher.finalize())
-    }
-
     // Validate that exactly one of text or paragraph_id is provided
     match (&text, &paragraph_id) {
         (None, None) => {
@@ -155,13 +155,15 @@ pub async fn summarize(
     doc_id: Option<String>,
     section_id: Option<String>,
     paragraph_id: Option<String>,
+    text: Option<String>,
     style: String,
 ) -> Result<String> {
-    // Validate that exactly one of doc_id, section_id, or paragraph_id is provided
+    // Validate that exactly one of doc_id, section_id, paragraph_id, or text is provided
     let provided_count = [
         doc_id.is_some(),
         section_id.is_some(),
         paragraph_id.is_some(),
+        text.is_some(),
     ]
     .iter()
     .filter(|&&x| x)
@@ -169,7 +171,8 @@ pub async fn summarize(
 
     if provided_count != 1 {
         return Err(ReaderError::InvalidArgument(
-            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
+            "Exactly one of 'doc_id', 'section_id', 'paragraph_id', or 'text' must be provided"
+                .to_string(),
         ));
     }
 
@@ -182,9 +185,24 @@ pub async fn summarize(
     }
 
     // Determine target_id and target_type, and load content
-    let (target_id, target_type, content): (String, String, String) = if let Some(pid) =
-        &paragraph_id
-    {
+    let (target_id, target_type, content): (String, String, String) = if let Some(raw_text) = text {
+        let content = raw_text.trim().to_string();
+        if content.is_empty() {
+            return Err(ReaderError::InvalidArgument(
+                "'text' must not be empty".to_string(),
+            ));
+        }
+
+        let target_id = hash_text(&content);
+        let target_type = "text".to_string();
+
+        let conn = get_connection(&app_handle)?;
+        if let Some(cached) = get_summary(&conn, &target_id, &target_type, &style)? {
+            return Ok(cached.summary);
+        }
+
+        (target_id, target_type, content)
+    } else if let Some(pid) = &paragraph_id {
         let target_id = pid.clone();
         let target_type = "paragraph".to_string();
 
@@ -319,12 +337,14 @@ pub async fn get_summary_cache(
     doc_id: Option<String>,
     section_id: Option<String>,
     paragraph_id: Option<String>,
+    text: Option<String>,
     style: String,
 ) -> Result<Option<String>> {
     let provided_count = [
         doc_id.is_some(),
         section_id.is_some(),
         paragraph_id.is_some(),
+        text.is_some(),
     ]
     .iter()
     .filter(|&&x| x)
@@ -332,7 +352,8 @@ pub async fn get_summary_cache(
 
     if provided_count != 1 {
         return Err(ReaderError::InvalidArgument(
-            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
+            "Exactly one of 'doc_id', 'section_id', 'paragraph_id', or 'text' must be provided"
+                .to_string(),
         ));
     }
 
@@ -343,7 +364,15 @@ pub async fn get_summary_cache(
         )));
     }
 
-    let (target_id, target_type): (String, String) = if let Some(pid) = paragraph_id {
+    let (target_id, target_type): (String, String) = if let Some(raw_text) = text {
+        let content = raw_text.trim().to_string();
+        if content.is_empty() {
+            return Err(ReaderError::InvalidArgument(
+                "'text' must not be empty".to_string(),
+            ));
+        }
+        (hash_text(&content), "text".to_string())
+    } else if let Some(pid) = paragraph_id {
         (pid, "paragraph".to_string())
     } else if let Some(sid) = section_id {
         (sid, "section".to_string())

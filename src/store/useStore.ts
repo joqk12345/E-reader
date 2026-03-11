@@ -43,6 +43,7 @@ interface ReaderState {
   currentSectionId: string | null;
   paragraphs: Paragraph[];
   currentParagraph: Paragraph | null;
+  visibleParagraphs: Paragraph[];
 
   // Translation mode state
   translationMode: TranslationMode;
@@ -94,6 +95,7 @@ interface ReaderState {
 
   // UI cache actions
   setSummaryCache: (key: string, summary: string) => void;
+  setVisibleParagraphs: (paragraphs: Paragraph[]) => void;
 }
 
 export const useStore = create<ReaderState>((set, get) => ({
@@ -107,6 +109,7 @@ export const useStore = create<ReaderState>((set, get) => ({
   currentSectionId: null,
   paragraphs: [],
   currentParagraph: null,
+  visibleParagraphs: [],
 
   // Translation mode state
   translationMode: 'off',
@@ -153,6 +156,7 @@ export const useStore = create<ReaderState>((set, get) => ({
     set({
       selectedDocumentId: id,
       currentDocumentType: doc?.file_type || null,
+      visibleParagraphs: [],
     });
   },
 
@@ -231,7 +235,7 @@ export const useStore = create<ReaderState>((set, get) => ({
       if (paragraphs.length === 0) {
         console.warn('No paragraphs found for section:', sectionId);
       }
-      set({ paragraphs, currentParagraph: paragraphs[0] || null, isLoading: false });
+      set({ paragraphs, currentParagraph: paragraphs[0] || null, visibleParagraphs: [], isLoading: false });
     } catch (error) {
       console.error('Failed to load paragraphs:', error);
       set({ isLoading: false });
@@ -243,7 +247,7 @@ export const useStore = create<ReaderState>((set, get) => ({
     set({ isLoading: true });
     try {
       const paragraphs = await invoke<Paragraph[]>('get_document_paragraphs', { docId });
-      set({ paragraphs, currentParagraph: paragraphs[0] || null, isLoading: false });
+      set({ paragraphs, currentParagraph: paragraphs[0] || null, visibleParagraphs: [], isLoading: false });
     } catch (error) {
       console.error('Failed to load document paragraphs:', error);
       set({ isLoading: false });
@@ -263,6 +267,7 @@ export const useStore = create<ReaderState>((set, get) => ({
       sections: [],
       paragraphs: [],
       currentParagraph: null,
+      visibleParagraphs: [],
       focusedParagraphId: null,
       searchHighlightQuery: '',
       searchMatchedParagraphIds: [],
@@ -415,5 +420,8 @@ export const useStore = create<ReaderState>((set, get) => ({
     set((state) => ({
       summaryCache: { ...state.summaryCache, [key]: summary },
     }));
+  },
+  setVisibleParagraphs: (paragraphs: Paragraph[]) => {
+    set({ visibleParagraphs: paragraphs });
   },
 }));

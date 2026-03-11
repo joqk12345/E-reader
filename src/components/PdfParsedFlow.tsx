@@ -3,6 +3,8 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import type { Paragraph } from '../types';
 import type { TranslationMode } from '../store/useStore';
 import { splitIntoSentences } from '../utils/sentences';
+import { ThinkingDisclosure } from './ThinkingDisclosure';
+import { parseThinkingBlocks } from '../utils/thinking';
 
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const CAPTION_RE = /^(figure|fig\.?|table)\s*\d+[\s\.:\-]/i;
@@ -208,12 +210,25 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
           {translationMode !== 'off' && (
             <div className={`${showOriginal ? 'ml-4 mt-1' : ''} flex items-center gap-2`}>
               {translations[sentenceKey] ? (
-                <p
-                  className="text-blue-600"
-                  style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
-                >
-                  {translations[sentenceKey]}
-                </p>
+                (() => {
+                  const parsed = parseThinkingBlocks(translations[sentenceKey]);
+                  return (
+                    <div className="w-full space-y-2">
+                      {parsed.visibleText ? (
+                        <p
+                          className="text-blue-600"
+                          style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
+                        >
+                          {parsed.visibleText}
+                        </p>
+                      ) : null}
+                      <ThinkingDisclosure
+                        thinkingBlocks={parsed.thinkingBlocks}
+                        summaryLabel="Show model thinking"
+                      />
+                    </div>
+                  );
+                })()
               ) : (
                 <button
                   onClick={() => onTranslateSentence(paragraphId, sentence, index)}

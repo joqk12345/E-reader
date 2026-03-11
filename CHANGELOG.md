@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## 🆕 Recent Updates (2026-02)
 
+- **摘要、翻译输出与 arXiv 论文导入修复（2026-03-11）**:
+  - `Summary` 改为优先基于当前阅读区可见内容生成，修复已解析/已过滤正文未被摘要使用的问题
+  - 摘要面板新增 `Copy` 按钮，并增加 `Detailed / Bullet / Compact` 三种摘要风格
+  - 翻译输出新增 `<think>...</think>` 折叠展示，避免模型长思考内容干扰阅读
+  - arXiv HTML 论文导入升级：
+    - 块级公式改为标准 `$$...$$`，行内公式改为 `$...$`
+    - 阅读器接入 KaTeX，并兼容旧导入文档中的 `math` 代码块与误包裹的行内 TeX
+    - 表格导入支持 `figure.ltx_table`、`rowspan/colspan` 展开与多级表头扁平化
+    - 修复表格后正文被续成表格行的问题
+    - 修复 arXiv 相对图片资源路径解析错误，旧导入文档在阅读器中也会运行时纠正
+    - `References` 现可导入 bibliography 条目；对旧 arXiv 导入文档，阅读器会在检测到空的 `References` 段时运行时补全参考文献
+
 - **文档标签系统与批量标签工作流（2026-03-09）**:
   - 新增完整标签基础设施：
     - 数据库新增 `tags`、`tag_aliases`、`document_tags`、`tag_suggestions` 表及相关索引

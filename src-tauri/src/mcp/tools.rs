@@ -251,6 +251,7 @@ pub async fn handle_summarize(app_handle: &AppHandle, args: Value) -> Result<Val
             None,
             None,
             Some(pid.clone()),
+            None,
             args.style,
         )
         .await?
@@ -260,11 +261,13 @@ pub async fn handle_summarize(app_handle: &AppHandle, args: Value) -> Result<Val
             None,
             Some(sid.clone()),
             None,
+            None,
             args.style,
         )
         .await?
     } else {
-        crate::commands::summarize(app_handle.clone(), args.doc_id, None, None, args.style).await?
+        crate::commands::summarize(app_handle.clone(), args.doc_id, None, None, None, args.style)
+            .await?
     };
 
     Ok(serde_json::json!({ "summary": summary }))

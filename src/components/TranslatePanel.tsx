@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
+import { ThinkingDisclosure } from './ThinkingDisclosure';
+import { parseThinkingBlocks } from '../utils/thinking';
 
 type TargetLang = 'zh' | 'en';
 
@@ -26,6 +28,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
   const [translation, setTranslation] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const parsedTranslation = useMemo(() => parseThinkingBlocks(translation), [translation]);
 
   useEffect(() => {
     if (!text.trim() && !translation) {
@@ -180,7 +183,18 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
             </label>
             {translation ? (
               <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg min-h-[200px]">
-                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{translation}</p>
+                {parsedTranslation.visibleText ? (
+                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    {parsedTranslation.visibleText}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No translation available</p>
+                )}
+                <ThinkingDisclosure
+                  thinkingBlocks={parsedTranslation.thinkingBlocks}
+                  summaryLabel="Show model thinking"
+                  className={parsedTranslation.visibleText ? 'mt-3' : ''}
+                />
               </div>
             ) : (
               <div className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[200px] flex items-center justify-center text-gray-400">
