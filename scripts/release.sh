@@ -21,13 +21,15 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-VERSION=$1
+RAW_VERSION=$1
+VERSION="${RAW_VERSION#v}"
 VERSION_TAG="v$VERSION"
 SEMVER_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
 
 if [[ ! "${VERSION}" =~ ${SEMVER_PATTERN} ]]; then
-    echo -e "${RED}Error: Invalid semver version '${VERSION}'${NC}"
+    echo -e "${RED}Error: Invalid semver version '${RAW_VERSION}'${NC}"
     echo "Examples: 0.4.6, 0.4.6-rc.1, 0.4.6+build.1"
+    echo "You can also pass a prefixed tag like: v0.4.6"
     exit 1
 fi
 
@@ -48,7 +50,11 @@ echo -e "${GREEN}Syncing version across release files...${NC}"
 # Commit changes
 echo -e "${GREEN}Committing version changes...${NC}"
 git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
-git commit -m "chore: bump version to $VERSION"
+if git diff --cached --quiet; then
+    echo -e "${YELLOW}No version file changes to commit (already at $VERSION).${NC}"
+else
+    git commit -m "chore: bump version to $VERSION"
+fi
 
 # Create tag
 echo -e "${GREEN}Creating git tag $VERSION_TAG...${NC}"
