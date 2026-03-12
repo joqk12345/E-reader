@@ -47,10 +47,9 @@ pub async fn import_url(app_handle: AppHandle, url: String) -> Result<String> {
         .build()
         .map_err(|e| ReaderError::ModelApi(format!("Failed to create HTTP client: {}", e)))?;
 
-    let (extracted_title, author, published, cleaned_body) = if is_arxiv_html_url(&normalized_url)
-    {
-        let html = fetch_text_with_client(&client, &normalized_url, "Failed to fetch arXiv HTML")
-            .await?;
+    let (extracted_title, author, published, cleaned_body) = if is_arxiv_html_url(&normalized_url) {
+        let html =
+            fetch_text_with_client(&client, &normalized_url, "Failed to fetch arXiv HTML").await?;
         let converted = convert_arxiv_html_to_markdown(&normalized_url, &html)?;
         (
             converted.title,
@@ -442,7 +441,11 @@ fn convert_arxiv_html_to_markdown(base_url: &Url, html: &str) -> Result<ArxivMar
     .filter(|text| !text.is_empty())
     .collect::<Vec<_>>()
     .join(", ");
-    let author = if author.is_empty() { None } else { Some(author) };
+    let author = if author.is_empty() {
+        None
+    } else {
+        Some(author)
+    };
 
     let block_re = Regex::new(
         r#"(?s)<h[1-6]\b[^>]*class="[^"]*ltx_title[^"]*"[^>]*>.*?</h[1-6]>|<figure\b.*?</figure>|<table\b.*?</table>|<p\b[^>]*class="[^"]*ltx_p[^"]*"[^>]*>.*?</p>|<li\b[^>]*class="[^"]*ltx_bibitem[^"]*"[^>]*>.*?</li>"#,
@@ -485,7 +488,11 @@ fn convert_arxiv_html_to_markdown(base_url: &Url, html: &str) -> Result<ArxivMar
     }
 
     let body = collapse_blank_lines(&blocks);
-    Ok(ArxivMarkdownDocument { title, author, body })
+    Ok(ArxivMarkdownDocument {
+        title,
+        author,
+        body,
+    })
 }
 
 fn render_arxiv_heading(fragment: &str) -> Option<String> {
@@ -583,15 +590,14 @@ fn render_arxiv_inline_math_html(fragment: &str) -> String {
 }
 
 fn render_arxiv_equation_html(fragment: &str) -> Option<String> {
-    let body = extract_math_tex_from_html(fragment)
-        .or_else(|| {
-            let plain = extract_math_plaintext_from_html(fragment);
-            if plain.is_empty() {
-                None
-            } else {
-                Some(plain)
-            }
-        })?;
+    let body = extract_math_tex_from_html(fragment).or_else(|| {
+        let plain = extract_math_plaintext_from_html(fragment);
+        if plain.is_empty() {
+            None
+        } else {
+            Some(plain)
+        }
+    })?;
 
     let equation_no = capture_first(
         fragment,
@@ -629,7 +635,10 @@ fn render_arxiv_table_figure_html(fragment: &str, base_url: &Url) -> Option<Stri
         .map(|html| render_arxiv_inline_html(&html, base_url))
         .map(|text| normalize_inline_text(&text))
         .filter(|text| !text.is_empty());
-    let table_fragment = capture_first(fragment, r#"(?s)(<table\b[^>]*class="[^"]*ltx_tabular[^"]*"[^>]*>.*?</table>)"#)?;
+    let table_fragment = capture_first(
+        fragment,
+        r#"(?s)(<table\b[^>]*class="[^"]*ltx_tabular[^"]*"[^>]*>.*?</table>)"#,
+    )?;
     let table_md = render_arxiv_table_html(&table_fragment, base_url)?;
 
     Some(match caption {
@@ -1543,7 +1552,9 @@ mod tests {
         assert!(converted.body.contains("$$\nL=x\n$$"));
         assert!(converted.body.contains("*Table 1: Results.*"));
         assert!(converted.body.contains("| Model | Speedup |"));
-        assert!(converted.body.contains("| DFlash | 2.5x |\n\nTail paragraph after the table."));
+        assert!(converted
+            .body
+            .contains("| DFlash | 2.5x |\n\nTail paragraph after the table."));
         assert!(converted.body.contains("## References"));
         assert!(converted
             .body
