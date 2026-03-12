@@ -114,24 +114,47 @@ const normalizeArxivAssetUrl = (
     /(^|\.)arxiv\.org$/i.test(docUrl.hostname) && docUrl.pathname.startsWith('/html/');
   if (!isArxivHtmlDoc) return trimmed;
 
+  const documentId = docUrl.pathname.split('/').filter(Boolean).pop() || '';
   const resourceBase = new URL(docUrl.toString());
   if (!resourceBase.pathname.endsWith('/')) {
     resourceBase.pathname = `${resourceBase.pathname}/`;
   }
 
-  try {
-    const asset = new URL(trimmed);
-    const filename = asset.pathname.split('/').pop() || '';
-    const looksLikeBareHtmlAsset =
-      /(^|\.)arxiv\.org$/i.test(asset.hostname) &&
-      /^\/html\/[^/]+\.(png|jpe?g|gif|webp|svg)$/i.test(asset.pathname);
+  const normalizeRelativeAssetPath = (value: string): string => {
+    if (!documentId) return value;
+    const prefix = `${documentId}/`;
+    return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+  };
+
+  const normalizeAbsoluteAssetPath = (asset: URL): string | null => {
+    if (!/(^|\.)arxiv\.org$/i.test(asset.hostname) || !documentId) return null;
+
+    const path = asset.pathname;
+    const duplicatePrefix = `/html/${documentId}/${documentId}/`;
+    if (path.startsWith(duplicatePrefix)) {
+      asset.pathname = `/html/${documentId}/${path.slice(duplicatePrefix.length)}`;
+      return asset.toString();
+    }
+
+    const filename = path.split('/').pop() || '';
+    const looksLikeBareHtmlAsset = /^\/html\/[^/]+\.(png|jpe?g|gif|webp|svg)$/i.test(path);
     if (looksLikeBareHtmlAsset && filename) {
       return new URL(filename, resourceBase).toString();
+    }
+
+    return null;
+  };
+
+  try {
+    const asset = new URL(trimmed);
+    const normalizedAbsolute = normalizeAbsoluteAssetPath(asset);
+    if (normalizedAbsolute) {
+      return normalizedAbsolute;
     }
     return asset.toString();
   } catch {
     try {
-      return new URL(trimmed, resourceBase).toString();
+      return new URL(normalizeRelativeAssetPath(trimmed), resourceBase).toString();
     } catch {
       return trimmed;
     }

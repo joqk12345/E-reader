@@ -930,12 +930,25 @@ fn resolve_relative_url(base_url: &Url, href: &str) -> Option<String> {
 
     let mut resource_base = base_url.clone();
     let current_path = resource_base.path().to_string();
+    let document_id = current_path
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or_default()
+        .to_string();
     if !current_path.ends_with('/') {
         resource_base.set_path(&format!("{}/", current_path));
     }
 
+    let normalized_trimmed = if !document_id.is_empty() {
+        let prefixed = format!("{}/", document_id);
+        trimmed.strip_prefix(&prefixed).unwrap_or(trimmed)
+    } else {
+        trimmed
+    };
+
     resource_base
-        .join(trimmed)
+        .join(normalized_trimmed)
         .ok()
         .map(|url| url.to_string())
 }
@@ -1499,7 +1512,7 @@ mod tests {
             </tr>
           </table>
           <figure class="ltx_figure">
-            <img src="x1.png" alt="Figure"/>
+            <img src="2602.06036v1/x1.png" alt="Figure"/>
             <figcaption>Figure 1: Overview.</figcaption>
           </figure>
           <figure class="ltx_table">
@@ -1594,6 +1607,10 @@ mod tests {
         assert_eq!(
             resolve_relative_url(&base_url, "/html/2602.06036v1#S1").as_deref(),
             Some("https://arxiv.org/html/2602.06036v1#S1")
+        );
+        assert_eq!(
+            resolve_relative_url(&base_url, "2602.06036v1/x4.png").as_deref(),
+            Some("https://arxiv.org/html/2602.06036v1/x4.png")
         );
     }
 }

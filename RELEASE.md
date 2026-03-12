@@ -111,19 +111,36 @@ Example tags:
 - `v1.1.0` - Added new features
 - `v1.1.1` - Bug fix release
 
-## Signing the Application (Optional)
+## Signing and Notarizing macOS Releases
 
-To sign your application, set up the following secrets in your GitHub repository:
+`TAURI_PRIVATE_KEY` and `TAURI_KEY_PASSWORD` only sign Tauri updater artifacts. They do **not** satisfy macOS Gatekeeper for downloaded `.dmg` files.
 
-- `TAURI_PRIVATE_KEY`: Your Tauri private key
-- `TAURI_KEY_PASSWORD`: Your key password
+If you publish a macOS DMG without Apple signing and notarization, users will see:
 
-Generate a key pair:
-```bash
-npm run tauri signer generate
-```
+> “Reader” is damaged and can’t be opened. You should move it to the Trash.
 
-Keep the private key secure and never commit it to the repository!
+To ship a public macOS DMG, add these GitHub secrets:
+
+- `APPLE_CERTIFICATE`: Base64-encoded Developer ID Application certificate (`.p12`)
+- `APPLE_CERTIFICATE_PASSWORD`: Password for that `.p12`
+- `APPLE_ID`: Apple ID email used for notarization
+- `APPLE_PASSWORD`: App-specific password for the Apple ID
+- `APPLE_TEAM_ID`: Apple Developer Team ID
+- `APPLE_SIGNING_IDENTITY`: Optional explicit identity name, for example `Developer ID Application: Your Name (TEAMID)`
+
+Keep the updater signing secrets as well if you use Tauri's updater:
+
+- `TAURI_PRIVATE_KEY`
+- `TAURI_KEY_PASSWORD`
+
+Typical setup:
+
+1. Export your `Developer ID Application` certificate from Keychain Access as a `.p12`.
+2. Base64-encode it and store the result in `APPLE_CERTIFICATE`.
+3. Create an app-specific password for your Apple ID and store it in `APPLE_PASSWORD`.
+4. Push a release tag again after the secrets are configured.
+
+The release workflow now fails fast on macOS if the Apple signing secrets are missing, and it verifies the generated `.app` and `.dmg` before uploading release assets.
 
 ## Troubleshooting
 
