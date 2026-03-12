@@ -72,8 +72,9 @@ jobs:
         shell: bash
         run: ./scripts/align-tauri-npm.sh
 
-      - name: Validate macOS signing secrets
+      - name: Detect macOS signing secrets
         if: startsWith(matrix.platform.os, 'macos-')
+        id: macos_signing
         shell: bash
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -92,13 +93,15 @@ jobs:
           done
 
           if (( ${#missing[@]} > 0 )); then
-            echo "Missing macOS signing/notarization secrets: ${missing[*]}" >&2
-            echo "Unsigned DMGs will be blocked by Gatekeeper with a damaged-app error, so the macOS release build now fails fast instead of publishing them." >&2
-            exit 1
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping macOS DMG release because signing/notarization secrets are missing: ${missing[*]}"
+            exit 0
           fi
 
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
       - name: Build application (macOS DMG)
-        if: startsWith(matrix.platform.os, 'macos-')
+        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.available == 'true'
         run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles dmg
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
@@ -117,7 +120,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
       - name: Verify macOS bundle
-        if: startsWith(matrix.platform.os, 'macos-')
+        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.available == 'true'
         shell: bash
         run: ./scripts/verify-macos-bundle.sh "src-tauri/target/${{ matrix.platform.target }}/release/bundle"
 
@@ -157,6 +160,7 @@ jobs:
           ls -lh release/
 
       - name: Upload artifacts to GitHub
+        if: ${{ !startsWith(matrix.platform.os, 'macos-') || steps.macos_signing.outputs.available == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}

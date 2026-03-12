@@ -140,7 +140,7 @@ Typical setup:
 3. Create an app-specific password for your Apple ID and store it in `APPLE_PASSWORD`.
 4. Push a release tag again after the secrets are configured.
 
-The release workflow now fails fast on macOS if the Apple signing secrets are missing, and it verifies the generated `.app` and `.dmg` before uploading release assets.
+The release workflow now skips macOS DMG publishing when the Apple signing secrets are missing, and it verifies the generated `.app` and `.dmg` before uploading macOS release assets.
 
 ## Troubleshooting
 

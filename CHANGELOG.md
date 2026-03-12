@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 ## 🆕 Recent Updates (2026-02)
 
 - **macOS DMG Gatekeeper 修复与 arXiv HTML 图片兼容增强（2026-03-12）**:
-  - macOS release workflow 现在会在构建 DMG 前校验 Apple 签名/公证所需 secrets，避免继续发布会被 Gatekeeper 拦截的未公证安装包
+  - macOS release workflow 现在会在构建 DMG 前校验 Apple 签名/公证所需 secrets；若缺失则跳过 macOS 发布，避免继续产出会被 Gatekeeper 拦截的未公证安装包
   - 新增 macOS bundle 校验脚本，CI 会在上传 release asset 前检查 `.app` 与 `.dmg` 的签名状态
   - 补充 release / install 文档，明确区分 Tauri updater 签名与 macOS Developer ID 签名、公证要求
   - 修复 arXiv HTML 图片资源路径兼容性：支持 `2603.06588v1/Fig_xxx.png` 这类带文档号前缀的相对路径
