@@ -673,6 +673,29 @@ const pickImageSourceFromElement = (img: HTMLImageElement): string => {
   );
 };
 
+const serializeSvgForImageDataUrl = (svg: SVGElement): string | null => {
+  if (typeof XMLSerializer === 'undefined') return null;
+
+  const clone = svg.cloneNode(true);
+  if (!(clone instanceof SVGElement)) return null;
+
+  if (!clone.getAttribute('xmlns')) {
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+
+  for (const foreignObject of Array.from(clone.querySelectorAll('foreignObject'))) {
+    const firstElement = foreignObject.firstElementChild;
+    if (firstElement && !firstElement.getAttribute('xmlns')) {
+      firstElement.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    }
+  }
+
+  const serialized = new XMLSerializer().serializeToString(clone).trim();
+  if (!serialized) return null;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
+};
+
 const extractArticleImagesFromHtml = (html: string, sourceUrl: string): RemoteArticleImage[] => {
   if (typeof DOMParser === 'undefined') return [];
 
@@ -714,6 +737,22 @@ const extractArticleImagesFromHtml = (html: string, sourceUrl: string): RemoteAr
     }
 
     if (seen.has(resolvedSrc)) continue;
+    seen.add(resolvedSrc);
+    images.push({ src: resolvedSrc, alt });
+  }
+
+  for (const svg of Array.from(container.querySelectorAll<SVGSVGElement>('figure svg'))) {
+    const resolvedSrc = serializeSvgForImageDataUrl(svg);
+    if (!resolvedSrc || seen.has(resolvedSrc)) continue;
+
+    const figure = svg.closest('figure');
+    const alt = normalizeImageAltText(
+      figure?.querySelector('figcaption')?.textContent ||
+        svg.getAttribute('aria-label') ||
+        svg.getAttribute('title') ||
+        'Figure'
+    );
+
     seen.add(resolvedSrc);
     images.push({ src: resolvedSrc, alt });
   }
@@ -2552,6 +2591,8 @@ export function ReaderContent() {
                             ),
                             img: ({ src, alt }) => {
                               const normalizedSrc = normalizeArxivAssetUrl(src, documentSourceUrl);
+                              const preferEagerImageLoad =
+                                isArxivHtmlDocument || normalizedSrc.startsWith('data:image/');
                               if (!isMultimediaMode && !isArxivHtmlDocument) {
                                 return (
                                   <span
@@ -2576,7 +2617,8 @@ export function ReaderContent() {
                                     <img
                                       src={normalizedSrc}
                                       alt={alt || 'Media thumbnail'}
-                                      loading="lazy"
+                                      loading={preferEagerImageLoad ? 'eager' : 'lazy'}
+                                      fetchPriority={preferEagerImageLoad ? 'high' : 'auto'}
                                       referrerPolicy="no-referrer"
                                       className="h-16 w-24 shrink-0 rounded border object-cover"
                                       style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
@@ -2592,7 +2634,8 @@ export function ReaderContent() {
                                 <img
                                   src={normalizedSrc}
                                   alt={alt || 'Article image'}
-                                  loading="lazy"
+                                  loading={preferEagerImageLoad ? 'eager' : 'lazy'}
+                                  fetchPriority={preferEagerImageLoad ? 'high' : 'auto'}
                                   referrerPolicy="no-referrer"
                                   className="my-4 max-h-[36rem] w-auto max-w-full rounded-lg border object-contain"
                                   style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}

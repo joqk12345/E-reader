@@ -27,22 +27,116 @@ const makeId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
 const stripThinking = (text: string) => text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
+const joinParagraphs = (paragraphs: { text: string }[]) =>
+  paragraphs
+    .map((paragraph) => paragraph.text.trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+type ChatTarget = {
+  key: string;
+  label: string;
+  request: {
+    docId?: string;
+    sectionId?: string;
+    paragraphId?: string;
+    text?: string;
+  };
+};
+
 export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
-  const { selectedDocumentId, currentSectionId, currentParagraph } = useStore();
+  const {
+    selectedDocumentId,
+    currentDocumentType,
+    currentSectionId,
+    focusedParagraphId,
+    visibleParagraphs,
+  } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [questionInput, setQuestionInput] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const targetLabel = useMemo(() => {
-    if (currentParagraph) return 'Current Paragraph';
-    if (currentSectionId) return 'Current Section';
-    if (selectedDocumentId) return 'Entire Document';
-    return 'None';
-  }, [currentParagraph, currentSectionId, selectedDocumentId]);
+  const focusedParagraph = useMemo(
+    () => visibleParagraphs.find((paragraph) => paragraph.id === focusedParagraphId) || null,
+    [focusedParagraphId, visibleParagraphs]
+  );
 
-  const canAsk = Boolean(selectedDocumentId);
+  const currentSectionParagraphs = useMemo(
+    () =>
+      currentSectionId
+        ? visibleParagraphs.filter((paragraph) => paragraph.section_id === currentSectionId)
+        : [],
+    [currentSectionId, visibleParagraphs]
+  );
+
+  const target = useMemo<ChatTarget | null>(() => {
+    if (focusedParagraph) {
+      return {
+        key: `paragraph:${focusedParagraph.id}`,
+        label: 'Current Paragraph',
+        request: {
+          paragraphId: focusedParagraph.id,
+        },
+      };
+    }
+
+    if (currentSectionId) {
+      const sectionText = joinParagraphs(currentSectionParagraphs);
+      if (sectionText) {
+        return {
+          key: `section-text:${currentSectionId}:${sectionText.length}`,
+          label: 'Current Section',
+          request: {
+            text: sectionText,
+          },
+        };
+      }
+
+      return {
+        key: `section:${currentSectionId}`,
+        label: 'Current Section',
+        request: {
+          sectionId: currentSectionId,
+        },
+      };
+    }
+
+    if (selectedDocumentId && currentDocumentType === 'markdown') {
+      const documentText = joinParagraphs(visibleParagraphs);
+      if (documentText) {
+        return {
+          key: `document-text:${selectedDocumentId}:${documentText.length}`,
+          label: 'Current Text',
+          request: {
+            text: documentText,
+          },
+        };
+      }
+    }
+
+    if (selectedDocumentId) {
+      return {
+        key: `document:${selectedDocumentId}`,
+        label: 'Entire Document',
+        request: {
+          docId: selectedDocumentId,
+        },
+      };
+    }
+
+    return null;
+  }, [
+    currentDocumentType,
+    currentSectionId,
+    currentSectionParagraphs,
+    focusedParagraph,
+    selectedDocumentId,
+    visibleParagraphs,
+  ]);
+
+  const canAsk = Boolean(target);
 
   const scrollToBottom = () => {
     window.setTimeout(() => {
@@ -90,10 +184,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       }));
       const answer = await invoke<string>('chat_with_context', {
         question,
-        docId: currentParagraph ? undefined : selectedDocumentId,
-        sectionId: currentParagraph ? undefined : currentSectionId || undefined,
-        paragraphId: currentParagraph?.id || undefined,
         history,
+        ...target?.request,
       });
 
       setMessages((prev) => [
@@ -146,6 +238,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.id]);
 
+  useEffect(() => {
+    setMessages([]);
+    setError(null);
+  }, [target?.key]);
+
   const clearChat = () => {
     setMessages([]);
     setError(null);
@@ -156,7 +253,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
-            Context: <span className="font-medium text-gray-900">{targetLabel}</span>
+            Context: <span className="font-medium text-gray-900">{target?.label || 'None'}</span>
           </span>
           <button
             onClick={clearChat}
@@ -213,7 +310,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
               }
             }}
             disabled={!canAsk || isAsking}
-            placeholder={canAsk ? 'Ask anything about current context...' : 'Select a document first'}
+            placeholder={canAsk ? 'Ask anything about current text...' : 'Select a document first'}
             className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>

@@ -4,10 +4,26 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build (for example v0.4.19)
+        required: true
+        type: string
+      allow_unsigned_macos:
+        description: Publish unsigned macOS DMGs when Apple signing secrets are missing
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+  ALLOW_UNSIGNED_MACOS: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_unsigned_macos || false }}
 
 jobs:
   build:
@@ -40,6 +56,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -56,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           ./scripts/check-version.sh "${VERSION}"
 
       - name: Install dependencies (Ubuntu)
@@ -82,6 +100,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ALLOW_UNSIGNED_MACOS: ${{ env.ALLOW_UNSIGNED_MACOS }}
         run: |
           set -euo pipefail
 
@@ -93,15 +112,23 @@ jobs:
           done
 
           if (( ${#missing[@]} > 0 )); then
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Skipping macOS DMG release because signing/notarization secrets are missing: ${missing[*]}"
+            if [[ "${ALLOW_UNSIGNED_MACOS}" == "true" ]]; then
+              echo "mode=unsigned" >> "$GITHUB_OUTPUT"
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+              echo "::warning::Apple signing/notarization secrets are missing: ${missing[*]}. Continuing with an unsigned macOS DMG because allow_unsigned_macos=true."
+            else
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Skipping macOS DMG release because signing/notarization secrets are missing: ${missing[*]}"
+            fi
             exit 0
           fi
 
-          echo "available=true" >> "$GITHUB_OUTPUT"
+          echo "mode=signed" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build application (macOS DMG)
-        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.available == 'true'
+      - name: Build application (macOS DMG, signed)
+        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.mode == 'signed'
         run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles dmg
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
@@ -112,6 +139,13 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+      - name: Build application (macOS DMG, unsigned)
+        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.mode == 'unsigned'
+        run: npm run tauri build -- --target ${{ matrix.platform.target }} --bundles dmg
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
       - name: Build application (non-macOS)
         if: ${{ !startsWith(matrix.platform.os, 'macos-') }}
         run: npm run tauri build -- --target ${{ matrix.platform.target }}
@@ -120,7 +154,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
       - name: Verify macOS bundle
-        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.available == 'true'
+        if: startsWith(matrix.platform.os, 'macos-') && steps.macos_signing.outputs.mode == 'signed'
         shell: bash
         run: ./scripts/verify-macos-bundle.sh "src-tauri/target/${{ matrix.platform.target }}/release/bundle"
 
@@ -142,6 +176,32 @@ jobs:
             fi
           }
 
+          copy_macos_dmgs() {
+            local dir="$1"
+            local mode="$2"
+            if [[ ! -d "$dir" ]]; then
+              echo "Skip missing directory: $dir"
+              return
+            fi
+
+            shopt -s nullglob
+            local files=("$dir"/*.dmg)
+            if (( ${#files[@]} == 0 )); then
+              echo "No dmg files found under: $dir"
+              return
+            fi
+
+            for file in "${files[@]}"; do
+              local base
+              base="$(basename "$file" .dmg)"
+              if [[ "$mode" == "unsigned" ]]; then
+                cp "$file" "release/${base}-unsigned.dmg"
+              else
+                cp "$file" release/
+              fi
+            done
+          }
+
           # Platform-specific artifact handling
           if [[ "${{ matrix.platform.os }}" == "ubuntu-22.04" ]]; then
             # Linux: bundle/deb/*.deb and bundle/appimage/*.AppImage
@@ -149,7 +209,7 @@ jobs:
             copy_matches_if_dir_exists "src-tauri/target/${{ matrix.platform.target }}/release/bundle/appimage" "*.AppImage"
           elif [[ "${{ matrix.platform.os }}" == macos-* ]]; then
             # macOS: bundle/dmg/*.dmg
-            copy_matches_if_dir_exists "src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg" "*.dmg"
+            copy_macos_dmgs "src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg" "${{ steps.macos_signing.outputs.mode }}"
           elif [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
             # Windows: bundle/msi/*.msi and bundle/nsis/*.exe
             find src-tauri/target/${{ matrix.platform.target }}/release/bundle -name "*.msi" -exec cp {} release/ \;
@@ -160,7 +220,7 @@ jobs:
           ls -lh release/
 
       - name: Upload artifacts to GitHub
-        if: ${{ !startsWith(matrix.platform.os, 'macos-') || steps.macos_signing.outputs.available == 'true' }}
+        if: ${{ !startsWith(matrix.platform.os, 'macos-') || steps.macos_signing.outputs.publish == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}
@@ -174,6 +234,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -193,6 +255,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: final_release/*
           draft: false
           prerelease: false

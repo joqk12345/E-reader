@@ -437,6 +437,10 @@ export function Reader() {
     }
   };
 
+  const openChatPanel = () => {
+    window.dispatchEvent(new CustomEvent('reader:open-chat'));
+  };
+
   return (
     <div className="h-screen flex flex-col bg-white">
       <header
@@ -557,6 +561,16 @@ export function Reader() {
                       <span>Open Annotations</span>
                       <span>→</span>
                     </button>
+                    <button
+                      onClick={() => {
+                        openChatPanel();
+                        setReadingViewMenuOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <span>Open Chat</span>
+                      <span>→</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -576,6 +590,16 @@ export function Reader() {
         )}
 
         <div className="z-10 flex min-w-0 flex-1 items-center justify-end gap-2">
+          {readingMode && selectedDocumentId && (
+            <button
+              onClick={openChatPanel}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs text-gray-500 hover:bg-gray-50"
+              title="Open chat for current text"
+              aria-label="Open chat for current text"
+            >
+              💬
+            </button>
+          )}
           {!readingMode && showSourceLinkActions && (
             <div className="relative" ref={sourceLinkMenuRef}>
               <button

@@ -34,6 +34,10 @@ type ChatQuestionEventDetail = {
   question?: string;
 };
 
+type OpenChatEventDetail = {
+  question?: string;
+};
+
 type DictOpenEventDetail = {
   mode?: 'dict' | 'sentence';
   selectedText?: string;
@@ -198,6 +202,21 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       }
     };
 
+    const onOpenChat = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenChatEventDetail>;
+      const question = customEvent.detail?.question?.trim();
+      setActiveTab('chat');
+      if (question) {
+        setChatRequest({
+          id: Date.now(),
+          question,
+        });
+      }
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
     const onOpenSearch = () => {
       setActiveTab('search');
       if (collapsed) {
@@ -261,6 +280,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     window.addEventListener('reader:take-note', onTakeNote as EventListener);
     window.addEventListener('reader:translate-selection', onTranslateSelection as EventListener);
     window.addEventListener('reader:chat-question', onChatQuestion as EventListener);
+    window.addEventListener('reader:open-chat', onOpenChat as EventListener);
     window.addEventListener('reader:open-search', onOpenSearch as EventListener);
     window.addEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
     window.addEventListener('reader:open-dict', onOpenDict as EventListener);
@@ -271,6 +291,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       window.removeEventListener('reader:take-note', onTakeNote as EventListener);
       window.removeEventListener('reader:translate-selection', onTranslateSelection as EventListener);
       window.removeEventListener('reader:chat-question', onChatQuestion as EventListener);
+      window.removeEventListener('reader:open-chat', onOpenChat as EventListener);
       window.removeEventListener('reader:open-search', onOpenSearch as EventListener);
       window.removeEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
       window.removeEventListener('reader:open-dict', onOpenDict as EventListener);

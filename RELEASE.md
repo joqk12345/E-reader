@@ -142,6 +142,13 @@ Typical setup:
 
 The release workflow now skips macOS DMG publishing when the Apple signing secrets are missing, and it verifies the generated `.app` and `.dmg` before uploading macOS release assets.
 
+If you need to publish before the Apple secrets are available, you can manually run `.github/workflows/release.yml` from the Actions tab with:
+
+- `tag`: the existing release tag, for example `v0.4.19`
+- `allow_unsigned_macos`: `true`
+
+That manual path keeps Linux and Windows unchanged, builds macOS DMGs without Apple signing/notarization, and uploads them with an `-unsigned.dmg` suffix so they are not confused with public notarized builds. The Homebrew sync workflow ignores these unsigned DMGs.
+
 ## Troubleshooting
 
 ### Build Failures

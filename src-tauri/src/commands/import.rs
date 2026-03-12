@@ -1,6 +1,7 @@
 use crate::database;
 use crate::error::{ReaderError, Result};
 use crate::parsers::{EpubParser, MarkdownParser, ParsedChapters, PdfParser};
+use base64::prelude::*;
 use regex::Regex;
 use reqwest::Url;
 use std::collections::HashSet;
@@ -615,7 +616,11 @@ fn render_arxiv_equation_html(fragment: &str) -> Option<String> {
 
 fn render_arxiv_figure_html(fragment: &str, base_url: &Url) -> Option<String> {
     let src = capture_first(fragment, r#"(?s)<img\b[^>]*src="([^"]+)""#)
-        .and_then(|value| resolve_relative_url(base_url, &value))?;
+        .and_then(|value| resolve_relative_url(base_url, &value))
+        .or_else(|| {
+            capture_first(fragment, r#"(?s)(<svg\b.*?</svg>)"#)
+                .map(|svg| svg_markup_to_data_uri(&normalize_svg_markup_for_data_uri(&svg)))
+        })?;
     let caption = capture_first(fragment, r#"(?s)<figcaption\b[^>]*>(.*?)</figcaption>"#)
         .map(|text| strip_html_tags(&text))
         .map(|text| normalize_inline_text(&decode_basic_html_entities(&text)))
@@ -920,6 +925,38 @@ fn captures_all(input: &str, pattern: &str) -> Vec<String> {
         .captures_iter(input)
         .filter_map(|caps| caps.get(1).map(|value| value.as_str().to_string()))
         .collect()
+}
+
+fn normalize_svg_markup_for_data_uri(svg: &str) -> String {
+    let mut normalized = svg.trim().to_string();
+    let svg_root_re =
+        Regex::new(r#"(?s)^<svg\b[^>]*\bxmlns=""#).expect("invalid svg root regex");
+    if !svg_root_re.is_match(&normalized) {
+        normalized = normalized.replacen("<svg", r#"<svg xmlns="http://www.w3.org/2000/svg""#, 1);
+    }
+
+    let foreignobject_container_re =
+        Regex::new(r#"<([A-Za-z][\w:-]*)\b([^>]*)>"#).expect("invalid svg element regex");
+    foreignobject_container_re
+        .replace_all(&normalized, |caps: &regex::Captures| {
+            let tag = caps.get(1).map(|m| m.as_str()).unwrap_or("span");
+            let attrs = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+            if !attrs.contains("ltx_foreignobject_container") || attrs.contains("xmlns=") {
+                return caps.get(0).map(|m| m.as_str()).unwrap_or("").to_string();
+            }
+            format!(
+                r#"<{} xmlns="http://www.w3.org/1999/xhtml"{}>"#,
+                tag, attrs
+            )
+        })
+        .into_owned()
+}
+
+fn svg_markup_to_data_uri(svg: &str) -> String {
+    format!(
+        "data:image/svg+xml;base64,{}",
+        BASE64_STANDARD.encode(svg.as_bytes())
+    )
 }
 
 fn resolve_relative_url(base_url: &Url, href: &str) -> Option<String> {
@@ -1623,5 +1660,36 @@ mod tests {
             resolve_relative_url(&base_url, "2602.06036v1/x4.png").as_deref(),
             Some("https://arxiv.org/html/2602.06036v1/x4.png")
         );
+    }
+
+    #[test]
+    fn converts_arxiv_inline_svg_figure_to_data_uri_image() {
+        let fragment = r#"
+        <figure class="ltx_figure">
+          <svg width="120" height="60" viewBox="0 0 120 60">
+            <foreignObject width="120" height="60">
+              <span class="ltx_foreignobject_container"><span class="ltx_foreignobject_content">demo</span></span>
+            </foreignObject>
+          </svg>
+          <figcaption>Figure 3: Safety architecture.</figcaption>
+        </figure>
+        "#;
+
+        let base_url = Url::parse("https://arxiv.org/html/2603.05344v1").unwrap();
+        let rendered = render_arxiv_figure_html(fragment, &base_url).unwrap();
+
+        assert!(rendered.contains("![Figure 3: Safety architecture.](data:image/svg+xml;base64,"));
+
+        let src = rendered
+            .split("](")
+            .nth(1)
+            .and_then(|value| value.split(')').next())
+            .unwrap();
+        let encoded = src.strip_prefix("data:image/svg+xml;base64,").unwrap();
+        let decoded = BASE64_STANDARD.decode(encoded).unwrap();
+        let svg = String::from_utf8(decoded).unwrap();
+
+        assert!(svg.contains(r#"xmlns="http://www.w3.org/2000/svg""#));
+        assert!(svg.contains(r#"xmlns="http://www.w3.org/1999/xhtml""#));
     }
 }

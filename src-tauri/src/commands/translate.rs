@@ -549,6 +549,7 @@ pub async fn chat_with_context(
     doc_id: Option<String>,
     section_id: Option<String>,
     paragraph_id: Option<String>,
+    text: Option<String>,
     history: Option<Vec<ChatTurnInput>>,
 ) -> Result<String> {
     let q = question.trim();
@@ -562,6 +563,7 @@ pub async fn chat_with_context(
         doc_id.is_some(),
         section_id.is_some(),
         paragraph_id.is_some(),
+        text.is_some(),
     ]
     .iter()
     .filter(|&&x| x)
@@ -569,12 +571,21 @@ pub async fn chat_with_context(
 
     if provided_count != 1 {
         return Err(ReaderError::InvalidArgument(
-            "Exactly one of 'doc_id', 'section_id', or 'paragraph_id' must be provided".to_string(),
+            "Exactly one of 'doc_id', 'section_id', 'paragraph_id', or 'text' must be provided"
+                .to_string(),
         ));
     }
 
     let conn = get_connection(&app_handle)?;
-    let (context_scope, context_text) = if let Some(pid) = &paragraph_id {
+    let (context_scope, context_text) = if let Some(raw_text) = text {
+        let content = raw_text.trim().to_string();
+        if content.is_empty() {
+            return Err(ReaderError::InvalidArgument(
+                "'text' must not be empty".to_string(),
+            ));
+        }
+        ("Current text".to_string(), content)
+    } else if let Some(pid) = &paragraph_id {
         let p = get_paragraph(&conn, pid)?
             .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", pid)))?;
         ("Current paragraph".to_string(), p.text)
