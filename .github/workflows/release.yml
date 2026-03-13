@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       allow_unsigned_macos:
-        description: Publish unsigned macOS DMGs when Apple signing secrets are missing
+        description: Also publish unsigned macOS DMGs on a manual rerun when Apple signing secrets are missing
         required: false
         default: false
         type: boolean
@@ -23,7 +23,7 @@ concurrency:
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
-  ALLOW_UNSIGNED_MACOS: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_unsigned_macos || false }}
+  ALLOW_UNSIGNED_MACOS: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.allow_unsigned_macos) }}
 
 jobs:
   build:

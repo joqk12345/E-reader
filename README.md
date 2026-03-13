@@ -597,7 +597,7 @@ git tag v0.4.1
 git push origin v0.4.1
 ```
 
-GitHub Actions will automatically build binaries for all platforms.
+GitHub Actions will automatically build binaries for all platforms. If Apple signing secrets are not configured yet, macOS release assets will be uploaded as `-unsigned.dmg`.
 
 ## 🛠️ Technology Stack
 
