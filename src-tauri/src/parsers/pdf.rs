@@ -302,15 +302,18 @@ fn decode_shifted_printable_char(ch: char) -> char {
 fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
     let mut paragraphs = Vec::new();
     let mut current = String::new();
-    let mut current_is_table = false;
+    let mut current_kind: Option<PdfBlockKind> = None;
 
     for line in lines {
         let trimmed = line.trim();
         if is_pdf_image_marker(trimmed) {
             if !current.is_empty() {
-                paragraphs.push(current.trim().to_string());
+                paragraphs.push(normalize_pdf_block_text(
+                    &current,
+                    current_kind.unwrap_or(PdfBlockKind::Body),
+                ));
                 current.clear();
-                current_is_table = false;
+                current_kind = None;
             }
             paragraphs.push(trimmed.to_string());
             continue;
@@ -318,33 +321,72 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
 
         if trimmed.is_empty() {
             if !current.is_empty() {
-                paragraphs.push(current.trim().to_string());
+                paragraphs.push(normalize_pdf_block_text(
+                    &current,
+                    current_kind.unwrap_or(PdfBlockKind::Body),
+                ));
                 current.clear();
-                current_is_table = false;
+                current_kind = None;
             }
             continue;
         }
 
-        let line_is_table = is_tabular_line(trimmed);
         let normalized_line = normalize_pdf_line_text(trimmed);
+        let line_kind = classify_pdf_line(&normalized_line);
 
         if current.is_empty() {
             current.push_str(&normalized_line);
-            current_is_table = line_is_table;
+            current_kind = Some(line_kind);
             continue;
         }
 
-        if current_is_table || line_is_table {
-            if current_is_table && line_is_table {
-                current.push('\n');
-                current.push_str(&normalized_line);
+        let active_kind = current_kind.unwrap_or(PdfBlockKind::Body);
+
+        if active_kind == PdfBlockKind::Heading {
+            if line_kind == PdfBlockKind::Heading || is_pdf_heading_continuation_line(&normalized_line)
+            {
+                append_pdf_heading_line(&mut current, &normalized_line);
                 continue;
             }
 
-            paragraphs.push(normalize_pdf_paragraph_text(&current));
+            paragraphs.push(normalize_pdf_block_text(&current, active_kind));
             current.clear();
             current.push_str(&normalized_line);
-            current_is_table = line_is_table;
+            current_kind = Some(line_kind);
+            continue;
+        }
+
+        if line_kind == PdfBlockKind::Heading {
+            paragraphs.push(normalize_pdf_block_text(&current, active_kind));
+            current.clear();
+            current.push_str(&normalized_line);
+            current_kind = Some(PdfBlockKind::Heading);
+            continue;
+        }
+
+        if active_kind == PdfBlockKind::Table || line_kind == PdfBlockKind::Table {
+            if active_kind == PdfBlockKind::Table && line_kind == PdfBlockKind::Table {
+                append_pdf_table_line(&mut current, &normalized_line);
+                continue;
+            }
+
+            paragraphs.push(normalize_pdf_block_text(&current, active_kind));
+            current.clear();
+            current.push_str(&normalized_line);
+            current_kind = Some(line_kind);
+            continue;
+        }
+
+        if line_kind == PdfBlockKind::Metadata || active_kind == PdfBlockKind::Metadata {
+            if active_kind == PdfBlockKind::Metadata && line_kind == PdfBlockKind::Metadata {
+                append_pdf_line_to_paragraph(&mut current, &normalized_line);
+                continue;
+            }
+
+            paragraphs.push(normalize_pdf_block_text(&current, active_kind));
+            current.clear();
+            current.push_str(&normalized_line);
+            current_kind = Some(line_kind);
             continue;
         }
 
@@ -353,17 +395,25 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
             || current.ends_with('?')
             || current.ends_with(':');
         if ends_sentence || current.len() > 800 {
-            paragraphs.push(normalize_pdf_paragraph_text(&current));
+            paragraphs.push(normalize_pdf_block_text(&current, active_kind));
             current.clear();
             current.push_str(&normalized_line);
+            current_kind = Some(PdfBlockKind::Body);
         } else {
             append_pdf_line_to_paragraph(&mut current, &normalized_line);
         }
     }
 
     if !current.is_empty() {
-        paragraphs.push(normalize_pdf_paragraph_text(&current));
+        paragraphs.push(normalize_pdf_block_text(
+            &current,
+            current_kind.unwrap_or(PdfBlockKind::Body),
+        ));
     }
+
+    let paragraphs = suppress_caption_adjacent_visual_noise(paragraphs);
+    let paragraphs = suppress_table_ocr_when_page_snapshot_present(paragraphs);
+    let paragraphs = suppress_visual_noise_when_page_snapshot_present(paragraphs);
 
     if paragraphs.is_empty() {
         return vec!["No readable content extracted from PDF.".to_string()];
@@ -372,9 +422,31 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
     paragraphs
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PdfBlockKind {
+    Body,
+    Heading,
+    Metadata,
+    Table,
+}
+
 fn extract_with_system_tools(pdf_path: &str, output_dir: &Path) -> Option<Vec<Vec<String>>> {
-    let _ = output_dir;
-    extract_lines_with_pdftotext(pdf_path)
+    let mut pages = extract_lines_with_pdftotext(pdf_path)?;
+    let extracted_image_markers =
+        extract_page_image_markers_with_pdfimages(pdf_path, output_dir).unwrap_or_default();
+
+    for (page_idx, lines) in pages.iter_mut().enumerate() {
+        let page_markers = extracted_image_markers.get(&page_idx).cloned().unwrap_or_default();
+        if !page_markers.is_empty() {
+            insert_markers_after_captions(lines, page_markers);
+        } else if needs_page_visual_fallback(lines) {
+            if let Some(marker) = render_page_snapshot_marker(pdf_path, page_idx + 1, output_dir) {
+                insert_markers_after_captions(lines, vec![marker]);
+            }
+        }
+    }
+
+    Some(pages)
 }
 
 fn extract_lines_with_pdftotext(pdf_path: &str) -> Option<Vec<Vec<String>>> {
@@ -441,8 +513,462 @@ fn append_pdf_line_to_paragraph(current: &mut String, line: &str) {
     current.push_str(line);
 }
 
+fn append_pdf_heading_line(current: &mut String, line: &str) {
+    let line = line.trim();
+    if line.is_empty() {
+        return;
+    }
+    if !current.is_empty() {
+        current.push(' ');
+    }
+    current.push_str(line);
+}
+
+fn append_pdf_table_line(current: &mut String, line: &str) {
+    let line = line.trim();
+    if line.is_empty() {
+        return;
+    }
+    if !current.is_empty() {
+        current.push('\n');
+    }
+    current.push_str(line);
+}
+
 fn normalize_pdf_line_text(line: &str) -> String {
     collapse_spaced_uppercase_letters(line)
+}
+
+fn classify_pdf_line(line: &str) -> PdfBlockKind {
+    if is_tabular_line(line) {
+        PdfBlockKind::Table
+    } else if is_pdf_heading_line(line) {
+        PdfBlockKind::Heading
+    } else if is_pdf_metadata_line(line) {
+        PdfBlockKind::Metadata
+    } else {
+        PdfBlockKind::Body
+    }
+}
+
+fn normalize_pdf_block_text(text: &str, kind: PdfBlockKind) -> String {
+    match kind {
+        PdfBlockKind::Body => normalize_pdf_paragraph_text(text),
+        PdfBlockKind::Table => text.trim().to_string(),
+        PdfBlockKind::Heading | PdfBlockKind::Metadata => {
+            text.split_whitespace().collect::<Vec<_>>().join(" ")
+        }
+    }
+}
+
+fn suppress_caption_adjacent_visual_noise(paragraphs: Vec<String>) -> Vec<String> {
+    if paragraphs.len() < 4 {
+        return paragraphs;
+    }
+
+    let mut remove = vec![false; paragraphs.len()];
+
+    for (idx, paragraph) in paragraphs.iter().enumerate() {
+        if !looks_like_figure_or_table_caption(paragraph) {
+            continue;
+        }
+
+        let mut start = idx;
+        let mut backward_noise = 0usize;
+        while start > 0 {
+            let prev = paragraphs[start - 1].trim();
+            if prev.is_empty() || is_pdf_image_marker(prev) {
+                break;
+            }
+            if is_probable_visual_noise_paragraph(prev) {
+                start -= 1;
+                backward_noise += 1;
+                continue;
+            }
+            break;
+        }
+        if backward_noise >= 3 {
+            for slot in remove.iter_mut().take(idx).skip(start) {
+                *slot = true;
+            }
+        }
+
+        let mut end = idx + 1;
+        let mut forward_noise = 0usize;
+        while end < paragraphs.len() {
+            let next = paragraphs[end].trim();
+            if next.is_empty() || is_pdf_image_marker(next) {
+                break;
+            }
+            if is_probable_visual_noise_paragraph(next) {
+                end += 1;
+                forward_noise += 1;
+                continue;
+            }
+            break;
+        }
+        if forward_noise >= 3 {
+            for slot in remove.iter_mut().take(end).skip(idx + 1) {
+                *slot = true;
+            }
+        }
+    }
+
+    paragraphs
+        .into_iter()
+        .enumerate()
+        .filter_map(|(idx, paragraph)| if remove[idx] { None } else { Some(paragraph) })
+        .collect()
+}
+
+fn is_probable_visual_noise_paragraph(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty()
+        || is_pdf_image_marker(trimmed)
+        || looks_like_figure_or_table_caption(trimmed)
+        || is_pdf_heading_line(trimmed)
+        || is_pdf_metadata_line(trimmed)
+    {
+        return false;
+    }
+
+    let tokens = trimmed.split_whitespace().collect::<Vec<_>>();
+    if tokens.is_empty() || tokens.len() > 8 || trimmed.len() > 72 {
+        return false;
+    }
+    if trimmed.ends_with('.') && tokens.len() >= 5 {
+        return false;
+    }
+
+    let shortish = tokens
+        .iter()
+        .filter(|token| {
+            let cleaned = token.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+            cleaned.is_empty() || cleaned.len() <= 3 || cleaned.chars().all(|ch| ch.is_ascii_digit())
+        })
+        .count();
+    let long_lowercase_words = tokens
+        .iter()
+        .filter(|token| {
+            let cleaned = token.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+            cleaned.len() > 3 && cleaned.chars().any(|ch| ch.is_ascii_lowercase())
+        })
+        .count();
+    let has_diagram_symbols = trimmed.contains('<')
+        || trimmed.contains('>')
+        || trimmed.starts_with('(')
+        || tokens.iter().any(|token| {
+            token.contains('_')
+                || token.contains('/')
+                || token.contains('=')
+                || token.contains(':')
+                || token.chars().all(|ch| ch.is_ascii_uppercase())
+        });
+
+    if tokens.len() <= 2 && trimmed.len() <= 16 {
+        return true;
+    }
+
+    if trimmed.starts_with('(')
+        && trimmed.chars().nth(2) == Some(')')
+        && tokens.len() <= 8
+        && trimmed.len() <= 64
+    {
+        return true;
+    }
+
+    if has_diagram_symbols && tokens.len() <= 6 && long_lowercase_words <= 2 {
+        return true;
+    }
+
+    if tokens.len() <= 5
+        && trimmed.len() <= 48
+        && long_lowercase_words <= 4
+        && !trimmed.contains(',')
+        && !trimmed.ends_with(['.', '!', '?'])
+    {
+        return true;
+    }
+
+    shortish * 100 >= tokens.len() * 60
+        && long_lowercase_words <= 2
+        && !trimmed.ends_with(['.', '!', '?'])
+}
+
+fn suppress_table_ocr_when_page_snapshot_present(paragraphs: Vec<String>) -> Vec<String> {
+    if paragraphs.len() < 4
+        || !paragraphs
+            .iter()
+            .any(|paragraph| is_page_snapshot_marker(paragraph.trim()))
+    {
+        return paragraphs;
+    }
+
+    let mut filtered = Vec::with_capacity(paragraphs.len());
+    let mut idx = 0usize;
+
+    while idx < paragraphs.len() {
+        let current = paragraphs[idx].clone();
+        let current_trimmed = current.trim().to_string();
+
+        if looks_like_table_caption(&current_trimmed) {
+            filtered.push(current);
+            idx += 1;
+
+            while idx < paragraphs.len() && is_pdf_image_marker(paragraphs[idx].trim()) {
+                filtered.push(paragraphs[idx].clone());
+                idx += 1;
+            }
+
+            while idx < paragraphs.len() && is_pdf_body_sentence_paragraph(paragraphs[idx].trim()) {
+                filtered.push(paragraphs[idx].clone());
+                idx += 1;
+            }
+
+            while idx < paragraphs.len() {
+                let candidate = paragraphs[idx].trim();
+                if candidate.is_empty()
+                    || is_pdf_image_marker(candidate)
+                    || looks_like_figure_or_table_caption(candidate)
+                    || is_pdf_heading_line(candidate)
+                    || is_pdf_body_sentence_paragraph(candidate)
+                {
+                    break;
+                }
+                idx += 1;
+            }
+
+            continue;
+        }
+
+        filtered.push(current);
+        idx += 1;
+    }
+
+    filtered
+}
+
+fn looks_like_table_caption(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    (lower.starts_with("table") || text.starts_with("表"))
+        && looks_like_figure_or_table_caption(text)
+}
+
+fn is_page_snapshot_marker(text: &str) -> bool {
+    if !is_pdf_image_marker(text) {
+        return false;
+    }
+    text.contains("/page_") || text.contains("\\page_")
+}
+
+fn is_pdf_body_sentence_paragraph(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.len() < 48 || !trimmed.ends_with(['.', '!', '?']) {
+        return false;
+    }
+    let tokens = trimmed.split_whitespace().count();
+    tokens >= 8
+}
+
+fn suppress_visual_noise_when_page_snapshot_present(paragraphs: Vec<String>) -> Vec<String> {
+    if paragraphs.len() < 4
+        || !paragraphs
+            .iter()
+            .any(|paragraph| is_page_snapshot_marker(paragraph.trim()))
+    {
+        return paragraphs;
+    }
+
+    paragraphs
+        .into_iter()
+        .filter(|paragraph| {
+            let trimmed = paragraph.trim();
+            if trimmed.is_empty()
+                || is_pdf_image_marker(trimmed)
+                || looks_like_figure_or_table_caption(trimmed)
+                || is_pdf_heading_line(trimmed)
+                || is_pdf_metadata_line(trimmed)
+                || is_pdf_body_sentence_paragraph(trimmed)
+            {
+                return true;
+            }
+
+            !is_probable_visual_noise_paragraph(trimmed)
+        })
+        .collect()
+}
+
+fn is_pdf_heading_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || trimmed.len() > 120 {
+        return false;
+    }
+    if trimmed.contains('@')
+        || trimmed.starts_with("arXiv:")
+        || trimmed.starts_with("Index Terms:")
+        || looks_like_figure_or_table_caption(trimmed)
+    {
+        return false;
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    if matches!(
+        lower.as_str(),
+        "abstract"
+            | "contents"
+            | "introduction"
+            | "background"
+            | "motivation"
+            | "related work"
+            | "method"
+            | "methods"
+            | "approach"
+            | "experiments"
+            | "experimental setup"
+            | "results"
+            | "discussion"
+            | "conclusion"
+            | "conclusions"
+            | "references"
+            | "appendix"
+            | "appendices"
+            | "acknowledgments"
+            | "acknowledgements"
+    ) {
+        return true;
+    }
+
+    looks_like_numbered_pdf_heading(trimmed)
+}
+
+fn looks_like_numbered_pdf_heading(line: &str) -> bool {
+    let mut parts = line.split_whitespace();
+    let Some(numbering) = parts.next() else {
+        return false;
+    };
+    let title = parts.collect::<Vec<_>>().join(" ");
+    if title.is_empty() || title.len() > 96 {
+        return false;
+    }
+    if !title.chars().any(|ch| ch.is_ascii_alphabetic()) {
+        return false;
+    }
+
+    let numbering = numbering.trim_end_matches('.');
+    if numbering.is_empty()
+        || !numbering.chars().all(|ch| ch.is_ascii_digit() || ch == '.')
+        || !numbering.chars().any(|ch| ch.is_ascii_digit())
+    {
+        return false;
+    }
+
+    !title.ends_with(['.', '!', '?']) && looks_like_heading_fragment(&title)
+}
+
+fn is_pdf_heading_continuation_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty()
+        || trimmed.len() > 72
+        || trimmed.ends_with(['.', '!', '?', ':'])
+        || is_pdf_metadata_line(trimmed)
+        || looks_like_figure_or_table_caption(trimmed)
+    {
+        return false;
+    }
+
+    looks_like_heading_fragment(trimmed)
+}
+
+fn looks_like_heading_fragment(text: &str) -> bool {
+    let words = text.split_whitespace().collect::<Vec<_>>();
+    if words.is_empty() || words.len() > 14 {
+        return false;
+    }
+
+    let headingish = words
+        .iter()
+        .filter(|word| {
+            let cleaned = word.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
+            if cleaned.is_empty() {
+                return true;
+            }
+            is_heading_connector(cleaned)
+                || cleaned.chars().all(|ch| !ch.is_ascii_lowercase())
+                || cleaned
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.is_ascii_uppercase())
+        })
+        .count();
+
+    headingish * 100 >= words.len() * 70
+}
+
+fn is_heading_connector(word: &str) -> bool {
+    matches!(
+        word.to_ascii_lowercase().as_str(),
+        "a" | "an"
+            | "and"
+            | "as"
+            | "at"
+            | "by"
+            | "for"
+            | "from"
+            | "in"
+            | "into"
+            | "of"
+            | "on"
+            | "or"
+            | "the"
+            | "to"
+            | "via"
+            | "with"
+            | "without"
+    )
+}
+
+fn is_pdf_metadata_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || trimmed.len() > 180 {
+        return false;
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    if trimmed.contains('@')
+        || lower.starts_with("arxiv:")
+        || lower.starts_with("doi:")
+        || lower.starts_with("index terms:")
+        || lower.contains("corresponding author")
+    {
+        return true;
+    }
+
+    if trimmed.matches(',').count() >= 2
+        && (trimmed.contains(" ID ")
+            || trimmed.contains(" and ")
+            || trimmed.chars().any(|ch| ch.is_ascii_digit()))
+    {
+        return true;
+    }
+
+    trimmed.matches(',').count() >= 1
+        && !trimmed.ends_with('.')
+        && [
+            "university",
+            "college",
+            "school",
+            "department",
+            "institute",
+            "laboratory",
+            "lab",
+            "group",
+            "center",
+            "centre",
+            "company",
+            "business",
+        ]
+        .iter()
+        .any(|needle| lower.contains(needle))
 }
 
 fn collapse_spaced_uppercase_letters(input: &str) -> String {
@@ -533,7 +1059,40 @@ fn normalize_pdf_paragraph_text(text: &str) -> String {
         i += 1;
     }
 
-    tokens.join(" ")
+    collapse_pdf_leader_runs(&tokens.join(" "))
+}
+
+fn collapse_pdf_leader_runs(text: &str) -> String {
+    let tokens = text.split_whitespace().collect::<Vec<_>>();
+    if tokens.len() < 4 {
+        return text.trim().to_string();
+    }
+
+    let mut out = Vec::with_capacity(tokens.len());
+    let mut idx = 0usize;
+    while idx < tokens.len() {
+        if is_pdf_leader_token(tokens[idx]) {
+            let mut end = idx + 1;
+            while end < tokens.len() && is_pdf_leader_token(tokens[end]) {
+                end += 1;
+            }
+            if end - idx >= 4 {
+                out.push("…".to_string());
+                idx = end;
+                continue;
+            }
+        }
+
+        out.push(tokens[idx].to_string());
+        idx += 1;
+    }
+
+    out.join(" ")
+}
+
+fn is_pdf_leader_token(token: &str) -> bool {
+    matches!(token, "." | "·" | "•")
+        || (token.len() <= 3 && token.chars().all(|ch| ch == '.'))
 }
 
 fn should_merge_two_broken_tokens(left: &str, right: &str) -> bool {
@@ -543,7 +1102,7 @@ fn should_merge_two_broken_tokens(left: &str, right: &str) -> bool {
     if !(2..=4).contains(&left.len()) || right.len() < 2 {
         return false;
     }
-    if is_common_short_word(left) {
+    if is_common_short_word(left) || is_common_short_word(right) {
         return false;
     }
     let total = left.len() + right.len();
@@ -909,7 +1468,7 @@ fn clean_page_lines(page_lines: Vec<Vec<String>>) -> Vec<Vec<String>> {
                 .filter_map(|(idx, line)| {
                     let normalized = normalize_whitespace(&line);
                     if normalized.is_empty() {
-                        return None;
+                        return Some(String::new());
                     }
                     if is_pdf_image_marker(&normalized) {
                         return Some(normalized);
@@ -932,7 +1491,32 @@ fn clean_page_lines(page_lines: Vec<Vec<String>>) -> Vec<Vec<String>> {
                 })
                 .collect::<Vec<_>>()
         })
+        .map(collapse_blank_lines)
         .collect()
+}
+
+fn collapse_blank_lines(lines: Vec<String>) -> Vec<String> {
+    let mut collapsed = Vec::with_capacity(lines.len());
+    let mut previous_blank = true;
+
+    for line in lines {
+        if line.trim().is_empty() {
+            if !previous_blank {
+                collapsed.push(String::new());
+            }
+            previous_blank = true;
+            continue;
+        }
+
+        collapsed.push(line);
+        previous_blank = false;
+    }
+
+    while collapsed.last().is_some_and(|line| line.trim().is_empty()) {
+        collapsed.pop();
+    }
+
+    collapsed
 }
 
 fn edge_line_indices(len: usize) -> Vec<usize> {
@@ -1294,8 +1878,10 @@ fn expand_mono_bitmap(input: &[u8], target_pixels: usize) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{
-        append_pdf_line_to_paragraph, collapse_spaced_uppercase_letters,
-        normalize_pdf_paragraph_text, normalize_whitespace, PdfParser,
+        append_pdf_line_to_paragraph, collapse_blank_lines, collapse_spaced_uppercase_letters,
+        normalize_pdf_paragraph_text, normalize_whitespace, split_pdf_paragraphs,
+        suppress_caption_adjacent_visual_noise, suppress_table_ocr_when_page_snapshot_present,
+        suppress_visual_noise_when_page_snapshot_present, PdfParser,
     };
 
     #[test]
@@ -1355,6 +1941,165 @@ mod tests {
         assert_eq!(
             fixed,
             "1 Introduction The development of Large Language Models"
+        );
+    }
+
+    #[test]
+    fn collapse_toc_dot_leaders_in_paragraph() {
+        let input =
+            "3.1 Asynchronous Pipeline with Four Decoupled Components . . . . . . . . . .";
+        let fixed = normalize_pdf_paragraph_text(input);
+        assert_eq!(
+            fixed,
+            "3.1 Asynchronous Pipeline with Four Decoupled Components …"
+        );
+    }
+
+    #[test]
+    fn split_pdf_headings_into_separate_blocks() {
+        let lines = vec![
+            "Abstract".to_string(),
+            "This is the abstract body.".to_string(),
+            String::new(),
+            "1. Introduction".to_string(),
+            "This is the introduction body.".to_string(),
+            "2.2. Joint Training Paradigm and Dedicated Decoding".to_string(),
+            "Strategy".to_string(),
+            "Models appear in this section.".to_string(),
+        ];
+
+        let paragraphs = split_pdf_paragraphs(&lines);
+        assert_eq!(
+            paragraphs,
+            vec![
+                "Abstract",
+                "This is the abstract body.",
+                "1. Introduction",
+                "This is the introduction body.",
+                "2.2. Joint Training Paradigm and Dedicated Decoding Strategy",
+                "Models appear in this section.",
+            ]
+        );
+    }
+
+    #[test]
+    fn preserve_title_and_metadata_separation() {
+        let lines = vec![
+            "Uni-ASR: Unified LLM-Based Architecture for Non-Streaming and Streaming".to_string(),
+            "Automatic Speech Recognition".to_string(),
+            "Yinfeng Xia ID 1, Jian Tang ID 2, Junfeng Hou ID 2".to_string(),
+            String::new(),
+            "Qwen Applications Business Group, Alibaba, China".to_string(),
+            "{author}@alibaba-inc.com".to_string(),
+        ];
+
+        let paragraphs = split_pdf_paragraphs(&lines);
+        assert_eq!(
+            paragraphs,
+            vec![
+                "Uni-ASR: Unified LLM-Based Architecture for Non-Streaming and Streaming Automatic Speech Recognition",
+                "Yinfeng Xia ID 1, Jian Tang ID 2, Junfeng Hou ID 2",
+                "Qwen Applications Business Group, Alibaba, China {author}@alibaba-inc.com",
+            ]
+        );
+    }
+
+    #[test]
+    fn keep_single_blank_separators() {
+        let lines = vec![
+            "Title".to_string(),
+            String::new(),
+            String::new(),
+            "Body".to_string(),
+            String::new(),
+        ];
+
+        assert_eq!(
+            collapse_blank_lines(lines),
+            vec!["Title".to_string(), String::new(), "Body".to_string()]
+        );
+    }
+
+    #[test]
+    fn suppress_diagram_noise_before_caption() {
+        let paragraphs = vec![
+            "Then, in the decoding stage, text tokens are generated sequentially until the token <eos> is encountered."
+                .to_string(),
+            "E".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "Transcribe speech to text".to_string(),
+            "LLM input".to_string(),
+            "(b) Standard streaming training paradigm".to_string(),
+            "Figure 2: Different training paradigms of Uni-ASR.".to_string(),
+            "[[PDF_IMAGE:/tmp/page_0002.png]]".to_string(),
+            "2.2.2. Standard Streaming Paradigm".to_string(),
+        ];
+
+        assert_eq!(
+            suppress_caption_adjacent_visual_noise(paragraphs),
+            vec![
+                "Then, in the decoding stage, text tokens are generated sequentially until the token <eos> is encountered."
+                    .to_string(),
+                "Figure 2: Different training paradigms of Uni-ASR.".to_string(),
+                "[[PDF_IMAGE:/tmp/page_0002.png]]".to_string(),
+                "2.2.2. Standard Streaming Paradigm".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn suppress_table_ocr_when_page_snapshot_exists() {
+        let paragraphs = vec![
+            "Table 2: Comparison of ASR performance.".to_string(),
+            "[[PDF_IMAGE:/tmp/page_0004.png]]".to_string(),
+            "Results are reported in CER and WER respectively.".to_string(),
+            "Test set".to_string(),
+            "GLM-ASR-nano".to_string(),
+            "AISHELL-1 AISHELL-2 LibriSpeech test-clean".to_string(),
+            "1.81 2.00 4.19".to_string(),
+            "Table 3: Comparison of streaming ASR performance.".to_string(),
+            "Speech ReaLLM SpeechLLM-XL MoCha-ASR".to_string(),
+            "2.15 | 3.25".to_string(),
+            "4.2. Ablation Study".to_string(),
+        ];
+
+        assert_eq!(
+            suppress_table_ocr_when_page_snapshot_present(paragraphs),
+            vec![
+                "Table 2: Comparison of ASR performance.".to_string(),
+                "[[PDF_IMAGE:/tmp/page_0004.png]]".to_string(),
+                "Results are reported in CER and WER respectively.".to_string(),
+                "Table 3: Comparison of streaming ASR performance.".to_string(),
+                "4.2. Ablation Study".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn suppress_figure_noise_when_page_snapshot_exists() {
+        let paragraphs = vec![
+            "Figure 1: Overview of the Uni-ASR model architecture.".to_string(),
+            "[[PDF_IMAGE:/tmp/page_0002.png]]".to_string(),
+            "Then, in the decoding stage, text tokens are generated sequentially until the token <eos> is encountered, indicating the completion of the output sequence.".to_string(),
+            "E".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "LLM input".to_string(),
+            "(a) Non-streaming training paradigm".to_string(),
+            "Figure 2: Different training paradigms of Uni-ASR.".to_string(),
+            "2.2.2. Standard Streaming Paradigm".to_string(),
+        ];
+
+        assert_eq!(
+            suppress_visual_noise_when_page_snapshot_present(paragraphs),
+            vec![
+                "Figure 1: Overview of the Uni-ASR model architecture.".to_string(),
+                "[[PDF_IMAGE:/tmp/page_0002.png]]".to_string(),
+                "Then, in the decoding stage, text tokens are generated sequentially until the token <eos> is encountered, indicating the completion of the output sequence.".to_string(),
+                "Figure 2: Different training paradigms of Uni-ASR.".to_string(),
+                "2.2.2. Standard Streaming Paradigm".to_string(),
+            ]
         );
     }
 

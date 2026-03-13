@@ -588,6 +588,517 @@ const parsePdfPageFromLocation = (location?: string): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
+type PdfParagraphKind =
+  | 'title'
+  | 'heading1'
+  | 'heading2'
+  | 'heading3'
+  | 'metadata'
+  | 'keywords'
+  | 'caption'
+  | 'toc'
+  | 'table'
+  | 'preformatted'
+  | 'body';
+
+type PdfTableGroupingResult = {
+  paragraphs: Paragraph[];
+  memberIdsByLeaderId: Map<string, string[]>;
+};
+
+const pdfNumberedHeadingRe = /^(\d+(?:\.\d+)*)\.?\s+(.+)$/;
+const pdfBareHeadingLabels = new Set([
+  'abstract',
+  'contents',
+  'introduction',
+  'background',
+  'motivation',
+  'related work',
+  'method',
+  'methods',
+  'approach',
+  'experiments',
+  'experimental setup',
+  'results',
+  'discussion',
+  'conclusion',
+  'conclusions',
+  'references',
+  'appendix',
+  'appendices',
+  'acknowledgments',
+  'acknowledgements',
+]);
+const pdfAffiliationKeywordRe =
+  /\b(?:university|college|school|department|institute|laboratory|lab|group|center|centre|company|business)\b/i;
+
+const isPdfKeywordsParagraph = (text: string): boolean =>
+  /^index terms\s*:/i.test(text.trim());
+
+const isPdfCaptionParagraph = (text: string): boolean =>
+  /^(figure|fig\.?|table)\s*\d+[\s.: -]/i.test(text.trim());
+
+const isPdfMetadataParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 220) return false;
+  if (isPdfKeywordsParagraph(trimmed)) return true;
+  if (/@/.test(trimmed) || /^arxiv:/i.test(trimmed) || /^doi:/i.test(trimmed)) return true;
+  if (
+    trimmed.includes(',') &&
+    pdfAffiliationKeywordRe.test(trimmed) &&
+    !/[.!?]$/.test(trimmed)
+  ) {
+    return true;
+  }
+  const commaCount = (trimmed.match(/,/g) || []).length;
+  if (
+    commaCount >= 2 &&
+    (/\bID\b/.test(trimmed) || /\band\b/.test(trimmed) || /\d/.test(trimmed))
+  ) {
+    return true;
+  }
+  return /corresponding author/i.test(trimmed);
+};
+
+const normalizePdfTextViewLine = (line: string): string =>
+  line
+    .replace(/(?:\.\s*){4,}/g, ' … ')
+    .replace(/(?:[·•]\s*){4,}/g, ' … ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+const normalizePdfTextViewText = (text: string): string =>
+  text
+    .split('\n')
+    .map((line) => normalizePdfTextViewLine(line))
+    .join('\n')
+    .trim();
+
+const isPdfStandalonePunctuationParagraph = (text: string): boolean => {
+  const compact = text.replace(/\s+/g, '').trim();
+  if (!compact) return false;
+  return /^[.*·•⋅∙…!?:;,_\-–—~|/\\]+$/.test(compact);
+};
+
+const isPdfStandalonePageNumberParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  return /^\d{1,3}$/.test(trimmed) || /^(?:[ivxlcdm]{1,8})$/i.test(trimmed);
+};
+
+const looksLikePdfTocParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (
+    !trimmed ||
+    parsePdfImageMarker(trimmed) ||
+    isPdfCaptionParagraph(trimmed) ||
+    isPdfMetadataParagraph(trimmed)
+  ) {
+    return false;
+  }
+
+  return /(?:\.\s*){4,}/.test(trimmed) || /(?:[·•]\s*){4,}/.test(trimmed);
+};
+
+const formatPdfTocParagraph = (text: string): string =>
+  normalizePdfTextViewText(text).replace(
+    /\s+(?=(?:[A-D]\.\d+|\d+\.\d+(?:\.\d+)*)\s+[A-Z])/g,
+    '\n'
+  );
+
+const getPdfHeadingLevel = (text: string): 1 | 2 | 3 | null => {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (pdfBareHeadingLabels.has(trimmed.toLowerCase())) return 1;
+
+  const match = trimmed.match(pdfNumberedHeadingRe);
+  if (!match) return null;
+  if (!/[A-Za-z\u4E00-\u9FFF]/.test(match[2] || '')) return null;
+
+  const depth = (match[1]?.split('.').filter(Boolean).length || 1);
+  if (depth <= 1) return 1;
+  if (depth === 2) return 2;
+  return 3;
+};
+
+const classifyPdfParagraph = (paragraph: Paragraph, page: number | null): PdfParagraphKind => {
+  const text = paragraph.text.trim();
+  if (!text) return 'body';
+  if (parsePdfImageMarker(text)) return 'body';
+  if (page === 1 && paragraph.order_index === 0 && text.length <= 240) return 'title';
+  if (isPdfCaptionParagraph(text)) return 'caption';
+  if (isPdfKeywordsParagraph(text)) return 'keywords';
+  if (isPdfMetadataParagraph(text)) return 'metadata';
+  const headingLevel = getPdfHeadingLevel(text);
+  if (headingLevel === 1) return 'heading1';
+  if (headingLevel === 2) return 'heading2';
+  if (headingLevel === 3) return 'heading3';
+  if (looksLikePdfTocParagraph(text)) return 'toc';
+  if (isLikelyGroupedPdfTableText(text)) return 'table';
+  if (text.includes('\n')) return 'preformatted';
+  return 'body';
+};
+
+const isPdfTableCaptionParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  return /^(table)\s*\d+[\s.: -]/i.test(trimmed) || /^表\s*\d+[\s.:：-]/.test(trimmed);
+};
+
+const isPdfBodySentenceParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (trimmed.length < 48 || !/[.!?]$/.test(trimmed)) return false;
+  return trimmed.split(/\s+/).filter(Boolean).length >= 8;
+};
+
+const isPdfPageSnapshotMarker = (text: string): boolean => {
+  const path = parsePdfImageMarker(text);
+  if (!path) return false;
+  return path.includes('/page_') || path.includes('\\page_');
+};
+
+const getPdfTextViewVisualNote = (text: string): string | null => {
+  const path = parsePdfImageMarker(text);
+  if (!path) return null;
+  return isPdfPageSnapshotMarker(text)
+    ? 'Table/Figure layout omitted in Text View.'
+    : 'Figure image omitted in Text View.';
+};
+
+const isLikelyPdfVisualNoiseParagraph = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (parsePdfImageMarker(trimmed)) return false;
+  if (isPdfCaptionParagraph(trimmed) || isPdfMetadataParagraph(trimmed)) return false;
+  if (getPdfHeadingLevel(trimmed) !== null) return false;
+
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 8 || trimmed.length > 72) return false;
+  if (/[.!?]$/.test(trimmed) && tokens.length >= 5) return false;
+
+  const shortish = tokens.filter((token) => {
+    const cleaned = token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+    return !cleaned || cleaned.length <= 3 || /^\d+$/.test(cleaned);
+  }).length;
+  const longLowercaseWords = tokens.filter((token) => {
+    const cleaned = token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+    return cleaned.length > 3 && /[a-z]/.test(cleaned);
+  }).length;
+  const hasDiagramSymbols =
+    trimmed.includes('<') ||
+    trimmed.includes('>') ||
+    trimmed.startsWith('(') ||
+    tokens.some((token) => token.includes('_') || token.includes('/') || token.includes('=') || token.includes(':'));
+
+  if (tokens.length <= 2 && trimmed.length <= 24) return true;
+  if (/^\([a-z]\)/i.test(trimmed) && tokens.length <= 8 && trimmed.length <= 64) return true;
+  if (hasDiagramSymbols && tokens.length <= 6 && longLowercaseWords <= 2) return true;
+  if (
+    tokens.length <= 5 &&
+    trimmed.length <= 48 &&
+    longLowercaseWords <= 4 &&
+    !trimmed.includes(',') &&
+    !/[.!?]$/.test(trimmed)
+  ) {
+    return true;
+  }
+  if (tokens.length <= 4 && trimmed.length <= 40 && longLowercaseWords <= 2 && !/[.!?]$/.test(trimmed)) return true;
+
+  return shortish * 100 >= tokens.length * 60 && longLowercaseWords <= 2 && !/[.!?]$/.test(trimmed);
+};
+
+const normalizePdfTableToken = (token: string): string =>
+  token.replace(/^[,;:()[\]{}]+|[,;:()[\]{}]+$/g, '');
+
+const isLikelyPdfNumericCell = (token: string): boolean => {
+  const normalized = normalizePdfTableToken(token);
+  if (!normalized) return false;
+  if (/^(?:-|–|—|−|n\/a|na)$/i.test(normalized)) return true;
+  return /^[-+−]?(?:(?:\d+(?:\.\d+)?)|(?:\.\d+))(?:%|ms|s)?$/i.test(normalized);
+};
+
+const getPdfTableRowStats = (text: string) => {
+  const tokens = text
+    .trim()
+    .split(/\s+/)
+    .map(normalizePdfTableToken)
+    .filter(Boolean);
+  const numericCount = tokens.filter(isLikelyPdfNumericCell).length;
+  const alphaCount = tokens.filter((token) => /[A-Za-z\u4E00-\u9FFF]/.test(token)).length;
+  const longLowercaseCount = tokens.filter(
+    (token) => token.length >= 6 && /[a-z]/.test(token)
+  ).length;
+  return { tokens, numericCount, alphaCount, longLowercaseCount };
+};
+
+const isLikelyPdfTableContextLine = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (
+    parsePdfImageMarker(trimmed) ||
+    isPdfCaptionParagraph(trimmed) ||
+    isPdfMetadataParagraph(trimmed) ||
+    isPdfKeywordsParagraph(trimmed) ||
+    getPdfHeadingLevel(trimmed) !== null ||
+    isPdfBodySentenceParagraph(trimmed)
+  ) {
+    return false;
+  }
+  if (/^\([a-z]\)\s+/i.test(trimmed)) return false;
+  if (getPdfTextViewVisualNote(trimmed)) return false;
+
+  const { tokens, numericCount, longLowercaseCount } = getPdfTableRowStats(trimmed);
+  if (tokens.length < 2 || tokens.length > 18 || trimmed.length > 220) return false;
+  if (/[.!?]$/.test(trimmed) && numericCount === 0) return false;
+  if (numericCount >= 2) return true;
+  if (numericCount >= 1 && tokens.length <= 14) return true;
+  if (tokens.length >= 4 && longLowercaseCount <= 3 && !isLikelyPdfVisualNoiseParagraph(trimmed)) {
+    return true;
+  }
+  return false;
+};
+
+const isLikelyPdfTableRow = (text: string): boolean => {
+  const trimmed = text.trim();
+  if (!isLikelyPdfTableContextLine(trimmed)) return false;
+  const { tokens, numericCount, alphaCount } = getPdfTableRowStats(trimmed);
+  return numericCount >= 2 || (numericCount >= 1 && alphaCount >= 1 && tokens.length <= 14);
+};
+
+const hasRecentPdfTableCaption = (paragraphs: Paragraph[], startIndex: number): boolean => {
+  const start = paragraphs[startIndex];
+  const page = parsePdfPageFromLocation(start.location);
+  if (page === null) return false;
+
+  let scanned = 0;
+  for (let idx = startIndex - 1; idx >= 0 && scanned < 6; idx -= 1) {
+    const candidate = paragraphs[idx];
+    const candidatePage = parsePdfPageFromLocation(candidate.location);
+    if (candidatePage !== page) break;
+
+    const text = candidate.text.trim();
+    if (!text) continue;
+    if (isPdfTableCaptionParagraph(text)) return true;
+    if (parsePdfImageMarker(text) || getPdfTextViewVisualNote(text)) {
+      scanned += 1;
+      continue;
+    }
+    if (
+      isPdfBodySentenceParagraph(text) ||
+      isPdfCaptionParagraph(text) ||
+      isPdfMetadataParagraph(text) ||
+      getPdfHeadingLevel(text) !== null
+    ) {
+      break;
+    }
+    scanned += 1;
+  }
+
+  return false;
+};
+
+const isLikelyGroupedPdfTableText = (text: string): boolean => {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return false;
+
+  let numericRows = 0;
+  for (const line of lines) {
+    if (!isLikelyPdfTableContextLine(line)) return false;
+    if (isLikelyPdfTableRow(line)) numericRows += 1;
+  }
+
+  return numericRows >= 2;
+};
+
+const groupPdfTableParagraphs = (paragraphs: Paragraph[]): PdfTableGroupingResult => {
+  if (paragraphs.length === 0) {
+    return { paragraphs, memberIdsByLeaderId: new Map() };
+  }
+
+  const groupedParagraphs: Paragraph[] = [];
+  const memberIdsByLeaderId = new Map<string, string[]>();
+
+  let index = 0;
+  while (index < paragraphs.length) {
+    const current = paragraphs[index];
+    const currentText = current.text.trim();
+    const currentPage = parsePdfPageFromLocation(current.location);
+    const tableContext = hasRecentPdfTableCaption(paragraphs, index);
+    const canStartBlock = tableContext
+      ? isLikelyPdfTableContextLine(currentText)
+      : isLikelyPdfTableRow(currentText);
+
+    if (!canStartBlock || currentPage === null) {
+      groupedParagraphs.push(current);
+      index += 1;
+      continue;
+    }
+
+    const block: Paragraph[] = [];
+    let cursor = index;
+    while (cursor < paragraphs.length) {
+      const candidate = paragraphs[cursor];
+      const candidatePage = parsePdfPageFromLocation(candidate.location);
+      if (candidatePage !== currentPage) break;
+
+      const candidateText = candidate.text.trim();
+      const matches = tableContext
+        ? isLikelyPdfTableContextLine(candidateText)
+        : isLikelyPdfTableRow(candidateText);
+      if (!matches) break;
+
+      block.push(candidate);
+      cursor += 1;
+    }
+
+    const numericRows = block.filter((paragraph) => isLikelyPdfTableRow(paragraph.text)).length;
+    if (block.length >= 2 && numericRows >= 2) {
+      const leader = block[0];
+      groupedParagraphs.push({
+        ...leader,
+        text: block.map((paragraph) => paragraph.text.trim()).filter(Boolean).join('\n'),
+      });
+      memberIdsByLeaderId.set(
+        leader.id,
+        block.map((paragraph) => paragraph.id)
+      );
+      index = cursor;
+      continue;
+    }
+
+    groupedParagraphs.push(current);
+    index += 1;
+  }
+
+  return { paragraphs: groupedParagraphs, memberIdsByLeaderId };
+};
+
+const filterVisiblePdfParagraphs = (paragraphs: Paragraph[]): Paragraph[] => {
+  if (paragraphs.length === 0) return paragraphs;
+
+  const byPage = new Map<number, Paragraph[]>();
+  for (const paragraph of paragraphs) {
+    const page = parsePdfPageFromLocation(paragraph.location) || 1;
+    if (!byPage.has(page)) byPage.set(page, []);
+    byPage.get(page)!.push(paragraph);
+  }
+
+  const hiddenIds = new Set<string>();
+
+  for (const pageParagraphs of byPage.values()) {
+    const hasPageSnapshot = pageParagraphs.some((paragraph) =>
+      isPdfPageSnapshotMarker(paragraph.text)
+    );
+    const hasContentsHeading = pageParagraphs.some(
+      (paragraph) => paragraph.text.trim().toLowerCase() === 'contents'
+    );
+
+    if (hasContentsHeading) {
+      for (const paragraph of pageParagraphs) {
+        const text = normalizePdfTextViewText(paragraph.text);
+        if (
+          text &&
+          text.toLowerCase() !== 'contents' &&
+          (isPdfStandalonePunctuationParagraph(text) ||
+            isPdfStandalonePageNumberParagraph(text))
+        ) {
+          hiddenIds.add(paragraph.id);
+        }
+      }
+    }
+
+    if (hasPageSnapshot) {
+      for (const paragraph of pageParagraphs) {
+        const text = paragraph.text.trim();
+        if (
+          text &&
+          !parsePdfImageMarker(text) &&
+          !isPdfCaptionParagraph(text) &&
+          !isPdfMetadataParagraph(text) &&
+          getPdfHeadingLevel(text) === null &&
+          !isPdfBodySentenceParagraph(text) &&
+          isLikelyPdfVisualNoiseParagraph(text)
+        ) {
+          hiddenIds.add(paragraph.id);
+        }
+      }
+    }
+
+    for (let idx = 0; idx < pageParagraphs.length; idx += 1) {
+      const current = pageParagraphs[idx];
+      if (!isPdfCaptionParagraph(current.text)) continue;
+
+      let start = idx;
+      let backwardNoise = 0;
+      while (start > 0) {
+        const prev = pageParagraphs[start - 1];
+        const prevText = prev.text.trim();
+        if (!prevText || parsePdfImageMarker(prevText)) break;
+        if (isLikelyPdfVisualNoiseParagraph(prevText)) {
+          start -= 1;
+          backwardNoise += 1;
+          continue;
+        }
+        break;
+      }
+      if (backwardNoise >= 3) {
+        for (let cursor = start; cursor < idx; cursor += 1) {
+          hiddenIds.add(pageParagraphs[cursor].id);
+        }
+      }
+
+      let end = idx + 1;
+      let forwardNoise = 0;
+      while (end < pageParagraphs.length) {
+        const next = pageParagraphs[end];
+        const nextText = next.text.trim();
+        if (!nextText || parsePdfImageMarker(nextText)) break;
+        if (isLikelyPdfVisualNoiseParagraph(nextText)) {
+          end += 1;
+          forwardNoise += 1;
+          continue;
+        }
+        break;
+      }
+      if (forwardNoise >= 3) {
+        for (let cursor = idx + 1; cursor < end; cursor += 1) {
+          hiddenIds.add(pageParagraphs[cursor].id);
+        }
+      }
+
+      if (!hasPageSnapshot || !isPdfTableCaptionParagraph(current.text)) {
+        continue;
+      }
+
+      let cursor = idx + 1;
+      while (cursor < pageParagraphs.length && parsePdfImageMarker(pageParagraphs[cursor].text)) {
+        cursor += 1;
+      }
+      while (cursor < pageParagraphs.length && isPdfBodySentenceParagraph(pageParagraphs[cursor].text)) {
+        cursor += 1;
+      }
+      while (cursor < pageParagraphs.length) {
+        const candidate = pageParagraphs[cursor];
+        const candidateText = candidate.text.trim();
+        if (
+          !candidateText ||
+          parsePdfImageMarker(candidateText) ||
+          isPdfCaptionParagraph(candidateText) ||
+          getPdfHeadingLevel(candidateText) !== null ||
+          isPdfBodySentenceParagraph(candidateText)
+        ) {
+          break;
+        }
+        hiddenIds.add(candidate.id);
+        cursor += 1;
+      }
+    }
+  }
+
+  return paragraphs.filter((paragraph) => !hiddenIds.has(paragraph.id));
+};
+
 const treeLineRe = /(~\/|├──|└──|│\s)/;
 const flattenedTreeLineSplitRe = /(?<=[A-Za-z0-9_./-])\d+(?=(?:~\/|[A-Za-z_./-]|├──|└──|│))/g;
 const jinaImageRe = /^!\((.+?)\)\[(https?:\/\/[^\]\s]+)\]$/i;
@@ -1438,7 +1949,9 @@ export function ReaderContent() {
             filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions),
             supplementalReferences
           )
-        : filterLeadingSummaryParagraphs(paragraphs),
+        : currentDocumentType === 'pdf'
+          ? filterVisiblePdfParagraphs(filterLeadingSummaryParagraphs(paragraphs))
+          : filterLeadingSummaryParagraphs(paragraphs),
     [
       currentDocumentType,
       markdownFilterOptions,
@@ -1447,9 +1960,19 @@ export function ReaderContent() {
       supplementalReferences,
     ]
   );
+  const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
+    () =>
+      currentDocumentType === 'pdf'
+        ? groupPdfTableParagraphs(visibleParagraphs)
+        : {
+            paragraphs: visibleParagraphs,
+            memberIdsByLeaderId: new Map<string, string[]>(),
+          },
+    [currentDocumentType, visibleParagraphs]
+  );
   const sourceWordCount = useMemo(
-    () => visibleParagraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
-    [visibleParagraphs]
+    () => renderParagraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
+    [renderParagraphs]
   );
   const translatedWordCount = useMemo(
     () =>
@@ -1465,7 +1988,7 @@ export function ReaderContent() {
   }, [setVisibleParagraphs, visibleParagraphs]);
 
   const doubleColumnPageSize = useMemo(() => {
-    if (!isTwoColumnLayout) return visibleParagraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
+    if (!isTwoColumnLayout) return renderParagraphs.length || BASE_DOUBLE_COLUMN_PAGE_SIZE;
     const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
     const viewportWidth = contentViewport.width > 0 ? contentViewport.width : fallbackWidth;
@@ -1480,19 +2003,19 @@ export function ReaderContent() {
     contentViewport.height,
     contentViewport.width,
     isTwoColumnLayout,
-    visibleParagraphs.length,
+    renderParagraphs.length,
     showTranslation,
     viewSettings.fontSize,
   ]);
   const totalColumnPages = useMemo(() => {
     if (!isTwoColumnLayout) return 1;
-    return Math.max(1, Math.ceil(visibleParagraphs.length / doubleColumnPageSize));
-  }, [doubleColumnPageSize, isTwoColumnLayout, visibleParagraphs.length]);
+    return Math.max(1, Math.ceil(renderParagraphs.length / doubleColumnPageSize));
+  }, [doubleColumnPageSize, isTwoColumnLayout, renderParagraphs.length]);
   const displayedParagraphs = useMemo(() => {
-    if (!isTwoColumnLayout) return visibleParagraphs;
+    if (!isTwoColumnLayout) return renderParagraphs;
     const start = columnPageIndex * doubleColumnPageSize;
-    return visibleParagraphs.slice(start, start + doubleColumnPageSize);
-  }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, visibleParagraphs]);
+    return renderParagraphs.slice(start, start + doubleColumnPageSize);
+  }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, renderParagraphs]);
   const normalizedMarkdownTexts = useMemo(() => {
     const cursor = { current: 0 };
     const normalized: Record<string, string> = {};
@@ -1628,7 +2151,7 @@ export function ReaderContent() {
         detail: {
           sourceWords: sourceWordCount,
           translatedWords: translatedWordCount,
-          paragraphCount: visibleParagraphs.length,
+          paragraphCount: renderParagraphs.length,
           currentPage: isTwoColumnLayout ? columnPageIndex + 1 : 1,
           totalPages: isTwoColumnLayout ? totalColumnPages : 1,
         },
@@ -1637,7 +2160,7 @@ export function ReaderContent() {
   }, [
     columnPageIndex,
     isTwoColumnLayout,
-    visibleParagraphs.length,
+    renderParagraphs.length,
     sourceWordCount,
     totalColumnPages,
     translatedWordCount,
@@ -2413,6 +2936,10 @@ export function ReaderContent() {
               ? markdownParagraphMeta[paragraph.id]
               : undefined;
             const isMediaLinksParagraph = paragraphMeta?.inMediaLinks || false;
+            const groupedParagraphIds =
+              currentDocumentType === 'pdf'
+                ? (pdfTableMemberIdsByLeader.get(paragraph.id) || [paragraph.id])
+                : [paragraph.id];
             const normalizedMarkdownText = isMarkdownParagraph
               ? (normalizedMarkdownTexts[paragraph.id] || paragraph.text)
               : paragraph.text;
@@ -2426,12 +2953,41 @@ export function ReaderContent() {
                 )
               : paragraph.text;
             const canTranslateMarkdownParagraph = Boolean(translatableMarkdownText.trim());
-            const sentences = splitIntoSentences(paragraph.text);
-            const isSearchMatchedParagraph = matchedParagraphSet.current.has(paragraph.id);
-            const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
-            const paragraphAnnotations = annotationsByParagraph[paragraph.id] || [];
+            const normalizedPdfText =
+              currentDocumentType === 'pdf'
+                ? normalizePdfTextViewText(paragraph.text)
+                : paragraph.text;
             const currentPage = parsePdfPageFromLocation(paragraph.location);
             const shouldShowPdfPreview = false;
+            const pdfParagraphKind =
+              currentDocumentType === 'pdf'
+                ? classifyPdfParagraph(
+                    {
+                      ...paragraph,
+                      text: normalizedPdfText,
+                    },
+                    currentPage
+                  )
+                : 'body';
+            const pdfDisplayText =
+              currentDocumentType === 'pdf' && pdfParagraphKind === 'toc'
+                ? formatPdfTocParagraph(paragraph.text)
+                : normalizedPdfText;
+            const sentences =
+              currentDocumentType === 'pdf'
+                ? splitIntoSentences(pdfDisplayText).filter(
+                    (sentence) =>
+                      !isPdfStandalonePunctuationParagraph(sentence) &&
+                      !isPdfStandalonePageNumberParagraph(sentence)
+                  )
+                : splitIntoSentences(paragraph.text);
+            const isSearchMatchedParagraph = groupedParagraphIds.some((id) =>
+              matchedParagraphSet.current.has(id)
+            );
+            const shouldHighlightText = isSearchMatchedParagraph && Boolean(searchHighlightQuery.trim());
+            const paragraphAnnotations = groupedParagraphIds.flatMap(
+              (id) => annotationsByParagraph[id] || []
+            );
 
             return (
               <div
@@ -2724,17 +3280,183 @@ export function ReaderContent() {
                   </div>
                 ) : (
                   (() => {
-                    const imagePath = parsePdfImageMarker(paragraph.text);
-                    if (imagePath) {
+                    const pdfVisualNote = getPdfTextViewVisualNote(paragraph.text);
+                    if (pdfVisualNote) {
                       return (
-                        <figure className="my-3">
-                          <img
-                            src={convertFileSrc(imagePath)}
-                            alt="PDF image"
-                            className="max-h-[36rem] w-auto max-w-full rounded border border-gray-200 object-contain"
-                          />
-                        </figure>
+                        <div
+                          className="my-3 rounded-lg border px-3 py-2 text-sm italic"
+                          style={{
+                            color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                            borderColor: currentTheme.border,
+                            backgroundColor: currentTheme.secondary,
+                          }}
+                        >
+                          {pdfVisualNote}
+                        </div>
                       );
+                    }
+                    if (currentDocumentType === 'pdf' && showSource) {
+                      const pdfText = pdfDisplayText.trim();
+                      if (pdfParagraphKind === 'title') {
+                        return (
+                          <header className="mb-6 text-center">
+                            <h1
+                              className="text-3xl font-semibold leading-tight tracking-tight text-slate-900"
+                              style={{ color: currentTheme.foreground }}
+                            >
+                              {renderWithSearchHighlight(
+                                pdfText,
+                                isSearchMatchedParagraph,
+                                paragraphAnnotations,
+                                `${paragraph.id}-title`
+                              )}
+                            </h1>
+                          </header>
+                        );
+                      }
+                      if (pdfParagraphKind === 'heading1' || pdfParagraphKind === 'heading2' || pdfParagraphKind === 'heading3') {
+                        const HeadingTag =
+                          pdfParagraphKind === 'heading1'
+                            ? 'h2'
+                            : pdfParagraphKind === 'heading2'
+                              ? 'h3'
+                              : 'h4';
+                        const headingClassName =
+                          pdfParagraphKind === 'heading1'
+                            ? 'mt-8 mb-3 text-2xl font-semibold'
+                            : pdfParagraphKind === 'heading2'
+                              ? 'mt-6 mb-2 text-xl font-semibold'
+                              : 'mt-4 mb-2 text-lg font-semibold';
+                        return (
+                          <HeadingTag
+                            className={headingClassName}
+                            style={{ color: currentTheme.foreground }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-heading`
+                            )}
+                          </HeadingTag>
+                        );
+                      }
+                      if (pdfParagraphKind === 'caption') {
+                        return (
+                          <p
+                            className="mb-3 text-center text-sm italic text-slate-600"
+                            style={{ color: currentTheme.isDark ? '#cbd5e1' : '#475569' }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-caption`
+                            )}
+                          </p>
+                        );
+                      }
+                      if (pdfParagraphKind === 'keywords') {
+                        return (
+                          <p
+                            className="mb-4 rounded-lg border px-3 py-2 text-sm italic"
+                            style={{
+                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              borderColor: currentTheme.border,
+                              backgroundColor: currentTheme.secondary,
+                            }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-keywords`
+                            )}
+                          </p>
+                        );
+                      }
+                      if (pdfParagraphKind === 'metadata') {
+                        return (
+                          <p
+                            className={`mb-3 text-sm ${currentPage === 1 ? 'text-center' : ''}`}
+                            style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-meta`
+                            )}
+                          </p>
+                        );
+                      }
+                      if (pdfParagraphKind === 'toc') {
+                        return (
+                          <pre
+                            className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-sm leading-7"
+                            style={{
+                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-toc`
+                            )}
+                          </pre>
+                        );
+                      }
+                      if (pdfParagraphKind === 'table') {
+                        return (
+                          <pre
+                            className="mb-4 overflow-x-auto whitespace-pre rounded-lg border px-3 py-3 text-sm leading-7"
+                            style={{
+                              color: currentTheme.foreground,
+                              borderColor: currentTheme.border,
+                              backgroundColor: currentTheme.secondary,
+                              fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
+                              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-table`
+                            )}
+                          </pre>
+                        );
+                      }
+                      if (pdfParagraphKind === 'preformatted') {
+                        return (
+                          <pre
+                            className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-lg border px-3 py-2 text-sm leading-relaxed"
+                            style={{
+                              color: currentTheme.foreground,
+                              borderColor: currentTheme.border,
+                              backgroundColor: currentTheme.secondary,
+                              fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
+                            }}
+                          >
+                            {renderWithSearchHighlight(
+                              pdfText,
+                              isSearchMatchedParagraph,
+                              paragraphAnnotations,
+                              `${paragraph.id}-pre`
+                            )}
+                          </pre>
+                        );
+                      }
+                    }
+                    if (
+                      currentDocumentType === 'pdf' &&
+                      (pdfParagraphKind === 'table' || pdfParagraphKind === 'preformatted')
+                    ) {
+                      return null;
                     }
                     return sentences.map((sentence, index) => {
                     const key = `${paragraph.id}_${index}`;
