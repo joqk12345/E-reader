@@ -43,6 +43,7 @@ type DocumentInsight = {
 };
 
 const FAVORITES_CATEGORY = 'Favorites';
+const RECENTS_CATEGORY = 'Recents';
 const FAVORITES_STORAGE_KEY = 'reader.favoriteDocumentIds';
 
 const normalizeFileType = (fileType: string): 'epub' | 'pdf' | 'markdown' => {
@@ -253,6 +254,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     return documentInsights[docId]?.category || '其他';
   };
 
+  const getDocumentCardCategory = (docId: string) => {
+    if (categoryFilter === RECENTS_CATEGORY) {
+      return undefined;
+    }
+    return getDocumentCategory(docId);
+  };
+
   const isFavoriteDocument = (docId: string) => Boolean(favoriteDocumentIds[docId]);
 
   const toggleFavoriteDocument = (docId: string) => {
@@ -419,12 +427,18 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     return tagFacets.filter((facet) => !query || facet.name.toLowerCase().includes(query));
   }, [tagFacets, tagSearchText]);
 
+  const shouldGroupDisplayedDocuments = groupByCategory && categoryFilter !== RECENTS_CATEGORY;
+
   const displayedDocuments = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     const filtered = documents.filter((doc) => {
       const docType = normalizeFileType(doc.file_type);
       if (typeFilter !== 'all' && docType !== typeFilter) return false;
-      if (categoryFilter !== 'all' && getDocumentCategory(doc.id) !== categoryFilter) {
+      if (
+        categoryFilter !== 'all' &&
+        categoryFilter !== RECENTS_CATEGORY &&
+        getDocumentCategory(doc.id) !== categoryFilter
+      ) {
         return false;
       }
       if (selectedTagIds.length > 0) {
@@ -443,7 +457,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     });
 
     const sorted = [...filtered];
-    if (sortBy === 'recent') {
+    if (categoryFilter === RECENTS_CATEGORY || sortBy === 'recent') {
       sorted.sort((a, b) => b.updated_at - a.updated_at);
     } else if (sortBy === 'title') {
       sorted.sort((a, b) => a.title.localeCompare(b.title));
@@ -460,7 +474,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   }, [documents, favoriteDocumentIds, documentInsights]);
 
   const regularCategoryOptions = useMemo(
-    () => categoryOptions.filter((category) => category !== FAVORITES_CATEGORY),
+    () => categoryOptions.filter((category) => category !== FAVORITES_CATEGORY && category !== RECENTS_CATEGORY),
     [categoryOptions]
   );
 
@@ -1661,6 +1675,16 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <span>Favorite</span>
                 <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{favoriteCount}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter(RECENTS_CATEGORY)}
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                  categoryFilter === RECENTS_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>Recents</span>
+                <span className={categoryFilter === RECENTS_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{documents.length}</span>
+              </button>
               <div className="my-1 h-px bg-gray-200" />
               <button
                 type="button"
@@ -1888,6 +1912,17 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === FAVORITES_CATEGORY ? '✓' : ''}</span>
                         <span className="text-base font-medium leading-6">Favorite</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryFilter(RECENTS_CATEGORY);
+                          setShowDisplayMenu(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      >
+                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === RECENTS_CATEGORY ? '✓' : ''}</span>
+                        <span className="text-base font-medium leading-6">Recents</span>
+                      </button>
                       <div className="my-1 h-px bg-gray-200" />
                       <button
                         type="button"
@@ -1925,7 +1960,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       }}
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
                     >
-                      <span className="w-4 text-center text-[18px] leading-none">{groupByCategory ? '✓' : ''}</span>
+                      <span className="w-4 text-center text-[18px] leading-none">{shouldGroupDisplayedDocuments ? '✓' : ''}</span>
                       <span className="text-base font-medium leading-6">Group by category</span>
                     </button>
                   </div>
@@ -1983,7 +2018,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             <p className="text-base">No documents match current filters</p>
             <p className="text-sm mt-2">Try clearing search text, tag filters, or switching type/category filters</p>
           </div>
-        ) : groupByCategory ? (
+        ) : shouldGroupDisplayedDocuments ? (
           <div className="space-y-6">
             {groupedEntries.map(([category, items], categoryIndex) => {
               const defaultCollapsed = categoryIndex >= DEFAULT_EXPANDED_CATEGORY_COUNT;
@@ -2011,7 +2046,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={doc.id}
                         document={doc}
                         variant="grid"
-                        category={getDocumentCategory(doc.id)}
+                        category={getDocumentCardCategory(doc.id)}
                         tags={(documentTagMap[doc.id] || []).map((item) => item.tag_name)}
                         isFavorite={isFavoriteDocument(doc.id)}
                         onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
@@ -2027,7 +2062,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={doc.id}
                         document={doc}
                         variant={viewMode}
-                        category={getDocumentCategory(doc.id)}
+                        category={getDocumentCardCategory(doc.id)}
                         tags={(documentTagMap[doc.id] || []).map((item) => item.tag_name)}
                         isFavorite={isFavoriteDocument(doc.id)}
                         onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
@@ -2058,7 +2093,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 key={doc.id}
                 document={doc}
                 variant="grid"
-                category={getDocumentCategory(doc.id)}
+                category={getDocumentCardCategory(doc.id)}
                 tags={(documentTagMap[doc.id] || []).map((item) => item.tag_name)}
                 isFavorite={isFavoriteDocument(doc.id)}
                 onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
@@ -2074,7 +2109,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 key={doc.id}
                 document={doc}
                 variant={viewMode}
-                category={getDocumentCategory(doc.id)}
+                category={getDocumentCardCategory(doc.id)}
                 tags={(documentTagMap[doc.id] || []).map((item) => item.tag_name)}
                 isFavorite={isFavoriteDocument(doc.id)}
                 onToggleFavorite={() => toggleFavoriteDocument(doc.id)}
