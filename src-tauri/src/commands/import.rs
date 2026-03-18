@@ -929,8 +929,7 @@ fn captures_all(input: &str, pattern: &str) -> Vec<String> {
 
 fn normalize_svg_markup_for_data_uri(svg: &str) -> String {
     let mut normalized = svg.trim().to_string();
-    let svg_root_re =
-        Regex::new(r#"(?s)^<svg\b[^>]*\bxmlns=""#).expect("invalid svg root regex");
+    let svg_root_re = Regex::new(r#"(?s)^<svg\b[^>]*\bxmlns=""#).expect("invalid svg root regex");
     if !svg_root_re.is_match(&normalized) {
         normalized = normalized.replacen("<svg", r#"<svg xmlns="http://www.w3.org/2000/svg""#, 1);
     }
@@ -944,10 +943,7 @@ fn normalize_svg_markup_for_data_uri(svg: &str) -> String {
             if !attrs.contains("ltx_foreignobject_container") || attrs.contains("xmlns=") {
                 return caps.get(0).map(|m| m.as_str()).unwrap_or("").to_string();
             }
-            format!(
-                r#"<{} xmlns="http://www.w3.org/1999/xhtml"{}>"#,
-                tag, attrs
-            )
+            format!(r#"<{} xmlns="http://www.w3.org/1999/xhtml"{}>"#, tag, attrs)
         })
         .into_owned()
 }

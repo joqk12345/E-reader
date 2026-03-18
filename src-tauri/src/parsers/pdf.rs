@@ -343,7 +343,8 @@ fn split_pdf_paragraphs(lines: &[String]) -> Vec<String> {
         let active_kind = current_kind.unwrap_or(PdfBlockKind::Body);
 
         if active_kind == PdfBlockKind::Heading {
-            if line_kind == PdfBlockKind::Heading || is_pdf_heading_continuation_line(&normalized_line)
+            if line_kind == PdfBlockKind::Heading
+                || is_pdf_heading_continuation_line(&normalized_line)
             {
                 append_pdf_heading_line(&mut current, &normalized_line);
                 continue;
@@ -436,7 +437,10 @@ fn extract_with_system_tools(pdf_path: &str, output_dir: &Path) -> Option<Vec<Ve
         extract_page_image_markers_with_pdfimages(pdf_path, output_dir).unwrap_or_default();
 
     for (page_idx, lines) in pages.iter_mut().enumerate() {
-        let page_markers = extracted_image_markers.get(&page_idx).cloned().unwrap_or_default();
+        let page_markers = extracted_image_markers
+            .get(&page_idx)
+            .cloned()
+            .unwrap_or_default();
         if !page_markers.is_empty() {
             insert_markers_after_captions(lines, page_markers);
         } else if needs_page_visual_fallback(lines) {
@@ -644,7 +648,9 @@ fn is_probable_visual_noise_paragraph(text: &str) -> bool {
         .iter()
         .filter(|token| {
             let cleaned = token.trim_matches(|ch: char| !ch.is_ascii_alphanumeric());
-            cleaned.is_empty() || cleaned.len() <= 3 || cleaned.chars().all(|ch| ch.is_ascii_digit())
+            cleaned.is_empty()
+                || cleaned.len() <= 3
+                || cleaned.chars().all(|ch| ch.is_ascii_digit())
         })
         .count();
     let long_lowercase_words = tokens
@@ -1091,8 +1097,7 @@ fn collapse_pdf_leader_runs(text: &str) -> String {
 }
 
 fn is_pdf_leader_token(token: &str) -> bool {
-    matches!(token, "." | "·" | "•")
-        || (token.len() <= 3 && token.chars().all(|ch| ch == '.'))
+    matches!(token, "." | "·" | "•") || (token.len() <= 3 && token.chars().all(|ch| ch == '.'))
 }
 
 fn should_merge_two_broken_tokens(left: &str, right: &str) -> bool {
@@ -1946,8 +1951,7 @@ mod tests {
 
     #[test]
     fn collapse_toc_dot_leaders_in_paragraph() {
-        let input =
-            "3.1 Asynchronous Pipeline with Four Decoupled Components . . . . . . . . . .";
+        let input = "3.1 Asynchronous Pipeline with Four Decoupled Components . . . . . . . . . .";
         let fixed = normalize_pdf_paragraph_text(input);
         assert_eq!(
             fixed,
