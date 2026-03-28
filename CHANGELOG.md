@@ -2,7 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
-## 🆕 Recent Updates (2026-02)
+## 🆕 Recent Updates (2026-03)
+
+- **远程 Embedding、独立语义检索页与搜索稳定性修复（2026-03-28）**:
+  - Embedding 运行时补齐 OpenAI-compatible / `lama-swap` 路径：
+    - 设置中的 `embedding` Agent 可直接绑定本地 `lama-swap` 暴露的 `/v1/embeddings`
+    - 文档打开时的自动重建与 `Rebuild Index` 均支持 remote embedding，不再只限前端本地 transformers
+    - 新增 `scripts/rebuild-lamaswap-embeddings.mjs`，可对现有库执行全量重建
+  - 首页新增独立 `Semantic Search` tab：
+    - 从 `Library` 中拆出整页跨文章语义检索入口
+    - 使用当前 active embedding profile 对全库检索
+    - 最近查询会持久化保存，并支持一键重查 / 清空
+  - 搜索质量与稳定性增强：
+    - 语义检索结果先扩大候选集，再叠加 lexical boost 重新排序，提升短查询排序质量
+    - 当 embedding provider 临时失败或超时时，自动回退到关键词检索
+    - 修复关键词回退结果在中文等多字节文本上按字节截断导致的 UTF-8 panic
+  - 兼容当前本地 `lama-swap` 模型编排：
+    - `snowflake-arctic-embed-l-v2.0` 已验证可用于 embedding（1024 dims）
+    - `nomic-embed-text-v1.5` 当前在本地 `/v1/embeddings` 路径下仍可能返回 `502`，因此默认切换到 `snowflake` 配置
+    - 现有库已按 `snowflake-arctic-embed-l-v2.0` 全量重建索引
 
 - **macOS DMG Gatekeeper 修复与 arXiv HTML 图片兼容增强（2026-03-12）**:
   - macOS release workflow 现在会在构建 DMG 前校验 Apple 签名/公证所需 secrets；若缺失则跳过 macOS 发布，避免继续产出会被 Gatekeeper 拦截的未公证安装包

@@ -20,7 +20,8 @@ pub use annotation::{create_annotation, delete_annotation, list_annotations};
 pub use config::{get_config, test_model_connection, update_config};
 pub use embedding::{
     clear_embeddings_by_profile, download_embedding_model_files, get_document_paragraphs,
-    get_embedding_profile_status, search_by_embedding, upsert_embeddings_batch,
+    get_embedding_profile_status, reindex_document_embeddings, search_by_embedding,
+    upsert_embeddings_batch,
     validate_local_embedding_model_path,
 };
 pub use import::{

@@ -12,6 +12,7 @@ use tokio::time::{timeout, Duration};
 
 const SEARCH_EMBEDDING_TIMEOUT_SECS: u64 = 20;
 const SEARCH_KEYWORD_TIMEOUT_SECS: u64 = 20;
+const SEARCH_SNIPPET_MAX_CHARS: usize = 200;
 
 /// Output type for search results
 #[derive(Clone, serde::Serialize)]
@@ -197,9 +198,10 @@ pub async fn search(
             return Ok(Vec::new());
         }
 
+        let candidate_k = (top_k.saturating_mul(8)).max(top_k);
         let target_paragraph_ids = similarities
             .iter()
-            .take(top_k)
+            .take(candidate_k)
             .map(|(id, _)| id.clone())
             .collect::<Vec<_>>();
 
@@ -244,23 +246,29 @@ pub async fn search(
     }
 
     // Build final results
+    let query_lower = query.to_lowercase();
+    let query_tokens = tokenize_query(&query_lower);
+    let candidate_k = (top_k.saturating_mul(8)).max(top_k);
     let mut results = Vec::new();
-    for (paragraph_id, score) in similarities.iter().take(top_k) {
+    for (paragraph_id, score) in similarities.iter().take(candidate_k) {
         if let Some((text, location)) = paragraphs_result.get(paragraph_id.as_str()) {
-            let snippet = if text.len() > 200 {
-                format!("{}...", &text[..200])
-            } else {
-                text.clone()
-            };
+            let snippet = truncate_snippet(text, SEARCH_SNIPPET_MAX_CHARS);
 
             results.push(SearchResult {
                 paragraph_id: paragraph_id.clone(),
                 snippet,
-                score: *score,
+                score: *score + lexical_boost(&query_lower, &query_tokens, text),
                 location: location.clone(),
             });
         }
     }
+
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    results.truncate(top_k);
 
     // Convert to output format
     let output = results.into_iter().map(SearchResultOutput::from).collect();
@@ -321,11 +329,7 @@ fn keyword_search(
         })?;
         for row in rows {
             let (paragraph_id, text, location) = row?;
-            let snippet = if text.len() > 200 {
-                format!("{}...", &text[..200])
-            } else {
-                text.clone()
-            };
+            let snippet = truncate_snippet(&text, SEARCH_SNIPPET_MAX_CHARS);
             let occurrences = text.to_lowercase().matches(&lowered).count().max(1) as f32;
             results.push(SearchResult {
                 paragraph_id,
@@ -350,11 +354,7 @@ fn keyword_search(
         })?;
         for row in rows {
             let (paragraph_id, text, location) = row?;
-            let snippet = if text.len() > 200 {
-                format!("{}...", &text[..200])
-            } else {
-                text.clone()
-            };
+            let snippet = truncate_snippet(&text, SEARCH_SNIPPET_MAX_CHARS);
             let occurrences = text.to_lowercase().matches(&lowered).count().max(1) as f32;
             results.push(SearchResult {
                 paragraph_id,
@@ -389,5 +389,45 @@ async fn keyword_search_with_timeout(
             "Keyword search timed out after {} seconds",
             SEARCH_KEYWORD_TIMEOUT_SECS
         ))),
+    }
+}
+
+fn lexical_boost(query: &str, query_tokens: &[String], text: &str) -> f32 {
+    let lowered_text = text.to_lowercase();
+    let mut boost = 0.0_f32;
+
+    if !query.is_empty() && lowered_text.contains(query) {
+        boost += 0.25;
+        let occurrences = lowered_text.matches(query).count() as f32;
+        boost += (occurrences * 0.03).min(0.15);
+    }
+
+    if !query_tokens.is_empty() {
+        let matched = query_tokens
+            .iter()
+            .filter(|token| lowered_text.contains(token.as_str()))
+            .count() as f32;
+        boost += (matched / query_tokens.len() as f32) * 0.2;
+    }
+
+    boost
+}
+
+fn tokenize_query(query: &str) -> Vec<String> {
+    query
+        .split(|c: char| !c.is_alphanumeric() && !matches!(c, '_' | '-' | '\u{4e00}'..='\u{9fff}'))
+        .map(str::trim)
+        .filter(|token| token.len() >= 2)
+        .map(|token| token.to_string())
+        .collect()
+}
+
+fn truncate_snippet(text: &str, max_chars: usize) -> String {
+    let mut chars = text.chars();
+    let snippet: String = chars.by_ref().take(max_chars).collect();
+    if chars.next().is_some() {
+        format!("{snippet}...")
+    } else {
+        snippet
     }
 }

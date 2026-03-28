@@ -2000,8 +2000,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 </svg>
                 {isImportingFile || isImportingUrl ? 'Importing...' : 'Import'}
               </button>
-            </div>
           </div>
+        </div>
 
       {/* Documents Grid */}
       <div className="flex-1 overflow-y-auto p-6">

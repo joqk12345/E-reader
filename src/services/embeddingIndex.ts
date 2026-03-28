@@ -105,6 +105,27 @@ export const indexDocumentWithLocalEmbedding = async (
   return { upserted: processed };
 };
 
+export const indexDocumentWithConfiguredEmbedding = async (
+  docId: string,
+  profile: EmbeddingProfile,
+  options: {
+    onProgress?: (progress: IndexProgress) => void;
+    signal?: AbortSignal;
+    localModelPath?: string;
+  } = {}
+) => {
+  if (profile.provider === 'local_transformers') {
+    return indexDocumentWithLocalEmbedding(docId, profile, options);
+  }
+
+  if (options.signal?.aborted) {
+    throw new DOMException('Indexing aborted', 'AbortError');
+  }
+
+  options.onProgress?.({ phase: 'loading_model', done: 0, total: 1 });
+  return invoke<{ upserted: number }>('reindex_document_embeddings', { docId });
+};
+
 export const getEmbeddingStatus = async (docId?: string) => {
   return invoke<EmbeddingStatus>('get_embedding_profile_status', {
     docId: docId || null,

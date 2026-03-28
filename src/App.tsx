@@ -1,5 +1,6 @@
 import { Library } from './components/Library';
 import { Reader } from './components/Reader';
+import { SemanticSearchHome } from './components/SemanticSearchHome';
 import { Settings } from './components/Settings';
 import { useStore } from './store/useStore';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -7,7 +8,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getVersion } from '@tauri-apps/api/app';
-import { getEmbeddingStatus, indexDocumentWithLocalEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
+import { getEmbeddingStatus, indexDocumentWithConfiguredEmbedding, type EmbeddingProfile } from './services/embeddingIndex';
 import {
   checkForUpdates,
   getErrorMessage,
@@ -45,6 +46,7 @@ type EmbeddingStatus = {
 };
 
 type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
+type HomeView = 'library' | 'semantic-search';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -76,6 +78,7 @@ function App() {
   } = useStore();
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('reading');
+  const [homeView, setHomeView] = useState<HomeView>('library');
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
   const [runtimeConfig, setRuntimeConfig] = useState<Config | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
@@ -159,7 +162,6 @@ function App() {
       try {
         const config = await invoke<Config>('get_config');
         if (!config.embedding_auto_reindex) return;
-        if ((config.embedding_provider || 'local_transformers') !== 'local_transformers') return;
 
         const profile: EmbeddingProfile = {
           provider: config.embedding_provider || 'local_transformers',
@@ -179,7 +181,7 @@ function App() {
         if (status.stale === 0 && status.indexed >= status.total) return;
 
         autoIndexingKeysRef.current.add(key);
-        await indexDocumentWithLocalEmbedding(selectedDocumentId, profile, {
+        await indexDocumentWithConfiguredEmbedding(selectedDocumentId, profile, {
           localModelPath: config.embedding_local_model_path,
         });
       } catch (error) {
@@ -293,6 +295,64 @@ function App() {
     selectedDocumentId,
   ]);
 
+  const runtimeStatusBar = (
+    <div className="flex items-center gap-4">
+      <span className="font-semibold text-gray-700">Runtime</span>
+      <span>
+        Chat: <span className="text-gray-800">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
+        <span className="uppercase">{runtimeConfig?.provider === 'openai' ? 'http' : normalizeEndpointMode(runtimeConfig?.lm_studio_url)}</span> ·{' '}
+        <span className={statusToneClass(
+          runtimeConfig?.provider === 'openai'
+            ? (runtimeConfig?.openai_api_key ? 'ok' : 'warn')
+            : (runtimeConfig?.chat_model ? 'ok' : 'warn')
+        )}>
+          {runtimeConfig?.provider === 'openai'
+            ? (runtimeConfig?.openai_api_key ? 'ok' : 'missing key')
+            : (runtimeConfig?.chat_model ? 'ok' : 'not set')}
+        </span>
+      </span>
+      <span>
+        Embedding: <span className="text-gray-800">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
+        <span className="uppercase">{runtimeConfig?.embedding_provider === 'local_transformers'
+          ? 'local'
+          : runtimeConfig?.embedding_provider === 'ollama'
+            ? normalizeEndpointMode(runtimeConfig?.embedding_ollama_url)
+            : runtimeConfig?.embedding_provider === 'lmstudio'
+              ? normalizeEndpointMode(runtimeConfig?.lm_studio_url)
+              : normalizeEndpointMode(runtimeConfig?.openai_base_url)}</span> ·{' '}
+        <span className={statusToneClass(
+          embeddingStatus ? (embeddingStatus.stale > 0 ? 'warn' : 'ok') : 'warn'
+        )}>
+          {embeddingStatus ? (embeddingStatus.stale > 0 ? 'stale' : 'ok') : 'unknown'}
+        </span>
+      </span>
+      <span>
+        Index: <span className="text-gray-800">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
+      </span>
+      <span>
+        TTS: <span className="text-gray-800">
+          {runtimeConfig?.tts_provider === 'cosyvoice'
+            ? 'CosyVoice'
+            : runtimeConfig?.edge_tts_voice || 'Edge TTS'}
+        </span> ·{' '}
+        <span className="uppercase">
+          {runtimeConfig?.tts_provider === 'cosyvoice'
+            ? normalizeEndpointMode(runtimeConfig?.cosyvoice_base_url)
+            : 'http'}
+        </span> ·{' '}
+        <span className={statusToneClass(
+          runtimeConfig?.tts_provider === 'cosyvoice'
+            ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'warn')
+            : 'ok'
+        )}>
+          {runtimeConfig?.tts_provider === 'cosyvoice'
+            ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'missing url')
+            : 'ok'}
+        </span>
+      </span>
+    </div>
+  );
+
   return (
     <>
       {showSettings && (
@@ -307,66 +367,38 @@ function App() {
           {selectedDocumentId ? (
             <Reader />
           ) : (
-          <Library
-            statusBar={
-              <div className="flex items-center gap-4">
-                <span className="font-semibold text-gray-700">Runtime</span>
-                <span>
-                  Chat: <span className="text-gray-800">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
-                  <span className="uppercase">{runtimeConfig?.provider === 'openai' ? 'http' : normalizeEndpointMode(runtimeConfig?.lm_studio_url)}</span> ·{' '}
-                  <span className={statusToneClass(
-                    runtimeConfig?.provider === 'openai'
-                      ? (runtimeConfig?.openai_api_key ? 'ok' : 'warn')
-                      : (runtimeConfig?.chat_model ? 'ok' : 'warn')
-                  )}>
-                    {runtimeConfig?.provider === 'openai'
-                      ? (runtimeConfig?.openai_api_key ? 'ok' : 'missing key')
-                      : (runtimeConfig?.chat_model ? 'ok' : 'not set')}
-                  </span>
-                </span>
-                <span>
-                  Embedding: <span className="text-gray-800">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
-                  <span className="uppercase">{runtimeConfig?.embedding_provider === 'local_transformers'
-                    ? 'local'
-                    : runtimeConfig?.embedding_provider === 'ollama'
-                      ? normalizeEndpointMode(runtimeConfig?.embedding_ollama_url)
-                      : runtimeConfig?.embedding_provider === 'lmstudio'
-                        ? normalizeEndpointMode(runtimeConfig?.lm_studio_url)
-                        : normalizeEndpointMode(runtimeConfig?.openai_base_url)}</span> ·{' '}
-                  <span className={statusToneClass(
-                    embeddingStatus ? (embeddingStatus.stale > 0 ? 'warn' : 'ok') : 'warn'
-                  )}>
-                    {embeddingStatus ? (embeddingStatus.stale > 0 ? 'stale' : 'ok') : 'unknown'}
-                  </span>
-                </span>
-                <span>
-                  Index: <span className="text-gray-800">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
-                </span>
-                <span>
-                  TTS: <span className="text-gray-800">
-                    {runtimeConfig?.tts_provider === 'cosyvoice'
-                      ? 'CosyVoice'
-                      : runtimeConfig?.edge_tts_voice || 'Edge TTS'}
-                  </span> ·{' '}
-                  <span className="uppercase">
-                    {runtimeConfig?.tts_provider === 'cosyvoice'
-                      ? normalizeEndpointMode(runtimeConfig?.cosyvoice_base_url)
-                      : 'http'}
-                  </span> ·{' '}
-                  <span className={statusToneClass(
-                    runtimeConfig?.tts_provider === 'cosyvoice'
-                      ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'warn')
-                      : 'ok'
-                  )}>
-                    {runtimeConfig?.tts_provider === 'cosyvoice'
-                      ? (runtimeConfig?.cosyvoice_base_url ? 'ok' : 'missing url')
-                      : 'ok'}
-                  </span>
-                </span>
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="border-b border-gray-200 bg-white px-4 py-2">
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+                  {([
+                    ['library', 'Library'],
+                    ['semantic-search', 'Semantic Search'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setHomeView(value)}
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                        homeView === value
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            }
-          />
-        )}
+
+              <div className="flex-1 min-h-0">
+                {homeView === 'library' ? (
+                  <Library statusBar={runtimeStatusBar} />
+                ) : (
+                  <SemanticSearchHome statusBar={runtimeStatusBar} />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

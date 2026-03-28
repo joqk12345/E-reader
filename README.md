@@ -47,17 +47,23 @@
   - Tauri application icon set regenerated (`icns/ico/png`) from new brand mark
   - includes desktop bundle and platform icon assets in `src-tauri/icons`
 
-- **Offline-first local embedding** with `@xenova/transformers` (`Xenova/all-MiniLM-L6-v2`, 384 dims) and SQLite storage.
+- **Flexible embedding runtimes**:
+  - local `@xenova/transformers` (`Xenova/all-MiniLM-L6-v2`, 384 dims)
+  - OpenAI-compatible remote embeddings (for example `lama-swap`, LM Studio-compatible gateways, hosted embedding APIs)
+  - SQLite-backed paragraph vector storage
 - **Embedding profile controls** in Settings:
   - provider / model / dimension / auto-reindex
   - optional local model path (`embedding_local_model_path`) for pre-downloaded model files.
-- **Automatic full-document indexing** on document load/open (with manual `Rebuild Index` fallback).
+- **Automatic full-document indexing** on document load/open (with manual `Rebuild Index` fallback for both local and remote embedding providers).
 - **Model download resilience**:
   - mirror fallback for model download (including `hf-mirror`)
   - configurable embedding download base URL (`embedding_download_base_url`)
   - local model path validation before indexing/search.
 - **Search UX upgrades**:
   - search result click-to-jump fixed
+  - dedicated `Semantic Search` home tab for whole-library retrieval
+  - recent query history with one-click rerun and clear action
+  - UTF-8-safe keyword fallback snippets for CJK content
   - matched paragraphs are highlighted in reader content.
 - **Markdown reading reworked**:
   - render full document content in reader (not section-snippet preview only)
@@ -201,6 +207,7 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 ### Library Home
 
+- Top-level home tabs: `Library` and `Semantic Search`
 - View switch: `Grid` / `List` / `Compact`
 - Basic filter: file type (`All/EPUB/PDF/Markdown`) + keyword + sorting (`Recent/Title/Type`)
 - Auto organization:
@@ -213,8 +220,11 @@ The built application will be in `src-tauri/target/release/bundle/`.
 
 - **Table of Contents**: Use the TOC panel to navigate between chapters/sections
 - **Search**: Use the Search panel to find content semantically (not just keyword matching)
+- **Whole-library semantic search**: Use the `Semantic Search` tab on the home screen to search across all indexed documents with the active embedding profile
 - **Hybrid Search Ranking**: Semantic retrieval is re-ranked with lexical keyword signals for better precision on short queries
+- **Recent Queries**: semantic search keeps a local history of recent queries and lets you rerun them with one click
 - **Search Timeout Protection**: long-running semantic/keyword requests now fail fast with user-facing timeout hints
+- **Keyword Fallback**: if a remote embedding provider is temporarily unavailable, Reader falls back to keyword search instead of failing the whole interaction
 - **Search Highlight**: Search hits are highlighted in the reading content
 - **Pin Locations**: Double-click locations in the TOC to pin them for quick access
 - **Selection Actions**:
@@ -262,7 +272,7 @@ Reader supports two AI providers - choose based on your needs:
    - Set model names for embeddings and chat (via `Embedding Model` and `Chat Model`)
 5. **Use AI Tools**: Open the Summary or Translate panels in Reader
 
-### Embedding Setup (Recommended: Local Offline)
+### Embedding Setup (Local Transformers)
 
 1. Open **Settings → Embedding**
 2. Set:
@@ -275,6 +285,32 @@ Reader supports two AI providers - choose based on your needs:
 5. Save settings. Indexing will run automatically when opening a document (full document scope), or use `Rebuild Index` manually.
 
 If your network/proxy returns HTML or download errors, verify proxy settings and model name first.
+
+### Embedding Setup (OpenAI-Compatible / `lama-swap`)
+
+Use this mode when you already run a local or remote embedding server that exposes an OpenAI-style `/v1/embeddings` API.
+
+1. Open **Settings → AI & Embedding**
+2. Under `Providers`, create or edit an `OpenAI Compatible` provider
+3. Set:
+   - `Base URL`: for example `http://127.0.0.1:8080/v1`
+   - `API Key`: leave empty if your local gateway does not require one
+4. Under `Models`, create an `embedding` model profile
+5. Set:
+   - `Model Name`: for example `snowflake-arctic-embed-l-v2.0`
+   - `Embedding Dimension`: match the provider output, for example `1024`
+6. Under `Agents`, set the `embedding` slot to that model
+7. Turn `Auto reindex` on if you want documents to refresh automatically on open
+8. Use `Rebuild Index` to regenerate a document immediately, or run:
+
+```bash
+node scripts/rebuild-lamaswap-embeddings.mjs
+```
+
+Notes:
+- Reader now supports remote document reindexing from the app, not only local transformers.
+- If the provider returns a temporary error during semantic search, Reader falls back to keyword search.
+- The rebuild script is useful for bulk re-embedding an existing library after you switch embedding models.
 
 #### Manual Model Download (Fallback)
 
@@ -419,6 +455,25 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
   "chat_model": "gpt-4o",
   "openai_api_key": "sk-your-api-key-here",
   "openai_base_url": "https://api.openai.com/v1"
+}
+```
+
+**OpenAI-Compatible `lama-swap` Embedding Configuration:**
+```json
+{
+  "embedding_provider": "openai_compatible",
+  "embedding_model": "snowflake-arctic-embed-l-v2.0",
+  "embedding_dimension": 1024,
+  "embedding_auto_reindex": true,
+  "ai_profiles": {
+    "providers": [
+      {
+        "display_name": "lama-swap",
+        "provider_type": "open_ai_compatible",
+        "base_url": "http://127.0.0.1:8080/v1"
+      }
+    ]
+  }
 }
 ```
 

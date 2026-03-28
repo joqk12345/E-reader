@@ -1,3 +1,4 @@
+use super::ai_profiles::embedding_with_agent_slot;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -5,11 +6,14 @@ use std::time::Duration;
 use rusqlite::params;
 use tauri::{AppHandle, Manager};
 
-use crate::config::load_config;
+use crate::config::{load_config, AgentSlot};
 use crate::database::{self, get_connection};
 use crate::error::{ReaderError, Result};
 use crate::models::Paragraph;
 use crate::search::cosine_similarity;
+
+const REMOTE_UPSERT_BATCH_SIZE: usize = 16;
+const REMOTE_EMBEDDING_MIN_CHARS: usize = 256;
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct EmbeddingProfile {
@@ -96,6 +100,64 @@ pub async fn get_document_paragraphs(
     let conn = get_connection(&app_handle)?;
     let paragraphs = database::list_paragraphs(&conn, &doc_id)?;
     Ok(paragraphs)
+}
+
+#[tauri::command]
+pub async fn reindex_document_embeddings(
+    app_handle: AppHandle,
+    doc_id: String,
+) -> Result<UpsertEmbeddingsBatchResponse> {
+    let config = load_config()?;
+    let profile = current_profile_from_config()?;
+    if profile.provider == "local_transformers" {
+        return Err(ReaderError::InvalidArgument(
+            "Local transformers reindex should use the frontend embedding pipeline".to_string(),
+        ));
+    }
+
+    let paragraphs = {
+        let conn = get_connection(&app_handle)?;
+        database::list_paragraphs(&conn, &doc_id)?
+    };
+    if paragraphs.is_empty() {
+        return Ok(UpsertEmbeddingsBatchResponse { upserted: 0 });
+    }
+
+    let mut pending = Vec::with_capacity(REMOTE_UPSERT_BATCH_SIZE);
+    let mut upserted = 0usize;
+
+    for paragraph in paragraphs {
+        let (vector, truncated) = embed_text_with_truncation(&config, &paragraph.text).await?;
+        if vector.len() != profile.dimension {
+            return Err(ReaderError::ModelApi(format!(
+                "Embedding dimension mismatch for paragraph {}: expected {}, got {}",
+                paragraph.id,
+                profile.dimension,
+                vector.len()
+            )));
+        }
+        if truncated {
+            tracing::warn!(
+                "Paragraph {} was truncated to fit embedding provider limits",
+                paragraph.id
+            );
+        }
+
+        pending.push(EmbeddingItem {
+            paragraph_id: paragraph.id,
+            vector,
+        });
+
+        if pending.len() >= REMOTE_UPSERT_BATCH_SIZE {
+            upserted += flush_pending_embeddings(&app_handle, &profile, &mut pending)?;
+        }
+    }
+
+    if !pending.is_empty() {
+        upserted += flush_pending_embeddings(&app_handle, &profile, &mut pending)?;
+    }
+
+    Ok(UpsertEmbeddingsBatchResponse { upserted })
 }
 
 #[tauri::command]
@@ -555,6 +617,72 @@ fn current_profile_from_config() -> Result<EmbeddingProfile> {
         model: config.embedding_model,
         dimension: config.embedding_dimension as usize,
     })
+}
+
+fn flush_pending_embeddings(
+    app_handle: &AppHandle,
+    profile: &EmbeddingProfile,
+    pending: &mut Vec<EmbeddingItem>,
+) -> Result<usize> {
+    if pending.is_empty() {
+        return Ok(0);
+    }
+    let conn = get_connection(app_handle)?;
+    let pairs = pending
+        .drain(..)
+        .map(|item| (item.paragraph_id, item.vector))
+        .collect::<Vec<_>>();
+    database::upsert_embeddings_batch(
+        &conn,
+        &profile.provider,
+        &profile.model,
+        profile.dimension,
+        &pairs,
+    )
+    .map_err(Into::into)
+}
+
+async fn embed_text_with_truncation(
+    config: &crate::config::Config,
+    text: &str,
+) -> Result<(Vec<f32>, bool)> {
+    let mut candidate = text.trim().to_string();
+    if candidate.is_empty() {
+        candidate = text.to_string();
+    }
+    let mut truncated = false;
+
+    loop {
+        match embedding_with_agent_slot(config, AgentSlot::Embedding, &candidate).await {
+            Ok(vector) => return Ok((vector, truncated)),
+            Err(err) => {
+                if !embedding_input_too_large(&err.to_string()) {
+                    return Err(err);
+                }
+
+                let current_len = candidate.chars().count();
+                if current_len <= REMOTE_EMBEDDING_MIN_CHARS {
+                    return Err(err);
+                }
+
+                let next_len = ((current_len * 3) / 4).max(REMOTE_EMBEDDING_MIN_CHARS);
+                if next_len >= current_len {
+                    return Err(err);
+                }
+
+                candidate = candidate.chars().take(next_len).collect();
+                truncated = true;
+            }
+        }
+    }
+}
+
+fn embedding_input_too_large(message: &str) -> bool {
+    let normalized = message.to_lowercase();
+    normalized.contains("too large to process")
+        || normalized.contains("maximum context length")
+        || normalized.contains("context length")
+        || normalized.contains("prompt is too long")
 }
 
 fn load_paragraph_map(

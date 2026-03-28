@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import {
   embedQuery,
   getEmbeddingStatus,
-  indexDocumentWithLocalEmbedding,
+  indexDocumentWithConfiguredEmbedding,
   type EmbeddingProfile,
   type EmbeddingStatus,
 } from '../services/embeddingIndex';
@@ -43,8 +43,34 @@ interface LocalModelValidationResponse {
   missing_files: string[];
 }
 
-type SearchMode = 'semantic-local' | 'keyword-fallback';
+type SearchMode = 'semantic-local' | 'semantic-remote' | 'keyword-fallback';
 const SEARCH_TIMEOUT_MS = 20_000;
+const SEARCH_HISTORY_KEY = 'reader.searchHistory';
+const SEARCH_HISTORY_LIMIT = 8;
+
+const readSearchHistory = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  } catch (error) {
+    console.warn('Failed to load search history:', error);
+    return [];
+  }
+};
+
+const writeSearchHistory = (items: string[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent('reader:search-history-updated'));
+  } catch (error) {
+    console.warn('Failed to persist search history:', error);
+  }
+};
 
 export const SearchPanel: React.FC = () => {
   const isZh = (typeof navigator !== 'undefined' ? navigator.language : 'en').toLowerCase().startsWith('zh');
@@ -61,6 +87,7 @@ export const SearchPanel: React.FC = () => {
     searchFailed: isZh ? '搜索失败' : 'Search failed',
     searchTimeout: isZh ? '搜索超时，请重试或缩短关键词范围。' : 'Search timed out. Please retry or narrow your query.',
     modeSemantic: isZh ? '语义检索（本地）' : 'Semantic (Local)',
+    modeSemanticRemote: isZh ? '语义检索（远程）' : 'Semantic (Remote)',
     modeKeyword: isZh ? '关键词回退' : 'Keyword Fallback',
     statusUnavailable: isZh ? '状态不可用' : 'Status unavailable',
     loadingModel: isZh ? '模型加载中...' : 'Loading model...',
@@ -91,6 +118,8 @@ export const SearchPanel: React.FC = () => {
     cannotLocateParagraph: isZh ? '无法在数据库中定位该段落。' : 'Unable to locate this paragraph in database.',
     searchPlaceholder: isZh ? '输入你的查询内容...' : 'Enter your search query...',
     resultsLabel: isZh ? '结果数:' : 'Results:',
+    searchHistory: isZh ? '最近搜索' : 'Recent Searches',
+    clearHistory: isZh ? '清空历史' : 'Clear History',
   };
   const {
     documents,
@@ -116,7 +145,9 @@ export const SearchPanel: React.FC = () => {
   const [indexProgress, setIndexProgress] = useState<{ phase: string; done: number; total: number } | null>(null);
   const [showModelDownloadHint, setShowModelDownloadHint] = useState(false);
   const [isDownloadingModel, setIsDownloadingModel] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const queryInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const searchHistoryHydratedRef = useRef(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -229,6 +260,16 @@ export const SearchPanel: React.FC = () => {
   }, [selectedDocumentId]);
 
   useEffect(() => {
+    setSearchHistory(readSearchHistory());
+    searchHistoryHydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!searchHistoryHydratedRef.current) return;
+    writeSearchHistory(searchHistory);
+  }, [searchHistory]);
+
+  useEffect(() => {
     const onFocusSearch = () => {
       window.setTimeout(() => {
         queryInputRef.current?.focus();
@@ -237,6 +278,17 @@ export const SearchPanel: React.FC = () => {
     window.addEventListener('reader:focus-search', onFocusSearch as EventListener);
     return () => window.removeEventListener('reader:focus-search', onFocusSearch as EventListener);
   }, []);
+
+  useEffect(() => {
+    const onRunSearch = (event: Event) => {
+      const customEvent = event as CustomEvent<{ query?: string }>;
+      const nextQuery = customEvent.detail?.query?.trim();
+      if (!nextQuery) return;
+      void handleSearch(nextQuery);
+    };
+    window.addEventListener('reader:run-search', onRunSearch as EventListener);
+    return () => window.removeEventListener('reader:run-search', onRunSearch as EventListener);
+  }, [query, topK, selectedDocumentId, currentDocumentType, documents]);
 
   const runKeywordFallbackSearch = async () => {
     setSearchMode('keyword-fallback');
@@ -259,9 +311,26 @@ export const SearchPanel: React.FC = () => {
     );
   };
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const pushSearchHistory = (nextQuery: string) => {
+    const normalized = nextQuery.trim();
+    if (!normalized) return;
+    setSearchHistory((prev) => {
+      const next = [normalized, ...prev.filter((item) => item !== normalized)];
+      const finalHistory = next.slice(0, SEARCH_HISTORY_LIMIT);
+      writeSearchHistory(finalHistory);
+      return finalHistory;
+    });
+  };
 
+  const handleSearch = async (overrideQuery?: string) => {
+    const effectiveQuery = (overrideQuery ?? query).trim();
+    if (!effectiveQuery) return;
+
+    if (overrideQuery !== undefined && overrideQuery !== query) {
+      setQuery(overrideQuery);
+    }
+
+    pushSearchHistory(effectiveQuery);
     setIsSearching(true);
     setError(null);
     setShowModelDownloadHint(false);
@@ -273,7 +342,7 @@ export const SearchPanel: React.FC = () => {
         await validateLocalModelPath(config.embedding_local_model_path);
         const profile = await getCurrentProfile();
         const vector = await withTimeout(
-          embedQuery(query, profile, config.embedding_local_model_path),
+          embedQuery(effectiveQuery, profile, config.embedding_local_model_path),
           SEARCH_TIMEOUT_MS,
           'Embedding query'
         );
@@ -283,7 +352,7 @@ export const SearchPanel: React.FC = () => {
               query_vector: vector,
               top_k: topK,
               doc_id: selectedDocumentId || undefined,
-              query_text: query,
+              query_text: effectiveQuery,
             },
           }),
           SEARCH_TIMEOUT_MS,
@@ -292,11 +361,27 @@ export const SearchPanel: React.FC = () => {
         setSearchMode('semantic-local');
         setResults(semanticResults);
         setSearchHighlight(
-          query.trim(),
+          effectiveQuery,
           semanticResults.map((item) => item.paragraph_id)
         );
       } else {
-        await runKeywordFallbackSearch();
+        const semanticResults = await withTimeout(
+          invoke<SearchResult[]>('search', {
+            options: {
+              query: effectiveQuery,
+              top_k: topK,
+              doc_id: selectedDocumentId || undefined,
+            },
+          }),
+          SEARCH_TIMEOUT_MS,
+          'Semantic search'
+        );
+        setSearchMode('semantic-remote');
+        setResults(semanticResults);
+        setSearchHighlight(
+          effectiveQuery,
+          semanticResults.map((item) => item.paragraph_id)
+        );
       }
     } catch (err) {
       console.error('Search failed, fallback to keyword mode:', err);
@@ -326,8 +411,10 @@ export const SearchPanel: React.FC = () => {
       await ensureEmbeddingAgentReady();
       const profile = await getCurrentProfile();
       const config = await loadConfig();
-      await validateLocalModelPath(config.embedding_local_model_path);
-      await indexDocumentWithLocalEmbedding(selectedDocumentId, profile, {
+      if (profile.provider === 'local_transformers') {
+        await validateLocalModelPath(config.embedding_local_model_path);
+      }
+      await indexDocumentWithConfiguredEmbedding(selectedDocumentId, profile, {
         signal: abort.signal,
         localModelPath: config.embedding_local_model_path,
         onProgress: (progress) => setIndexProgress(progress),
@@ -469,8 +556,39 @@ export const SearchPanel: React.FC = () => {
           </button>
         </div>
 
+        {searchHistory.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-gray-600">{t.searchHistory}</span>
+              <button
+                type="button"
+                onClick={() => setSearchHistory([])}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                {t.clearHistory}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => void handleSearch(item)}
+                  className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:text-blue-700"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-3 text-xs text-gray-600 space-y-1">
-          <p>Mode: {searchMode === 'semantic-local' ? t.modeSemantic : t.modeKeyword}</p>
+          <p>Mode: {searchMode === 'semantic-local'
+            ? t.modeSemantic
+            : searchMode === 'semantic-remote'
+              ? t.modeSemanticRemote
+              : t.modeKeyword}</p>
           <p>{statusText}</p>
           {indexProgress && (
             <p>
