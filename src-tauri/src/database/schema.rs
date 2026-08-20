@@ -1,9 +1,10 @@
 use rusqlite::{Connection, Result};
 use tracing::info;
 
-/// Creates all tables and indexes for the reader database
+/// Creates the backward-compatible V1 tables and indexes.
 ///
-/// This function sets up the complete database schema including:
+/// Append-only versioned schemas are applied by `database::v2_schema` after this
+/// compatibility baseline exists. This function includes:
 /// - core content tables
 /// - cache and embedding tables
 /// - tag system tables

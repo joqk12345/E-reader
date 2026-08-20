@@ -192,13 +192,21 @@ mod tests {
 
     #[test]
     fn accepts_registered_valid_and_active_content_fixture_containers() {
-        for name in [
-            "minimal-epub3.epub",
-            "short-toc-epub2.epub",
-            "active-content-epub3.epub",
+        for (name, expected_entries) in [
+            ("minimal-epub3.epub", 7),
+            ("short-toc-epub2.epub", 6),
+            ("active-content-epub3.epub", 7),
+            ("rtl-ruby-epub3.epub", 5),
+            ("table-footnote-mathml-epub3.epub", 5),
+            ("fixed-layout-epub3.epub", 5),
+            ("malformed-xhtml-epub3.epub", 5),
+            ("nonascii-path-epub2.epub", 5),
         ] {
             let summary = validate_epub_archive(fixture(name), ArchiveLimits::default()).unwrap();
-            assert!(summary.entries >= 6, "{name} should expose its ZIP entries");
+            assert_eq!(
+                summary.entries, expected_entries,
+                "{name} should expose every registered ZIP entry"
+            );
             assert!(summary.total_uncompressed_size > 0);
         }
     }

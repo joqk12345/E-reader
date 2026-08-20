@@ -43,9 +43,18 @@ V2 采用**双轨内容模型**：
 - 完成 [ADR-001](../adr/001-epub-rendering-engine.md)：foliate-js 条件性接受为 Phase 0/后续 EpubAdapter 候选，明确固定版本、adapter 边界、升级流程、回退方案和生产退出条件；
 - 完成 [ADR-002](../adr/002-publication-resource-storage.md)：V2 canonical source 使用 app data 内不可变、按 SHA-256 寻址的已验证 EPUB archive；资源按需读取，原始用户路径仅作为导入/迁移输入；
 - 完成 [ADR-003](../adr/003-publication-locator-and-reanchoring.md)：统一 versioned Locator，EPUB 以 CFI 为主锚点，以 canonical href、selector、text quote 和 progression 做确定性降级和非破坏 re-anchor；
-- 完成 [ADR-004](../adr/004-publication-content-security-policy.md)：原始 archive 保持不可变，渲染使用 policy-versioned XHTML/CSS/SVG sanitized view，并以 CSP、resource resolver、loader denial、iframe 和 Tauri capability 构成纵深防御。
+- 完成 [ADR-004](../adr/004-publication-content-security-policy.md)：原始 archive 保持不可变，渲染使用 policy-versioned XHTML/CSS/SVG sanitized view，并以 CSP、resource resolver、loader denial、iframe 和 Tauri capability 构成纵深防御；
+- 建立 fixture expectation + observation ledger 驱动的 EPUB compatibility report generator；JSON/Markdown 报告确定性生成，未知/重复证据被拒绝，未实测项必须显示 `not-run`；
+- 自建 CC0 corpus 已扩至 8 本/39 项，新增 RTL/ruby、table/footnote/MathML、fixed-layout expected limitation、malformed XHTML diagnostic 与 EPUB 2 非 ASCII/percent-encoded path；当前 39 项均未取得端到端 WebView 证据；
+- 建立文件数据库 migration runner：升级前使用 SQLite `VACUUM INTO` 生成并校验一致性备份，以原子 no-clobber 方式发布；migration 事务失败时回滚原库并保留备份，相同版本幂等且拒绝降级；
+- 首个 append-only V2 schema migration 已接入启动流程：从 `user_version=0` 升至 1，新增 publications/resources/spine/navigation/content_blocks/reading_positions/import_reports 及 publication-scoped 外键/唯一约束；V1 表和数据不变，备份保存于 app data 的 `migration-backups/`；
+- 实现 ADR-002 content-addressed archive ingest 文件事务：源 EPUB 以 64 KiB buffer 流式复制并计算 SHA-256/限制压缩大小，ZIP safety 通过后以 no-clobber 方式发布至 `publications/sha256/<prefix>/<hash>.epub`；相同对象校验后复用，冲突对象不覆盖，失败清理临时文件且发布对象只读；
+- 建立 prepared publication 原子数据库事务：校验 content-addressed archive hash/size/path/只读属性后，在单一 transaction 写入 publication、resources、spine、navigation、content blocks 和 import reports；任一子项失败全部回滚，原始用户文件删除后 canonical archive 仍可被 ZIP resource store 打开；
+- 建立 EPUB package preparation：解析 container/OPF，保留 EPUB 2/3 metadata、全部 manifest resource、每资源 SHA-256/实际大小、spine 顺序/linear/properties 和 rendition layout；href 通过 publication resolver 相对 OPF 规范化，支持 percent-encoded Unicode path，并拒绝重复 ID/href、缺失资源及未知 spine idref，不解析或扁平化 XHTML 正文；
+- 建立 EPUB navigation preparation：EPUB 3 使用 manifest `nav` resource，EPUB 2 使用 spine `toc` 指向的 NCX；输出 parent/depth/sibling order/label/canonical href/fragment，保留嵌套和合法短 TOC，与 spine 独立，并拒绝远程或未知 navigation target；
+- 建立 existing-document V2 import orchestrator：仅以数据库 document ID 获取后端 source path，串联 archive ingest、package/navigation preparation 和原子 metadata commit；相同 document/hash 重试幂等，不同 source bytes 拒绝静默替换，非 EPUB/缺失 document 在发布 archive 前失败。semantic blocks 与 feature-flagged command/UI 尚未接入。
 
-尚未达到 Phase 0 退出门槛：兼容报告和性能基线未生成，ADR-001～004 的生产实证条件尚未全部满足，Tauri WebView 恶意 fixture/CSP 跨平台实证、Blob IPC 性能和 DB backup/migration 框架仍缺失。当前 foliate-js 路径必须保持实验性且默认关闭。
+尚未达到 Phase 0 退出门槛：兼容矩阵尚无端到端通过证据，corpus 仍缺有效内嵌字体与大体积公开样本，性能基线未生成，ADR-001～004 的生产实证条件尚未全部满足，Tauri WebView 恶意 fixture/CSP 跨平台实证、Blob IPC 性能和 DB backup/migration 框架仍缺失。当前 foliate-js 路径必须保持实验性且默认关闭。
 
 ---
 

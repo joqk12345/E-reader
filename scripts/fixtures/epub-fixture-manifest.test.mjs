@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -94,5 +94,24 @@ test("rejects malformed registry metadata before treating it as compatibility ev
     assert.ok(errors.some((error) => error.includes("expectations are required: minimal-epub3")));
   } finally {
     await rm(workspace.root, { recursive: true, force: true });
+  }
+});
+
+test("the checked-in Phase 0 corpus covers eight distinct publication dimensions", async () => {
+  const registry = JSON.parse(await readFile("tests/fixtures/epub/manifest.json", "utf8"));
+  const expectations = new Set(registry.fixtures.flatMap((fixture) => fixture.expectations));
+
+  assert.ok(registry.fixtures.length >= 8, "Phase 0 requires at least eight registered EPUBs");
+  for (const expectation of [
+    "rtl",
+    "ruby",
+    "table",
+    "footnote",
+    "mathml",
+    "fixed-layout:expected-limitation",
+    "diagnostic:malformed-xhtml",
+    "non-ascii-path",
+  ]) {
+    assert.ok(expectations.has(expectation), `missing corpus dimension: ${expectation}`);
   }
 });

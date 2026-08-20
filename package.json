@@ -9,6 +9,7 @@
     "test:unit": "vitest run",
     "test:unit:coverage": "vitest run --coverage",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "report:epub-compatibility": "node scripts/fixtures/epub-compatibility-report.mjs tests/fixtures/epub/manifest.json tests/fixtures/epub/compatibility-observations.json docs/development/compatibility/epub-phase0.json docs/development/compatibility/epub-phase0.md",
     "test:fixtures": "node --test scripts/fixtures/*.test.mjs && node scripts/fixtures/epub-fixture-manifest.mjs",
     "test:tdd:guardian": "node --test scripts/tdd/*.test.mjs",
     "test:tdd:fast": "npm run test:tdd:guardian && npm run test:fixtures && npm run test:unit:coverage && npm run test:rust",

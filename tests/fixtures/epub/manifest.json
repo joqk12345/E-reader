@@ -49,6 +49,76 @@
         "short-author-toc",
         "two-spine-items"
       ]
+    },
+    {
+      "id": "rtl-ruby-epub3",
+      "path": "rtl-ruby-epub3.epub",
+      "category": "epub3",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "ae63190970c8d246b6b718d8d5a10321ef5b83a6f6441906716f1b4be35077a7",
+      "expectations": [
+        "open",
+        "epub3-nav",
+        "rtl",
+        "ruby"
+      ]
+    },
+    {
+      "id": "table-footnote-mathml-epub3",
+      "path": "table-footnote-mathml-epub3.epub",
+      "category": "epub3",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "1c563bd31a8b5374e1fa4574cc5231ae837289ebb8b8fe8292b5c1842f0cb4ab",
+      "expectations": [
+        "open",
+        "table",
+        "footnote",
+        "mathml",
+        "noteref-return"
+      ]
+    },
+    {
+      "id": "fixed-layout-epub3",
+      "path": "fixed-layout-epub3.epub",
+      "category": "expected-limitation",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "4d81b828baffaf34846ef38932731a5937204e34fa86cb1076688d3c166e2870",
+      "expectations": [
+        "open",
+        "rendition-pre-paginated",
+        "viewport-800x600",
+        "fixed-layout:expected-limitation"
+      ]
+    },
+    {
+      "id": "malformed-xhtml-epub3",
+      "path": "malformed-xhtml-epub3.epub",
+      "category": "malformed",
+      "license": "CC0-1.0",
+      "source": "Reader project intentionally malformed fixture",
+      "sha256": "6d9a85f42b4bfd16d11b9c7e589fef24e6440330da6fab94d243e83393ca8182",
+      "expectations": [
+        "open-with-diagnostic",
+        "diagnostic:malformed-xhtml",
+        "diagnostic:missing-fragment"
+      ]
+    },
+    {
+      "id": "nonascii-path-epub2",
+      "path": "nonascii-path-epub2.epub",
+      "category": "epub2",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "9a3c5ec6082defc15b43be9a20bd22d73c58fb695e7d5a66a6dd5fdd8e7307ef",
+      "expectations": [
+        "open",
+        "epub2-ncx",
+        "non-ascii-path",
+        "percent-encoded-href"
+      ]
     }
   ]
 }

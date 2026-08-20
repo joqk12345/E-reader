@@ -167,8 +167,14 @@ Per-resource deduplication can reduce repeated font/image storage across books, 
 
 ## Implementation status
 
-Already implemented for the transition path:
+Already implemented:
 
+- controlled bounded streaming copy with SHA-256, ZIP validation, content-addressed no-clobber publication, duplicate reuse, corruption refusal, temporary cleanup, and read-only archive objects;
+- append-only V2 publication/resource/spine/navigation/content-block/position/report schema with pre-migration database backup;
+- atomic prepared-publication transaction covering archive identity, resources, spine, navigation, semantic blocks, and import reports;
+- container/OPF preparation for EPUB 2/3 metadata, manifest resources, per-resource hash/size, canonical hrefs, and spine order/properties;
+- EPUB 3 nav.xhtml and EPUB 2 NCX preparation preserving nested author navigation, short TOCs, canonical targets, and fragments independently from spine;
+- existing-document V2 import orchestration from backend database identity through ingest, package/navigation preparation, idempotency/source-change checks, and atomic metadata commit;
 - ZIP path, symlink, duplicate, entry-count, size, total-size, and compression-ratio validation;
 - publication-scoped canonical href resolution and external-resource blocking;
 - bounded on-demand ZIP text/Blob reads and size checks;
@@ -177,9 +183,7 @@ Already implemented for the transition path:
 
 Still required for this ADR to be fully realized:
 
-- controlled streaming copy and SHA-256 archive object;
-- atomic publication/archive database transaction;
-- V2 publication/resource/spine/navigation schema;
+- feature-flagged production command/UI wiring for the existing-document V2 import orchestrator;
 - reference-aware deletion and garbage collection;
 - backup, recovery, and V1 migration behavior;
 - WebView performance evidence and final Blob transport choice.

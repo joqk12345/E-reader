@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "readerCommit": "e47fbd2b053b",
+  "generatedAt": "2026-08-20T15:28:58Z",
+  "summary": {
+    "total": 39,
+    "pass": 0,
+    "fail": 0,
+    "blocked": 0,
+    "notRun": 39
+  },
+  "results": [
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:inline-script-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:javascript-url",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:manifest-script",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:onload-handler-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:remote-css-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:remote-fetch-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:remote-form-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:remote-frame-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "blocked:remote-image-csp",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "active-content-epub3",
+      "category": "security",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "fixed-layout-epub3",
+      "category": "expected-limitation",
+      "expectation": "fixed-layout:expected-limitation",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "fixed-layout-epub3",
+      "category": "expected-limitation",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "fixed-layout-epub3",
+      "category": "expected-limitation",
+      "expectation": "rendition-pre-paginated",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "fixed-layout-epub3",
+      "category": "expected-limitation",
+      "expectation": "viewport-800x600",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "malformed-xhtml-epub3",
+      "category": "malformed",
+      "expectation": "diagnostic:malformed-xhtml",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "malformed-xhtml-epub3",
+      "category": "malformed",
+      "expectation": "diagnostic:missing-fragment",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "malformed-xhtml-epub3",
+      "category": "malformed",
+      "expectation": "open-with-diagnostic",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "minimal-epub3",
+      "category": "epub3",
+      "expectation": "epub3-nav",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "minimal-epub3",
+      "category": "epub3",
+      "expectation": "nested-toc",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "minimal-epub3",
+      "category": "epub3",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "minimal-epub3",
+      "category": "epub3",
+      "expectation": "relative-css",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "minimal-epub3",
+      "category": "epub3",
+      "expectation": "svg-resource",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "nonascii-path-epub2",
+      "category": "epub2",
+      "expectation": "epub2-ncx",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "nonascii-path-epub2",
+      "category": "epub2",
+      "expectation": "non-ascii-path",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "nonascii-path-epub2",
+      "category": "epub2",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "nonascii-path-epub2",
+      "category": "epub2",
+      "expectation": "percent-encoded-href",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "rtl-ruby-epub3",
+      "category": "epub3",
+      "expectation": "epub3-nav",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "rtl-ruby-epub3",
+      "category": "epub3",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "rtl-ruby-epub3",
+      "category": "epub3",
+      "expectation": "rtl",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "rtl-ruby-epub3",
+      "category": "epub3",
+      "expectation": "ruby",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "short-toc-epub2",
+      "category": "epub2",
+      "expectation": "epub2-ncx",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "short-toc-epub2",
+      "category": "epub2",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "short-toc-epub2",
+      "category": "epub2",
+      "expectation": "short-author-toc",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "short-toc-epub2",
+      "category": "epub2",
+      "expectation": "two-spine-items",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "table-footnote-mathml-epub3",
+      "category": "epub3",
+      "expectation": "footnote",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "table-footnote-mathml-epub3",
+      "category": "epub3",
+      "expectation": "mathml",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "table-footnote-mathml-epub3",
+      "category": "epub3",
+      "expectation": "noteref-return",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "table-footnote-mathml-epub3",
+      "category": "epub3",
+      "expectation": "open",
+      "status": "not-run",
+      "evidence": ""
+    },
+    {
+      "fixtureId": "table-footnote-mathml-epub3",
+      "category": "epub3",
+      "expectation": "table",
+      "status": "not-run",
+      "evidence": ""
+    }
+  ]
+}

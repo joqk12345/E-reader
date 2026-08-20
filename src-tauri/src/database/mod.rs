@@ -2,12 +2,15 @@ mod annotations;
 mod cache;
 mod documents;
 pub mod embeddings;
+mod migrations;
 pub mod paragraphs;
+pub(crate) mod publications;
 mod schema;
 mod sections;
 mod tags;
+pub(crate) mod v2_schema;
 
-use rusqlite::{Connection, Result};
+use rusqlite::Connection;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tracing::{error, info};
@@ -136,7 +139,7 @@ pub fn get_db_path(handle: &AppHandle) -> PathBuf {
 /// Opens a connection to the SQLite database
 ///
 /// Enables WAL mode for better concurrency and performance
-pub fn get_connection(handle: &AppHandle) -> Result<Connection> {
+pub fn get_connection(handle: &AppHandle) -> rusqlite::Result<Connection> {
     let db_path = get_db_path(handle);
     info!("Opening database connection: {:?}", db_path);
 
@@ -158,15 +161,23 @@ pub fn get_connection(handle: &AppHandle) -> Result<Connection> {
 /// Initializes the database schema
 ///
 /// Creates all tables and indexes if they don't exist
-pub fn init_db(handle: &AppHandle) -> Result<()> {
+pub fn init_db(handle: &AppHandle) -> anyhow::Result<()> {
     info!("Initializing database");
+    let db_path = get_db_path(handle);
 
-    let conn = get_connection(handle)?;
+    {
+        let conn = get_connection(handle)?;
+        create_tables(&conn).map_err(|e| {
+            error!("Failed to create database tables: {}", e);
+            e
+        })?;
+    }
 
-    create_tables(&conn).map_err(|e| {
-        error!("Failed to create database tables: {}", e);
-        e
+    let migration = v2_schema::migrate_to_latest(&db_path).map_err(|error| {
+        error!("Failed to migrate database to V2 schema: {}", error);
+        error
     })?;
+    info!("Database migration state: {:?}", migration);
 
     info!("Database initialized successfully");
     Ok(())

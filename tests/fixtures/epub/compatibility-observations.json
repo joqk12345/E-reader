@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "readerCommit": "e47fbd2b053b",
+  "generatedAt": "2026-08-20T15:28:58Z",
+  "notes": "Initial evidence ledger. Automated archive, resolver, and adapter tests are not recorded as end-to-end rendering passes. Add observations only when the named fixture expectation has been exercised at the declared boundary.",
+  "observations": []
+}
