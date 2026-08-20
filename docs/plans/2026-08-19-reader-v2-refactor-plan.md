@@ -42,9 +42,10 @@ V2 采用**双轨内容模型**：
 - `TauriPublicationLoader` 新增 opt-in 性能观测，记录 text/Blob command 数、解码字节、missing/failure、累计 invoke 时延和最大 Blob，用于真实 WebView 性能基线；
 - 完成 [ADR-001](../adr/001-epub-rendering-engine.md)：foliate-js 条件性接受为 Phase 0/后续 EpubAdapter 候选，明确固定版本、adapter 边界、升级流程、回退方案和生产退出条件；
 - 完成 [ADR-002](../adr/002-publication-resource-storage.md)：V2 canonical source 使用 app data 内不可变、按 SHA-256 寻址的已验证 EPUB archive；资源按需读取，原始用户路径仅作为导入/迁移输入；
-- 完成 [ADR-003](../adr/003-publication-locator-and-reanchoring.md)：统一 versioned Locator，EPUB 以 CFI 为主锚点，以 canonical href、selector、text quote 和 progression 做确定性降级和非破坏 re-anchor。
+- 完成 [ADR-003](../adr/003-publication-locator-and-reanchoring.md)：统一 versioned Locator，EPUB 以 CFI 为主锚点，以 canonical href、selector、text quote 和 progression 做确定性降级和非破坏 re-anchor；
+- 完成 [ADR-004](../adr/004-publication-content-security-policy.md)：原始 archive 保持不可变，渲染使用 policy-versioned XHTML/CSS/SVG sanitized view，并以 CSP、resource resolver、loader denial、iframe 和 Tauri capability 构成纵深防御。
 
-尚未达到 Phase 0 退出门槛：兼容报告和性能基线未生成，ADR-004 未完成，Tauri WebView 恶意 fixture/CSP 跨平台实证、Blob IPC 性能和 DB backup/migration 框架仍缺失。当前 foliate-js 路径必须保持实验性且默认关闭。
+尚未达到 Phase 0 退出门槛：兼容报告和性能基线未生成，ADR-001～004 的生产实证条件尚未全部满足，Tauri WebView 恶意 fixture/CSP 跨平台实证、Blob IPC 性能和 DB backup/migration 框架仍缺失。当前 foliate-js 路径必须保持实验性且默认关闭。
 
 ---
 
@@ -667,7 +668,7 @@ Zustand 不再作为所有异步数据和 UI 状态的单体容器。按 domain 
 
 - 冻结 EPUB 兼容性症状补丁；
 - 建 fixture corpus、兼容报告模板、性能采样；
-- 完成 ADR-001 renderer 选型、ADR-002 resource storage、ADR-003 locator；
+- 完成 ADR-001 renderer、ADR-002 resource storage、ADR-003 locator、ADR-004 content security；
 - 建立 V2 feature flag 和 DB backup/migration 框架；
 - 输出 10 本代表性 EPUB 的当前基线。
 
@@ -829,7 +830,7 @@ Zustand 不再作为所有异步数据和 UI 状态的单体容器。按 domain 
 2. 用 scripted EPUB 在 Tauri WebView 证明当前 CSP 基线可阻断脚本和外网，并记录平台差异；
 3. 建 `tests/fixtures/epub/manifest.json`，先放 8–12 个最小合法 fixture；
 4. 记录当前 parser 在 corpus 上的失败基线；
-5. 编写 ADR-004，并按实证更新已完成的 ADR-001～003；
+5. 按兼容、安全和性能实证持续更新 ADR-001～004；
 6. 并行建立 Design System token 和 5 个 primitives，以 Reader toolbar 为试点；
 7. ADR 通过后才开始 V2 schema 与正式 importer。
 

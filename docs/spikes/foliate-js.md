@@ -34,6 +34,8 @@ Import an EPUB through the normal Library flow and open it. EPUB documents use t
 
 The flagged spike now opens an opaque publication session from `documentId`, passes `TauriPublicationLoader` into foliate-js's `EPUB` constructor, and gives the resulting book object to `foliate-view`. The foliate path no longer reads `document.file_path` or calls `convertFileSrc`; text and Blob resources are read on demand through versioned `publication_*_v2` commands and the Rust publication allowlist. Session cleanup is idempotent across initialization failure, reader failure, document changes, and component unmount.
 
+[ADR-004](../adr/004-publication-content-security-policy.md) defines the production sanitization/CSP/external-content contract. The current spike implements only part of that defense-in-depth policy.
+
 Do **not** enable this by default or ship it yet:
 
 - a production CSP baseline now blocks inline/eval/blob/remote scripts, remote image/font/media/frame sources, objects, and forms, but cross-platform Tauri WebView evidence is still missing;
