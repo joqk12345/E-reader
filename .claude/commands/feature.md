@@ -13,10 +13,9 @@ $ARGUMENTS
 
 ## 执行流程
 
-1. 拆解功能：界面层、状态层、Tauri 命令层、数据层分别列出改动点。
-2. 先定义接口：若涉及前后端通信，先确定 command 入参与返回结构。
-3. 分步实现：按最小可运行单元提交变更。
-4. 做最小验证：
-   - `npm run build`
-   - `cargo check --manifest-path src-tauri/Cargo.toml`
-5. 完成收尾：更新 `README.md`/`FEATURES.md`，必要时写入 `CHANGELOG.md`。
+1. 按 `AGENTS.md` 把功能拆为可独立 red-green-refactor 的 `WI-*`。
+2. 先定义行为、边界、失败模式与 lane，再定义跨层接口和测试矩阵。
+3. 对每个 WI 先获得有效 behavioral-red receipt，再做最小实现；不得并行推进 WI。
+4. 若涉及前后端通信，先用 contract/integration test 固定 command 入参与返回结构，再同步 Rust 和 React。
+5. 进行 adversarial review 并运行 `npm run test:tdd:gate`。
+6. 完成收尾：更新 `README.md`/`FEATURES.md`，必要时写入 `CHANGELOG.md`；保存测试矩阵和 gate 证据。

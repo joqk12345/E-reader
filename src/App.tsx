@@ -3,7 +3,7 @@ import { Reader } from './components/Reader';
 import { SemanticSearchHome } from './components/SemanticSearchHome';
 import { Settings } from './components/Settings';
 import { useStore } from './store/useStore';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -48,6 +48,12 @@ type EmbeddingStatus = {
 type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 type HomeView = 'library' | 'semantic-search';
 
+const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE === 'foliate';
+const FoliateEpubSpikeReader = lazy(async () => {
+  const module = await import('./features/reader/foliate/FoliateEpubSpikeReader');
+  return { default: module.FoliateEpubSpikeReader };
+});
+
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
@@ -71,6 +77,7 @@ const statusToneClass = (status: string): string => {
 function App() {
   const {
     selectedDocumentId,
+    currentDocumentType,
     loadConfig,
     readerFontSize,
     persistReaderFontSize,
@@ -365,7 +372,13 @@ function App() {
       <div className="h-screen w-screen bg-gray-50 flex flex-col">
         <div className="flex-1 min-h-0">
           {selectedDocumentId ? (
-            <Reader />
+            FOLIATE_EPUB_SPIKE_ENABLED && currentDocumentType === 'epub' ? (
+              <Suspense fallback={<div className="grid h-full place-items-center text-sm text-slate-600">Loading foliate-js spike…</div>}>
+                <FoliateEpubSpikeReader />
+              </Suspense>
+            ) : (
+              <Reader />
+            )
           ) : (
             <div className="flex h-full min-h-0 flex-col">
               <div className="border-b border-gray-200 bg-white px-4 py-2">

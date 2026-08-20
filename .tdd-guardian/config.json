@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "ecosystem": "pi",
+  "gateFreshnessMinutes": 120,
+  "coverageMode": "no-decrease",
+  "coverageSummaryPath": "coverage/frontend-unit/coverage-summary.json",
+  "lanes": [
+    {
+      "name": "guardian-unit",
+      "command": "npm run test:tdd:guardian"
+    },
+    {
+      "name": "fixture-validation",
+      "command": "npm run test:fixtures"
+    },
+    {
+      "name": "frontend-unit",
+      "command": "npm run test:unit:coverage"
+    },
+    {
+      "name": "rust-unit",
+      "command": "npm run test:rust"
+    }
+  ],
+  "protectedActions": [
+    "goal_complete",
+    "git commit",
+    "git push",
+    "gh pr create",
+    "gh pr merge",
+    "npm publish",
+    "cargo publish"
+  ]
+}

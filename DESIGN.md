@@ -1,5 +1,7 @@
 # Reader V1 Product Design (Tauri 2 + React, Offline, EPUB-first)
 
+> **Status: historical V1 design.** Reader V2 的项目目标、foliate-js EPUB 内核评估、Design System 和迁移路线见 [`docs/plans/2026-08-19-reader-v2-refactor-plan.md`](docs/plans/2026-08-19-reader-v2-refactor-plan.md)。
+
 Date: 2026-01-23
 Owner: Product/Engineering
 

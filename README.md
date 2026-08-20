@@ -481,6 +481,13 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
 
 ## 🔧 Development
 
+### Refactor Design
+
+- [Reader V2 重构方案：项目目标、foliate-js EPUB 内核与 Design System](docs/plans/2026-08-19-reader-v2-refactor-plan.md)
+- [foliate-js executable spike](docs/spikes/foliate-js.md)
+- [Project-level TDD workflow](docs/development/tdd-workflow.md)
+- [Reader V1 historical design](DESIGN.md)
+
 ### Project Structure
 
 ```
@@ -497,20 +504,26 @@ reader/
 │   │   ├── search/        # Semantic search
 │   │   └── mcp/           # MCP server implementation
 │   └── ...
-├── .claude/               # Claude Code project constraints & workflows
-│   ├── rules/             # Automatic loading hard constraints (coding standards, verification steps)
-│   ├── commands/          # Reusable slash command process templates
-│   └── settings.json      # Shared team preferences & permissions
+├── .pi/                   # Pi-native extension, TDD skill, and prompt templates
+│   ├── extensions/        # Exact-tree gate and protected-action integration
+│   ├── skills/            # Reader V2 TDD workflow
+│   └── prompts/           # /tdd-* workflows
+├── .tdd-guardian/         # Harness-neutral shared TDD configuration
+├── .claude/               # Optional Claude Code compatibility workflows
 ├── .github/workflows/     # CI/CD configurations
-├── scripts/               # Utility scripts
+├── scripts/tdd/           # Harness-neutral gate and fingerprint helpers
 └── .mcp.json              # MCP (Model Context Protocol) server configuration
 ```
 
 ### Development Tools & Workflow
 
-#### Claude Code Integration
+#### Pi Agent Integration
 
-Reader 项目已配置 Claude Code 开发助手，提供标准化的开发流程和约束：
+Reader V2 默认使用项目级 Pi 原生 TDD 扩展。信任项目后执行 `/reload`，可使用 `/skill:reader-tdd`、`/tdd-plan`、`/tdd-design`、`/tdd-implement`、`/tdd-review`、`/tdd-status` 和 `/tdd-gate`。完整说明见 [Pi-native TDD workflow](docs/development/tdd-workflow.md)。
+
+#### Claude Code Integration（可选）
+
+Reader 项目仍保留 Claude Code 兼容配置：
 
 **Key Features:**
 - 内置开发流程模板（`.claude/commands/`）

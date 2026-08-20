@@ -56,6 +56,15 @@ jobs:
       - name: Run TypeScript type check
         run: npm run build
 
+      - name: Test Pi-native TDD guardian
+        run: npm run test:tdd:guardian
+
+      - name: Validate EPUB fixture corpus
+        run: npm run test:fixtures
+
+      - name: Run frontend unit tests with coverage
+        run: npm run test:unit:coverage
+
       - name: Check Rust code
         working-directory: src-tauri
         run: cargo check --all-targets --all-features

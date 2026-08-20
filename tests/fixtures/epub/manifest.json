@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "minimal-epub3",
+      "path": "minimal-epub3.epub",
+      "category": "epub3",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "fa03b03d20bd3b843da1db0318a090ad2c8d426b4c41feae9fae5bccfea1a4d7",
+      "expectations": [
+        "open",
+        "epub3-nav",
+        "nested-toc",
+        "relative-css",
+        "svg-resource"
+      ]
+    },
+    {
+      "id": "active-content-epub3",
+      "path": "active-content-epub3.epub",
+      "category": "security",
+      "license": "CC0-1.0",
+      "source": "Reader project malicious active-content fixture",
+      "sha256": "87786fac4646eeeae4ebd36febe7ad281d5b571f6f9338730936f8fa775d6c31",
+      "expectations": [
+        "open",
+        "blocked:manifest-script",
+        "blocked:inline-script-csp",
+        "blocked:onload-handler-csp",
+        "blocked:remote-image-csp",
+        "blocked:remote-css-csp",
+        "blocked:remote-fetch-csp",
+        "blocked:remote-frame-csp",
+        "blocked:remote-form-csp",
+        "blocked:javascript-url"
+      ]
+    },
+    {
+      "id": "short-toc-epub2",
+      "path": "short-toc-epub2.epub",
+      "category": "epub2",
+      "license": "CC0-1.0",
+      "source": "Reader project minimal fixture",
+      "sha256": "f8ce3bf27402edef443afd01e201e660febf6369ab1c550d3515a394de83f4e9",
+      "expectations": [
+        "open",
+        "epub2-ncx",
+        "short-author-toc",
+        "two-spine-items"
+      ]
+    }
+  ]
+}

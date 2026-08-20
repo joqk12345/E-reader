@@ -11,6 +11,7 @@
 ├── settings.local.json          # 本机私有（已 gitignore）
 ├── rules/
 │   ├── 00-engineering-principles.md
+│   ├── 05-tdd-refactor-governance.md
 │   ├── 10-tauri-react-workflow.md
 │   └── 20-codebase-conventions.md
 └── commands/
@@ -27,10 +28,15 @@
 
 ## reader 项目建议约定
 
-- 前端验证：`npm run build`
-- Tauri/Rust 验证：`cargo check --manifest-path src-tauri/Cargo.toml`
+- 项目级 TDD 的 canonical 入口是根目录 `AGENTS.md` 和 `npm run test:tdd:gate`
+- Pi 原生适配位于 `.pi/`；Claude 配置仅保留兼容性说明
+- 行为变更：Plan → test matrix → Red receipt → Green → Refactor → Gate
+- 完整验证：`npm run test:tdd:gate`
+- 前端 lane：`npm run test:unit:coverage`
+- Rust lane：`npm run test:rust`
 - 变更优先级：先修根因，再做最小 diff
-- 涉及跨层改动（React + Tauri）时，要求同时说明前后端接口影响
+- 涉及跨层改动（React + Tauri）时，要求用 contract/integration test 固定接口影响
+- 详细流程：`docs/development/tdd-workflow.md`
 
 ## 可选增强（后续再加）
 

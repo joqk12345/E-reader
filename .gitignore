@@ -10,7 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
 *.local
+
+# Pi-native TDD gate state and per-working-tree red evidence
+.tdd-guardian/state.json
+.tdd-guardian/receipts.json
 
 # Editor directories and files
 .vscode/*

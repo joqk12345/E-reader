@@ -24,6 +24,9 @@ tracing = "0.1"
 sha2 = "0.10"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 epub = "2.1"
+zip = "3.0"
+url = "2.5"
+percent-encoding = "2.3"
 pdf = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
