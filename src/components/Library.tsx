@@ -1637,12 +1637,12 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </div>
       )}
 
-      <div className={`h-full flex bg-gray-50 ${isResizingSidebar ? 'select-none' : ''}`}>
+      <div className={`h-full flex bg-surface-subtle ${isResizingSidebar ? 'select-none' : ''}`}>
         <aside
-          className="relative shrink-0 border-r border-gray-200 bg-[#f6f7f9] p-3"
+          className="relative shrink-0 border-r border-border bg-surface px-4 py-5"
           style={{ width: `${sidebarWidth}px` }}
         >
-          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Formats</h2>
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Formats</h2>
           <div className="space-y-1">
             {typeSummaries.map((item) => {
               const active = typeFilter === item.key;
@@ -1652,45 +1652,45 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   type="button"
                   onClick={() => setTypeFilter(item.key)}
                   className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors ${
-                    active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'
+                    active ? 'bg-heading text-on-action' : 'text-navigation hover:bg-surface-hover'
                   }`}
                 >
                   <span>{item.label}</span>
-                  <span className={active ? 'text-gray-200' : 'text-gray-500'}>{item.count}</span>
+                  <span className={active ? 'text-surface-subtle' : 'text-muted'}>{item.count}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-4 border-t border-gray-200 pt-3">
-            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Category</h2>
+          <div className="mt-5 border-t border-border pt-4">
+            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Category</h2>
             <div className="space-y-1">
               <button
                 type="button"
                 onClick={() => setCategoryFilter(FAVORITES_CATEGORY)}
                 className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === FAVORITES_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                  categoryFilter === FAVORITES_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 <span>Favorite</span>
-                <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{favoriteCount}</span>
+                <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-action' : 'text-muted'}>{favoriteCount}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setCategoryFilter(RECENTS_CATEGORY)}
                 className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === RECENTS_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                  categoryFilter === RECENTS_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 <span>Recents</span>
-                <span className={categoryFilter === RECENTS_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{documents.length}</span>
+                <span className={categoryFilter === RECENTS_CATEGORY ? 'text-action' : 'text-muted'}>{documents.length}</span>
               </button>
-              <div className="my-1 h-px bg-gray-200" />
+              <div className="my-1 h-px bg-border" />
               <button
                 type="button"
                 onClick={() => setCategoryFilter('all')}
                 className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                  categoryFilter === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 All
@@ -1788,26 +1788,19 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-gray-200 bg-white px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <div className="mr-1 flex shrink-0 items-center gap-2">
-                <img
-                  src="/reader-logo.svg"
-                  alt="Reader Logo"
-                  className="h-7 w-7 rounded-md border border-slate-200 bg-white p-0.5 shadow-sm"
-                />
-                <div className="leading-tight">
-                  <div className="text-sm font-semibold text-gray-900">Reader</div>
-                  <div className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Library</div>
-                </div>
+          <div className="border-b border-border bg-surface/80 px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="mr-2 shrink-0 leading-tight">
+                <div className="font-serif text-[20px] font-medium tracking-tight text-heading">Library</div>
+                <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Your collection</div>
               </div>
 
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 max-w-2xl flex-1">
                 <input
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search library..."
-                  className="h-8 w-full rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+                  placeholder="Search your collection..."
+                  className="h-9 w-full rounded-xl border border-control-border bg-surface px-3 text-control text-foreground placeholder:text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-action/15"
                 />
               </div>
 

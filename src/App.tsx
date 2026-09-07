@@ -362,14 +362,22 @@ function App() {
         />
       )}
 
-      <div className="h-screen w-screen bg-gray-50 flex flex-col">
+      <div className="flex h-screen w-screen flex-col bg-surface-subtle text-foreground">
         <div className="flex-1 min-h-0">
           {selectedDocumentId ? (
             <Reader />
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <div className="border-b border-gray-200 bg-white px-4 py-2">
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+              <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-border bg-surface px-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-action text-sm font-semibold text-on-action shadow-sm">R</div>
+                  <div className="leading-none">
+                    <div className="font-serif text-[18px] font-medium tracking-tight text-heading">Reader</div>
+                    <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Your reading desk</div>
+                  </div>
+                </div>
+
+                <nav aria-label="Workspace" className="inline-flex rounded-full border border-border bg-surface-subtle p-1">
                   {([
                     ['library', 'Library'],
                     ['semantic-search', 'Semantic Search'],
@@ -380,15 +388,24 @@ function App() {
                       onClick={() => setHomeView(value)}
                       className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                         homeView === value
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-surface text-heading shadow-sm'
+                          : 'text-navigation hover:text-heading'
                       }`}
                     >
                       {label}
                     </button>
                   ))}
-                </div>
-              </div>
+                </nav>
+
+                <button
+                  type="button"
+                  onClick={() => openSettings('reading')}
+                  className="inline-flex items-center gap-2 rounded-full border border-control-border bg-surface px-3 py-1.5 text-control font-medium text-secondary transition hover:border-focus-border hover:text-action-text"
+                >
+                  <span aria-hidden="true">⚙</span>
+                  Preferences
+                </button>
+              </header>
 
               <div className="flex-1 min-h-0">
                 {homeView === 'library' ? (
