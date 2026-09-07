@@ -28,6 +28,7 @@ import {
   suggestTagsForDocuments,
   addTagAlias,
 } from '../services/tagService';
+import { useLibrarySidebarResize } from '../features/library/useLibrarySidebarResize';
 
 type LibraryProps = {
   statusBar?: React.ReactNode;
@@ -117,8 +118,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [expandedCategoryItems, setExpandedCategoryItems] = useState<Record<string, boolean>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const { sidebarWidth, isResizingSidebar, beginResize } = useLibrarySidebarResize();
   const [allDocumentTags, setAllDocumentTags] = useState<DocumentTagAssignment[]>([]);
   const [tagFacets, setTagFacets] = useState<TagFacet[]>([]);
   const [tagLibrary, setTagLibrary] = useState<TagRecord[]>([]);
@@ -900,23 +900,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     window.addEventListener('pointerdown', onPointerDown);
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, [showDisplayMenu]);
-
-  useEffect(() => {
-    if (!isResizingSidebar) return;
-
-    const onPointerMove = (event: PointerEvent) => {
-      const next = Math.min(360, Math.max(210, event.clientX));
-      setSidebarWidth(next);
-    };
-    const onPointerUp = () => setIsResizingSidebar(false);
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [isResizingSidebar]);
 
   return (
     <>
@@ -1782,7 +1765,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.preventDefault();
-              setIsResizingSidebar(true);
+              beginResize();
             }}
           />
         </aside>
