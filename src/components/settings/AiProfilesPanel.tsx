@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { compactControlClass, SettingsCard, SettingsDivider, StatusDot, ToggleSwitch } from './SettingsUI';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 type ProviderType =
   | 'open_ai_compatible'
@@ -904,7 +906,7 @@ export const AiProfilesPanel: React.FC = () => {
             <>
               <label className="block text-sm">
                 <span className="mb-1 block text-navigation">Provider</span>
-                <select
+                <Select
                   className={`${compactControlClass} w-full`}
                   value={providerId}
                   onChange={(e) => updateQuickProvider(slot, e.target.value)}
@@ -915,11 +917,11 @@ export const AiProfilesPanel: React.FC = () => {
                       {provider.enabled ? '' : ' (disabled)'}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-navigation">Model</span>
-                <select
+                <Select
                   className={`${compactControlClass} w-full`}
                   value={selectedModelId}
                   onChange={(e) =>
@@ -943,14 +945,14 @@ export const AiProfilesPanel: React.FC = () => {
                       </option>
                     );
                   })}
-                </select>
+                </Select>
               </label>
               {slot === 'translate' && (
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">
                     Parallelism ({Math.min(10, Math.max(1, draft.translation_parallelism ?? 5))})
                   </span>
-                  <input
+                  <Input
                     type="range"
                     min={1}
                     max={10}
@@ -1092,7 +1094,7 @@ export const AiProfilesPanel: React.FC = () => {
                 <>
                   <label className="block text-sm">
                     <span className="mb-1 block text-navigation">Provider</span>
-                    <select
+                    <Select
                       className={`${compactControlClass} w-full`}
                       value={providerId}
                       onChange={(e) => updateQuickProvider(slot, e.target.value)}
@@ -1103,11 +1105,11 @@ export const AiProfilesPanel: React.FC = () => {
                           {provider.enabled ? '' : ' (disabled)'}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="block text-sm">
                     <span className="mb-1 block text-navigation">Model</span>
-                    <select
+                    <Select
                       className={`${compactControlClass} w-full`}
                       value={selectedModelId}
                       onChange={(e) =>
@@ -1131,7 +1133,7 @@ export const AiProfilesPanel: React.FC = () => {
                           </option>
                         );
                       })}
-                    </select>
+                    </Select>
                   </label>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-lg border border-border bg-surface-subtle p-3">
@@ -1400,22 +1402,22 @@ export const AiProfilesPanel: React.FC = () => {
             <div className="space-y-3 py-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-navigation">Display Name</span>
-                <input className={`${compactControlClass} w-full`} value={providerDraft.display_name} onChange={(e) => setProviderDraft((prev) => ({ ...prev, display_name: e.target.value }))} />
+                <Input className={`${compactControlClass} w-full`} value={providerDraft.display_name} onChange={(e) => setProviderDraft((prev) => ({ ...prev, display_name: e.target.value }))} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-navigation">Provider Type</span>
-                <select className={`${compactControlClass} w-full`} value={providerDraft.provider_type} onChange={(e) => updateProviderType(e.target.value as ProviderType)}>
+                <Select className={`${compactControlClass} w-full`} value={providerDraft.provider_type} onChange={(e) => updateProviderType(e.target.value as ProviderType)}>
                   <option value="lm_studio">LM Studio</option>
                   <option value="open_ai">OpenAI</option>
                   <option value="open_ai_compatible">OpenAI Compatible</option>
                   <option value="ollama">Ollama</option>
                   <option value="local_transformers">Local Transformers</option>
-                </select>
+                </Select>
               </label>
               {providerRequiresBaseUrl ? (
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Base URL</span>
-                  <input
+                  <Input
                     className={`${compactControlClass} w-full`}
                     value={providerDraft.base_url || ''}
                     onChange={(e) => setProviderDraft((prev) => ({ ...prev, base_url: e.target.value }))}
@@ -1429,13 +1431,13 @@ export const AiProfilesPanel: React.FC = () => {
               {providerSupportsApiKey && (
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">API Key {showApiKeyRequired ? '(Required)' : '(Optional)'}</span>
-                  <input type="password" className={`${compactControlClass} w-full`} value={providerDraft.api_key || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, api_key: e.target.value }))} />
+                  <Input type="password" className={`${compactControlClass} w-full`} value={providerDraft.api_key || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, api_key: e.target.value }))} />
                 </label>
               )}
               {providerSupportsTestModel && (
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Test Model</span>
-                  <input className={`${compactControlClass} w-full`} value={providerDraft.test_model || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, test_model: e.target.value }))} />
+                  <Input className={`${compactControlClass} w-full`} value={providerDraft.test_model || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, test_model: e.target.value }))} />
                 </label>
               )}
               <div className="flex items-center justify-between py-1">
@@ -1528,11 +1530,11 @@ export const AiProfilesPanel: React.FC = () => {
               <div className="space-y-3 py-2">
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Provider</span>
-                  <select className={`${compactControlClass} w-full`} value={modelDraft.provider_profile_id} onChange={(e) => setModelDraft((prev) => ({ ...prev, provider_profile_id: e.target.value }))}>
+                  <Select className={`${compactControlClass} w-full`} value={modelDraft.provider_profile_id} onChange={(e) => setModelDraft((prev) => ({ ...prev, provider_profile_id: e.target.value }))}>
                     {selectableModelProviders.map((p) => (
                       <option key={p.id} value={p.id}>{p.display_name}{p.enabled ? '' : ' (disabled)'}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 {modelUsesDisabledProvider && (
                   <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-xs text-warning">
@@ -1541,24 +1543,24 @@ export const AiProfilesPanel: React.FC = () => {
                 )}
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Profile Name</span>
-                  <input className={`${compactControlClass} w-full`} value={modelDraft.profile_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, profile_name: e.target.value }))} />
+                  <Input className={`${compactControlClass} w-full`} value={modelDraft.profile_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, profile_name: e.target.value }))} />
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Model Name</span>
-                  <input className={`${compactControlClass} w-full`} value={modelDraft.model_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, model_name: e.target.value }))} />
+                  <Input className={`${compactControlClass} w-full`} value={modelDraft.model_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, model_name: e.target.value }))} />
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block text-navigation">Capability</span>
-                  <select className={`${compactControlClass} w-full`} value={modelDraft.capability} onChange={(e) => setModelDraft((prev) => ({ ...prev, capability: e.target.value as ModelCapability }))}>
+                  <Select className={`${compactControlClass} w-full`} value={modelDraft.capability} onChange={(e) => setModelDraft((prev) => ({ ...prev, capability: e.target.value as ModelCapability }))}>
                     <option value="chat">Chat</option>
                     <option value="embedding">Embedding</option>
                     <option value="multimodal">Multimodal</option>
-                  </select>
+                  </Select>
                 </label>
                 {modelDraft.capability === 'embedding' && (
                   <label className="block text-sm">
                     <span className="mb-1 block text-navigation">Embedding Dimension</span>
-                    <input className={`${compactControlClass} w-full`} placeholder="embedding_dimension" value={modelDraft.embedding_dimension ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, embedding_dimension: e.target.value ? Number(e.target.value) : 384 }))} />
+                    <Input className={`${compactControlClass} w-full`} placeholder="embedding_dimension" value={modelDraft.embedding_dimension ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, embedding_dimension: e.target.value ? Number(e.target.value) : 384 }))} />
                   </label>
                 )}
                 <div>
@@ -1567,8 +1569,8 @@ export const AiProfilesPanel: React.FC = () => {
                   </button>
                   {showModelAdvanced && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
-                      <input className={`${compactControlClass} w-full`} placeholder="temperature" value={modelDraft.temperature ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, temperature: e.target.value ? Number(e.target.value) : undefined }))} />
-                      <input className={`${compactControlClass} w-full`} placeholder="max_tokens" value={modelDraft.max_tokens ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, max_tokens: e.target.value ? Number(e.target.value) : undefined }))} />
+                      <Input className={`${compactControlClass} w-full`} placeholder="temperature" value={modelDraft.temperature ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, temperature: e.target.value ? Number(e.target.value) : undefined }))} />
+                      <Input className={`${compactControlClass} w-full`} placeholder="max_tokens" value={modelDraft.max_tokens ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, max_tokens: e.target.value ? Number(e.target.value) : undefined }))} />
                       {modelDraft.capability !== 'embedding' && (
                         <div className="col-span-2 flex items-center justify-between rounded-lg border border-control-border bg-surface px-2.5 py-2">
                           <span className="text-xs text-muted">Enable thinking</span>
@@ -1663,7 +1665,7 @@ export const AiProfilesPanel: React.FC = () => {
                       Copy another compatible slot as a starting point. Primary and fallback models only carry over if they are still valid here.
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <select
+                      <Select
                         className={`${compactControlClass} min-w-[220px]`}
                         value={agentCopySourceSlot}
                         onChange={(e) => setAgentCopySourceSlot((e.target.value as AgentSlot) || '')}
@@ -1674,7 +1676,7 @@ export const AiProfilesPanel: React.FC = () => {
                             {AGENT_SLOT_LABEL[slot]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <button
                         type="button"
                         onClick={() => agentCopySourceSlot && copyAgentConfigFromSlot(agentCopySourceSlot)}
@@ -1700,7 +1702,7 @@ export const AiProfilesPanel: React.FC = () => {
                     )}
                     <label className="block text-sm">
                       <span className="mb-1 block text-navigation">Primary Model</span>
-                      <select
+                      <Select
                         className={`${compactControlClass} w-full`}
                         value={agentDraft.primary_model_id || ''}
                         onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, primary_model_id: e.target.value || undefined } : prev))}
@@ -1709,11 +1711,11 @@ export const AiProfilesPanel: React.FC = () => {
                         {candidateModels.map((m) => (
                           <option key={m.id} value={m.id}>{m.profile_name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <label className="block text-sm">
                       <span className="mb-1 block text-navigation">Fallback Model (Optional)</span>
-                      <select
+                      <Select
                         className={`${compactControlClass} w-full`}
                         value={agentDraft.fallback_model_id || ''}
                         onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, fallback_model_id: e.target.value || undefined } : prev))}
@@ -1724,7 +1726,7 @@ export const AiProfilesPanel: React.FC = () => {
                           .map((m) => (
                             <option key={m.id} value={m.id}>{m.profile_name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <div>
                       <button type="button" className="text-sm text-action hover:underline" onClick={() => setShowAgentAdvanced((prev) => !prev)}>
@@ -1732,8 +1734,8 @@ export const AiProfilesPanel: React.FC = () => {
                       </button>
                       {showAgentAdvanced && (
                         <div className="mt-2 grid grid-cols-2 gap-2">
-                          <input className={`${compactControlClass} w-full`} placeholder="temperature" value={agentDraft.temperature ?? ''} onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, temperature: e.target.value ? Number(e.target.value) : undefined } : prev))} />
-                          <input className={`${compactControlClass} w-full`} placeholder="max_tokens" value={agentDraft.max_tokens ?? ''} onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, max_tokens: e.target.value ? Number(e.target.value) : undefined } : prev))} />
+                          <Input className={`${compactControlClass} w-full`} placeholder="temperature" value={agentDraft.temperature ?? ''} onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, temperature: e.target.value ? Number(e.target.value) : undefined } : prev))} />
+                          <Input className={`${compactControlClass} w-full`} placeholder="max_tokens" value={agentDraft.max_tokens ?? ''} onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, max_tokens: e.target.value ? Number(e.target.value) : undefined } : prev))} />
                         </div>
                       )}
                     </div>
@@ -1743,7 +1745,7 @@ export const AiProfilesPanel: React.FC = () => {
                           <span className="mb-1 block text-navigation">
                             Translation Parallelism ({Math.min(10, Math.max(1, agentDraft.translation_parallelism ?? 5))})
                           </span>
-                          <input
+                          <Input
                             type="range"
                             min={1}
                             max={10}

@@ -42,5 +42,6 @@
 - 待验收：真实 Tauri 设置页的视觉、开关交互和键盘行为；尚未完成全量迁移，P2–P7 保持待办。
 - V2 迁移进度：应用内 45 个样式文件已通过语义 token 检查，所有直接 Tailwind 调色板类已清零；Library、Reader、PDF/Markdown、双语、AI 工具和设置子页均完成颜色层迁移。
 - P2 进展：新增 `components/ui/Button.tsx`，ConfirmDialog、TagNameDialog、SettingsUI 的 SecondaryActionButton 已复用 Button；其余输入/选择器/标签页仍待提取。
+- P2 继续：新增 `Dialog`、`Input`、`Select`、`Tabs` 基础组件；Settings 与 AiProfilesPanel 的原生输入/选择控件已统一接入 Input/Select，首页工作区导航已接入 Tabs。
 - P5 进展：ReaderContent 的代码高亮与正文辅助色已收敛到 `readerTheme.ts` 的 `ReaderSyntaxTokens`，五种阅读主题保留原设置存储兼容性。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 45 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。

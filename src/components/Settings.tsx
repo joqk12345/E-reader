@@ -29,6 +29,8 @@ import {
   compactControlClass,
 } from './settings/SettingsUI';
 import { AiProfilesPanel } from './settings/AiProfilesPanel';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
 import {
   checkForUpdates,
   clearDismissedUpdateVersion,
@@ -752,7 +754,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="Column Layout"
                   description="Switch between single-column and two-column reading"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[200px]`}
                       value={readerViewSettings.layoutMode}
                       onChange={(e) =>
@@ -764,14 +766,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     >
                       <option value="single">Single Column</option>
                       <option value="double">Two Columns</option>
-                    </select>
+                    </Select>
                   }
                 />
                 <SettingRow
                   title="Bilingual View"
                   description="Default display mode for source/translation in reader toolbar"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[240px]`}
                       value={readerViewSettings.bilingualViewMode}
                       onChange={(e) =>
@@ -784,7 +786,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <option value="both">Source + Translation</option>
                       <option value="source">Source Only</option>
                       <option value="translation">Translation Only</option>
-                    </select>
+                    </Select>
                   }
                 />
               </SettingsCard>
@@ -875,7 +877,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="Translation Direction"
                   description="Set default translation direction"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[260px]`}
                       value={config.translation_mode === 'off' ? 'en-zh' : config.translation_mode}
                       disabled={config.translation_mode === 'off'}
@@ -888,7 +890,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     >
                       <option value="en-zh">English → Chinese</option>
                       <option value="zh-en">Chinese → English</option>
-                    </select>
+                    </Select>
                   }
                   disabled={config.translation_mode === 'off'}
                 />
@@ -905,36 +907,36 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="TTS Provider"
                   description="Select speech engine"
                   right={
-                    <select className={`${compactControlClass} w-[260px]`} value={config.tts_provider} onChange={(e) => setConfig((prev) => ({ ...prev, tts_provider: e.target.value as 'auto' | 'edge' | 'cosyvoice' }))}>
+                    <Select className={`${compactControlClass} w-[260px]`} value={config.tts_provider} onChange={(e) => setConfig((prev) => ({ ...prev, tts_provider: e.target.value as 'auto' | 'edge' | 'cosyvoice' }))}>
                       <option value="auto">Auto</option>
                       <option value="edge">Edge TTS</option>
                       <option value="cosyvoice">CosyVoice</option>
-                    </select>
+                    </Select>
                   }
                 />
                 <SettingsDivider />
                 <SettingRow
                   title="Edge Voice"
                   description="Voice preset for Edge TTS"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_voice || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_voice: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_voice || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_voice: e.target.value }))} />}
                   disabled={edgeDisabled}
                 />
                 <SettingRow
                   title="Edge Proxy"
                   description="Optional network proxy"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_proxy || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_proxy: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_proxy || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_proxy: e.target.value }))} />}
                   disabled={edgeDisabled}
                 />
                 <SettingRow
                   title="CosyVoice URL"
                   description="Endpoint for CosyVoice service"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_base_url: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_base_url: e.target.value }))} />}
                   disabled={cosyDisabled}
                 />
                 <SettingRow
                   title="CosyVoice API Key"
                   description="Optional auth token"
-                  right={<input type="password" className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_api_key: e.target.value }))} />}
+                  right={<Input type="password" className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_api_key: e.target.value }))} />}
                   disabled={cosyDisabled}
                 />
               </SettingsCard>
@@ -942,19 +944,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
             {activeSection === 'shortcuts' && (
               <SettingsCard>
-                <SettingRow title="Next Page" description="Move to next section" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.next_page} onChange={handleShortcutChange('next_page')} />} />
-                <SettingRow title="Previous Page" description="Move to previous section" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.prev_page} onChange={handleShortcutChange('prev_page')} />} />
-                <SettingRow title="Open Settings" description="Quickly open this panel" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_settings} onChange={handleShortcutChange('open_settings')} />} />
-                <SettingRow title="Toggle Maximize Window" description="Maximize or restore app window" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_window_maximize} onChange={handleShortcutChange('toggle_window_maximize')} />} />
-                <SettingRow title="Toggle Header Toolbar" description="Show or hide reader header tools" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_header_tools} onChange={handleShortcutChange('toggle_header_tools')} />} />
-                <SettingRow title="Increase Font Size" description="Increase reader font size" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_increase} onChange={handleShortcutChange('font_increase')} />} />
-                <SettingRow title="Decrease Font Size" description="Decrease reader font size" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_decrease} onChange={handleShortcutChange('font_decrease')} />} />
-                <SettingRow title="Reset Font Size" description="Reset reader font size to default" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_reset} onChange={handleShortcutChange('font_reset')} />} />
-                <SettingRow title="Open Search" description="Focus search tool" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_search} onChange={handleShortcutChange('open_search')} />} />
-                <SettingRow title="Audio Play" description="Start playback" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_play} onChange={handleShortcutChange('audio_play')} />} />
-                <SettingRow title="Audio Pause/Resume" description="Toggle pause" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_toggle_pause} onChange={handleShortcutChange('audio_toggle_pause')} />} />
-                <SettingRow title="Audio Stop" description="Stop playback" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_stop} onChange={handleShortcutChange('audio_stop')} />} />
-                <SettingRow title="Toggle Reading Mode" description="Enter/exit minimal reader mode" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_reading_mode} onChange={handleShortcutChange('toggle_reading_mode')} />} />
+                <SettingRow title="Next Page" description="Move to next section" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.next_page} onChange={handleShortcutChange('next_page')} />} />
+                <SettingRow title="Previous Page" description="Move to previous section" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.prev_page} onChange={handleShortcutChange('prev_page')} />} />
+                <SettingRow title="Open Settings" description="Quickly open this panel" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_settings} onChange={handleShortcutChange('open_settings')} />} />
+                <SettingRow title="Toggle Maximize Window" description="Maximize or restore app window" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_window_maximize} onChange={handleShortcutChange('toggle_window_maximize')} />} />
+                <SettingRow title="Toggle Header Toolbar" description="Show or hide reader header tools" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_header_tools} onChange={handleShortcutChange('toggle_header_tools')} />} />
+                <SettingRow title="Increase Font Size" description="Increase reader font size" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_increase} onChange={handleShortcutChange('font_increase')} />} />
+                <SettingRow title="Decrease Font Size" description="Decrease reader font size" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_decrease} onChange={handleShortcutChange('font_decrease')} />} />
+                <SettingRow title="Reset Font Size" description="Reset reader font size to default" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_reset} onChange={handleShortcutChange('font_reset')} />} />
+                <SettingRow title="Open Search" description="Focus search tool" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_search} onChange={handleShortcutChange('open_search')} />} />
+                <SettingRow title="Audio Play" description="Start playback" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_play} onChange={handleShortcutChange('audio_play')} />} />
+                <SettingRow title="Audio Pause/Resume" description="Toggle pause" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_toggle_pause} onChange={handleShortcutChange('audio_toggle_pause')} />} />
+                <SettingRow title="Audio Stop" description="Stop playback" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_stop} onChange={handleShortcutChange('audio_stop')} />} />
+                <SettingRow title="Toggle Reading Mode" description="Enter/exit minimal reader mode" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_reading_mode} onChange={handleShortcutChange('toggle_reading_mode')} />} />
               </SettingsCard>
             )}
 
