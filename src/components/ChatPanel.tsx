@@ -250,14 +250,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-gray-200">
+      <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            Context: <span className="font-medium text-gray-900">{target?.label || 'None'}</span>
+          <span className="text-sm text-navigation">
+            Context: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
           <button
             onClick={clearChat}
-            className="px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+            className="px-2 py-1 text-xs text-navigation border border-control-border rounded hover:bg-surface-subtle"
           >
             Clear
           </button>
@@ -265,14 +265,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       </div>
 
       {error && (
-        <div className="px-3 py-2 border-b border-red-200 bg-red-50 text-xs text-red-600">
+        <div className="px-3 py-2 border-b border-danger/25 bg-danger-subtle text-xs text-danger">
           {error}
         </div>
       )}
 
       <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="h-full flex items-center justify-center text-sm text-gray-500">
+          <div className="h-full flex items-center justify-center text-sm text-muted">
             Ask directly here, or select text in the reader to trigger a contextual question.
           </div>
         )}
@@ -281,8 +281,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
             <div
               className={`max-w-[92%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed ${
                 m.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800 border border-gray-200'
+                  ? 'bg-action text-on-action'
+                  : 'bg-surface-subtle text-foreground border border-border'
               }`}
             >
               {m.content}
@@ -291,14 +291,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
         ))}
         {isAsking && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-700 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+            <div className="bg-surface-subtle text-secondary border border-border rounded-lg px-3 py-2 text-sm">
               Thinking...
             </div>
           </div>
         )}
       </div>
 
-      <div className="border-t border-gray-200 p-3">
+      <div className="border-t border-border p-3">
         <div className="flex items-end">
           <textarea
             value={questionInput}
@@ -311,7 +311,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
             }}
             disabled={!canAsk || isAsking}
             placeholder={canAsk ? 'Ask anything about current text...' : 'Select a document first'}
-            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-control-border px-3 py-2 text-sm leading-relaxed outline-none focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:bg-surface-subtle"
           />
         </div>
       </div>

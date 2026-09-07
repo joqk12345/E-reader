@@ -98,7 +98,7 @@ const highlightTerm = (text: string, term: string) => {
   if (parts.length <= 1) return text;
   return parts.map((part, index) =>
     part.toLowerCase() === keyword.toLowerCase() ? (
-      <mark key={`term-${index}`} className="rounded bg-yellow-200 px-0.5 text-inherit">
+      <mark key={`term-${index}`} className="rounded bg-warning-subtle px-0.5 text-inherit">
         {part}
       </mark>
     ) : (
@@ -658,15 +658,15 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-gray-200 p-4 space-y-3">
+      <div className="border-b border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            Target: <span className="font-medium text-gray-900">{targetLabel}</span>
+          <span className="text-sm text-navigation">
+            Target: <span className="font-medium text-heading">{targetLabel}</span>
           </span>
           <button
             onClick={() => void run()}
             disabled={!canRun || isRunning}
-            className="rounded-md bg-blue-500 px-3 py-1.5 text-sm text-white transition-colors hover:bg-blue-600 disabled:bg-gray-300"
+            className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action transition-colors hover:bg-action disabled:bg-control-border"
           >
             {isRunning ? 'Running...' : modeMeta[mode].button}
           </button>
@@ -682,8 +682,8 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
               }}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 mode === item
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                  ? 'border-focus bg-action-subtle text-action-text'
+                  : 'border-control-border text-secondary hover:border-control-border hover:bg-surface-subtle'
               }`}
             >
               {modeMeta[item].label}
@@ -691,22 +691,22 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
           ))}
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Selection</div>
-          <div className="mt-1 text-sm leading-relaxed text-gray-800">{selectedText || 'No selection yet.'}</div>
+        <div className="rounded-lg border border-border bg-surface-subtle px-3 py-2">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Selection</div>
+          <div className="mt-1 text-sm leading-relaxed text-foreground">{selectedText || 'No selection yet.'}</div>
         </div>
 
         {sentence && sentence.trim() && sentence.trim() !== selectedText.trim() && (
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sentence Context</div>
-            <div className="mt-1 text-sm leading-relaxed text-gray-700">{sentence}</div>
+          <div className="rounded-lg border border-border bg-surface px-3 py-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Sentence Context</div>
+            <div className="mt-1 text-sm leading-relaxed text-secondary">{sentence}</div>
           </div>
         )}
 
         {mode === 'context' && sectionContext && (
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Nearby Section Context</div>
-            <pre className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700 font-sans">
+          <div className="rounded-lg border border-border bg-surface px-3 py-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Nearby Section Context</div>
+            <pre className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-secondary font-sans">
               {sectionContext}
             </pre>
           </div>
@@ -714,25 +714,25 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
       </div>
 
       {error && (
-        <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="border-b border-danger/25 bg-danger-subtle px-4 py-3 text-sm text-danger">
           {error}
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!result && !error && !isRunning && (
-          <div className="flex h-full items-center justify-center text-center text-sm text-gray-500">
+          <div className="flex h-full items-center justify-center text-center text-sm text-muted">
             {modeMeta[mode].empty}
           </div>
         )}
 
         {(result || termInsight) && (
           <div className="space-y-3">
-            <div className="relative rounded-lg border border-gray-200 bg-white p-4">
+            <div className="relative rounded-lg border border-border bg-surface p-4">
               <div className="absolute right-2 top-2 flex items-center gap-2">
                 <button
                   onClick={handleAddToNotes}
-                  className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                  className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-navigation hover:bg-surface-subtle hover:text-foreground"
                 >
                   Add to Notes
                 </button>
@@ -740,8 +740,8 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                   onClick={() => void handleCopy()}
                   className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                     isCopied
-                      ? 'border-green-200 bg-green-50 text-green-700'
-                      : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                      ? 'border-success/25 bg-success/10 text-success'
+                      : 'border-border bg-surface text-muted hover:bg-surface-subtle hover:text-secondary'
                   }`}
                   title={isCopied ? 'Copied' : 'Copy result'}
                   aria-label={isCopied ? 'Copied' : 'Copy result'}
@@ -752,29 +752,29 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
               {mode === 'term' && termInsight ? (
                 <div className="space-y-4 pr-20">
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
                       Term Meaning
                     </div>
-                    <div className="mt-1 text-sm leading-relaxed text-gray-800">
+                    <div className="mt-1 text-sm leading-relaxed text-foreground">
                       {termInsight.termMeaning}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
                       Why It Matters Here
                     </div>
-                    <div className="mt-1 text-sm leading-relaxed text-gray-800">
+                    <div className="mt-1 text-sm leading-relaxed text-foreground">
                       {termInsight.whyItMattersHere}
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
                         Common Renderings In This Document
                       </div>
                       <button
                         onClick={handleOpenGlossary}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-action hover:underline"
                       >
                         Open Glossary
                       </button>
@@ -789,8 +789,8 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                           disabled={item === '—'}
                           className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                             currentGlossaryEntry?.preferredRendering === item
-                              ? 'border-emerald-300 bg-emerald-100 text-emerald-800'
-                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100'
+                              ? 'border-success/25 bg-success/15 text-success'
+                              : 'border-success/25 bg-success/10 text-success hover:bg-success/10 hover:bg-success/15'
                           } disabled:cursor-default disabled:opacity-70`}
                           title={
                             item === '—'
@@ -805,20 +805,20 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       ))}
                     </div>
                     {currentGlossaryEntry?.preferredRendering && (
-                      <div className="mt-2 text-xs text-emerald-700">
+                      <div className="mt-2 text-xs text-success">
                         Preferred rendering saved for this document: {currentGlossaryEntry.preferredRendering}
                       </div>
                     )}
                   </div>
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
                       Concept Tags
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {(displayConceptTags.length ? displayConceptTags : ['—']).map((item) => (
                         <span
                           key={item}
-                          className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
+                          className="rounded-full border border-action-subtle bg-action-subtle px-2.5 py-1 text-xs font-medium text-action-text"
                         >
                           {item}
                         </span>
@@ -834,22 +834,22 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
             </div>
 
             {mode === 'term' && relatedPassages.length > 0 && (
-              <div className="rounded-lg border border-gray-200 bg-white p-4">
-                <div className="mb-3 text-sm font-semibold text-gray-800">Related Passages In This Document</div>
+              <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="mb-3 text-sm font-semibold text-foreground">Related Passages In This Document</div>
                 <div className="space-y-2">
                   {relatedPassages.map((item) => (
                     <button
                       key={item.paragraphId}
                       onClick={() => void handlePassageClick(item)}
-                      className="block w-full rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-left transition-colors hover:border-blue-200 hover:bg-blue-50"
+                      className="block w-full rounded-md border border-border bg-surface-subtle px-3 py-2 text-left transition-colors hover:border-action-subtle hover:bg-action-subtle"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
                           {item.sectionTitle}
                         </div>
-                        <span className="text-xs text-blue-600">Jump</span>
+                        <span className="text-xs text-action">Jump</span>
                       </div>
-                      <div className="mt-1 text-sm leading-relaxed text-gray-700">
+                      <div className="mt-1 text-sm leading-relaxed text-secondary">
                         {highlightTerm(item.snippet, selectedText)}
                       </div>
                     </button>

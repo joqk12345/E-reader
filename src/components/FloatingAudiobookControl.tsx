@@ -58,7 +58,7 @@ export const FloatingAudiobookControl: React.FC = () => {
     return (
       <button
         onClick={() => setIsClosed(false)}
-        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-gray-200 bg-white/95 text-lg shadow-lg backdrop-blur-sm hover:bg-white"
+        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Open audio player"
         aria-label="Open audio player"
       >
@@ -71,7 +71,7 @@ export const FloatingAudiobookControl: React.FC = () => {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-gray-200 bg-white/95 text-lg shadow-lg backdrop-blur-sm hover:bg-white"
+        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Expand audio player"
         aria-label="Expand audio player"
       >
@@ -81,16 +81,16 @@ export const FloatingAudiobookControl: React.FC = () => {
   }
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 w-72 rounded-xl border border-gray-200 bg-white/95 shadow-lg backdrop-blur-sm">
-      <div className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+    <div className="fixed right-4 bottom-4 z-50 w-72 rounded-xl border border-border bg-surface/95 shadow-lg backdrop-blur-sm">
+      <div className="px-3 py-2 border-b border-border flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-gray-700">Audio Player</p>
-          {state.currentProvider && <p className="text-[11px] text-gray-500">Provider: {state.currentProvider}</p>}
+          <p className="text-xs font-semibold text-secondary">Audio Player</p>
+          {state.currentProvider && <p className="text-[11px] text-muted">Provider: {state.currentProvider}</p>}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsMinimized((prev) => !prev)}
-            className="h-6 w-6 rounded text-xs text-gray-600 hover:bg-gray-100"
+            className="h-6 w-6 rounded text-xs text-navigation hover:bg-surface-subtle"
             title={isMinimized ? 'Expand' : 'Minimize'}
             aria-label={isMinimized ? 'Expand' : 'Minimize'}
           >
@@ -98,7 +98,7 @@ export const FloatingAudiobookControl: React.FC = () => {
           </button>
           <button
             onClick={() => setIsClosed(true)}
-            className="h-6 w-6 rounded text-sm text-gray-600 hover:bg-gray-100"
+            className="h-6 w-6 rounded text-sm text-navigation hover:bg-surface-subtle"
             title="Close"
             aria-label="Close"
           >
@@ -109,23 +109,23 @@ export const FloatingAudiobookControl: React.FC = () => {
       {!isMinimized && (
         <>
           <div className="px-3 py-2">
-            <p className="text-xs text-gray-700 line-clamp-2 min-h-[2rem]">
+            <p className="text-xs text-secondary line-clamp-2 min-h-[2rem]">
               {state.currentSentence || (hasQueue ? 'Ready to play' : 'No readable sentence found')}
             </p>
-            {state.error && <p className="mt-1 text-[11px] text-red-600 line-clamp-2">{state.error}</p>}
+            {state.error && <p className="mt-1 text-[11px] text-danger line-clamp-2">{state.error}</p>}
           </div>
           <div className="px-3 pb-3 flex gap-2">
             <button
               onClick={handleMainAction}
               disabled={!hasQueue}
-              className="flex-1 px-3 py-2 text-xs text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+              className="flex-1 px-3 py-2 text-xs text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
             >
               {mainLabel}
             </button>
             <button
               onClick={() => sendControl('stop')}
               disabled={!state.isPlaying}
-              className="px-3 py-2 text-xs text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:text-gray-400 disabled:bg-gray-100"
+              className="px-3 py-2 text-xs text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:text-faint disabled:bg-surface-subtle"
             >
               Stop
             </button>

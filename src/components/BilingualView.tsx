@@ -42,17 +42,17 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h3 className="text-sm font-semibold text-gray-900">Bilingual View</h3>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-subtle">
+        <h3 className="text-sm font-semibold text-heading">Bilingual View</h3>
         <div className="flex gap-2">
           <button
             onClick={() => handleLanguageChange('en')}
             className={`px-3 py-1 text-xs rounded-md transition-colors ${
               targetLang === 'en'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-action text-on-action'
+                : 'bg-surface-hover text-secondary hover:bg-control-border'
             }`}
           >
             English
@@ -61,8 +61,8 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
             onClick={() => handleLanguageChange('zh')}
             className={`px-3 py-1 text-xs rounded-md transition-colors ${
               targetLang === 'zh'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-action text-on-action'
+                : 'bg-surface-hover text-secondary hover:bg-control-border'
             }`}
           >
             中文
@@ -72,8 +72,8 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-xs text-red-600">{error}</p>
+        <div className="mx-4 mt-4 p-3 bg-danger-subtle border border-danger/25 rounded-md">
+          <p className="text-xs text-danger">{error}</p>
         </div>
       )}
 
@@ -83,12 +83,12 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
           {/* Original */}
           <div className="flex flex-col">
             <div className="mb-2">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wide">
                 Original
               </span>
             </div>
-            <div className="flex-1 p-4 bg-gray-50 border border-gray-200 rounded-lg overflow-y-auto">
-              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            <div className="flex-1 p-4 bg-surface-subtle border border-border rounded-lg overflow-y-auto">
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                 {originalText}
               </p>
             </div>
@@ -97,26 +97,26 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
           {/* Translation */}
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wide">
                 Translation
               </span>
               {isLoading && (
-                <span className="text-xs text-blue-600">Loading...</span>
+                <span className="text-xs text-action">Loading...</span>
               )}
             </div>
-            <div className="flex-1 p-4 bg-blue-50 border border-blue-200 rounded-lg overflow-y-auto">
+            <div className="flex-1 p-4 bg-action-subtle border border-action-subtle rounded-lg overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-action"></div>
                 </div>
               ) : translation ? (
                 <div className="space-y-3">
                   {parsedTranslation.visibleText ? (
-                    <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                       {parsedTranslation.visibleText}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-400 italic">No translation available</p>
+                    <p className="text-sm text-faint italic">No translation available</p>
                   )}
                   <ThinkingDisclosure
                     thinkingBlocks={parsedTranslation.thinkingBlocks}
@@ -124,7 +124,7 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
                   />
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 italic">No translation available</p>
+                <p className="text-sm text-faint italic">No translation available</p>
               )}
             </div>
           </div>

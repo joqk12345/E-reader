@@ -69,14 +69,14 @@ export function TOCPanel({
 
   return (
     <aside
-      className="relative bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
+      className="relative bg-surface border-r border-border flex flex-col overflow-hidden flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
       {collapsed ? (
-        <div className="flex items-center justify-center border-b border-gray-200 p-2 flex-shrink-0">
+        <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
           <button
             onClick={onToggleCollapse}
-            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-gray-100 text-gray-600"
+            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
@@ -95,11 +95,11 @@ export function TOCPanel({
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between border-b border-gray-200 p-4 flex-shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900">Table of Contents</h2>
+        <div className="flex items-center justify-between border-b border-border p-4 flex-shrink-0">
+          <h2 className="text-lg font-semibold text-heading">Table of Contents</h2>
           <button
             onClick={onToggleCollapse}
-            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
+            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
             title="Collapse sidebar"
             aria-label="Collapse sidebar"
           >
@@ -120,7 +120,7 @@ export function TOCPanel({
       )}
       <nav className={`flex-1 overflow-y-auto ${collapsed ? 'p-1' : 'p-2'}`}>
         {sections.length === 0 ? (
-          <p className={`text-sm text-gray-500 text-center ${collapsed ? 'py-2' : 'py-4'}`}>
+          <p className={`text-sm text-muted text-center ${collapsed ? 'py-2' : 'py-4'}`}>
             No sections
           </p>
         ) : (
@@ -134,8 +134,8 @@ export function TOCPanel({
                     collapsed ? 'px-0 py-2 text-center' : 'px-3 py-2 text-left'
                   } ${
                     currentSectionId === section.id
-                      ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-action-subtle text-action-text font-medium'
+                      : 'text-secondary hover:bg-surface-subtle'
                   }`}
                 >
                   {collapsed ? section.title.slice(0, 1).toUpperCase() : section.title}
@@ -147,7 +147,7 @@ export function TOCPanel({
       </nav>
       {!collapsed && (
         <div
-          className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-gray-200"
+          className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-surface-hover"
           onPointerDown={(event) => {
             dragStateRef.current = { startX: event.clientX, startWidth: width };
             document.body.style.cursor = 'col-resize';

@@ -63,9 +63,9 @@ const normalizeEndpointMode = (url?: string): 'local' | 'http' => {
 };
 
 const statusToneClass = (status: string): string => {
-  if (status === 'ok') return 'text-emerald-700';
-  if (status === 'warn') return 'text-amber-700';
-  return 'text-rose-700';
+  if (status === 'ok') return 'text-success';
+  if (status === 'warn') return 'text-warning';
+  return 'text-danger';
 };
 
 function App() {
@@ -297,9 +297,9 @@ function App() {
 
   const runtimeStatusBar = (
     <div className="flex items-center gap-4">
-      <span className="font-semibold text-gray-700">Runtime</span>
+      <span className="font-semibold text-secondary">Runtime</span>
       <span>
-        Chat: <span className="text-gray-800">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
+        Chat: <span className="text-foreground">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
         <span className="uppercase">{runtimeConfig?.provider === 'openai' ? 'http' : normalizeEndpointMode(runtimeConfig?.lm_studio_url)}</span> ·{' '}
         <span className={statusToneClass(
           runtimeConfig?.provider === 'openai'
@@ -312,7 +312,7 @@ function App() {
         </span>
       </span>
       <span>
-        Embedding: <span className="text-gray-800">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
+        Embedding: <span className="text-foreground">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
         <span className="uppercase">{runtimeConfig?.embedding_provider === 'local_transformers'
           ? 'local'
           : runtimeConfig?.embedding_provider === 'ollama'
@@ -327,10 +327,10 @@ function App() {
         </span>
       </span>
       <span>
-        Index: <span className="text-gray-800">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
+        Index: <span className="text-foreground">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
       </span>
       <span>
-        TTS: <span className="text-gray-800">
+        TTS: <span className="text-foreground">
           {runtimeConfig?.tts_provider === 'cosyvoice'
             ? 'CosyVoice'
             : runtimeConfig?.edge_tts_voice || 'Edge TTS'}

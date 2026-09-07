@@ -45,17 +45,17 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-gray-50">
-      <div className="border-b border-gray-200 bg-white px-4 py-3">
+    <div className="flex h-full min-h-0 flex-col bg-surface-subtle">
+      <div className="border-b border-border bg-surface px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-subtle text-secondary shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.6-5.15a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z" />
             </svg>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900">Semantic Search</div>
-            <div className="text-xs text-slate-500">
+            <div className="text-sm font-semibold text-heading">Semantic Search</div>
+            <div className="text-xs text-muted">
               Search across the whole library with the active embedding profile.
             </div>
           </div>
@@ -64,17 +64,17 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
 
       <div className="flex-1 min-h-0 p-6">
         <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="flex min-h-0 flex-col rounded-2xl border border-border bg-surface shadow-sm">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900">Recent Queries</div>
-                <div className="text-xs text-slate-500">Click to search again.</div>
+                <div className="text-sm font-semibold text-heading">Recent Queries</div>
+                <div className="text-xs text-muted">Click to search again.</div>
               </div>
               {searchHistory.length > 0 && (
                 <button
                   type="button"
                   onClick={clearHistory}
-                  className="text-xs text-slate-500 hover:text-slate-700"
+                  className="text-xs text-muted hover:text-secondary"
                 >
                   Clear
                 </button>
@@ -83,7 +83,7 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
 
             <div className="flex-1 overflow-y-auto p-3">
               {searchHistory.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-4 py-6 text-sm text-muted">
                   No recent searches yet.
                 </div>
               ) : (
@@ -93,7 +93,7 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
                       key={item}
                       type="button"
                       onClick={() => runHistoryQuery(item)}
-                      className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                      className="block w-full rounded-xl border border-border bg-surface-subtle px-3 py-2 text-left text-sm text-secondary transition-colors hover:border-focus-border hover:bg-action-subtle hover:text-action-text"
                     >
                       {item}
                     </button>
@@ -103,14 +103,14 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
             </div>
           </div>
 
-          <div className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
             <SearchPanel />
           </div>
         </div>
       </div>
 
       {statusBar && (
-        <div className="h-7 border-t border-gray-200 bg-white px-3 text-[11px] text-gray-600 flex items-center overflow-x-auto whitespace-nowrap">
+        <div className="h-7 border-t border-border bg-surface px-3 text-[11px] text-navigation flex items-center overflow-x-auto whitespace-nowrap">
           {statusBar}
         </div>
       )}

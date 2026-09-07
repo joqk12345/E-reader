@@ -278,14 +278,14 @@ export function DictPanel({ request }: DictPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-gray-200 p-3">
+      <div className="border-b border-border p-3">
         <div className="mb-2 flex items-center gap-2">
           <button
             onClick={() => {
               setMode('dict');
               void run('dict', selectedText, sentence, contextParagraphIdRef.current);
             }}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'dict' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'dict' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Dict
           </button>
@@ -294,7 +294,7 @@ export function DictPanel({ request }: DictPanelProps) {
               setMode('sentence');
               void run('sentence', selectedText, sentence, contextParagraphIdRef.current);
             }}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'sentence' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'sentence' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Sentence
           </button>
@@ -304,62 +304,62 @@ export function DictPanel({ request }: DictPanelProps) {
             value={selectedText}
             onChange={(e) => setSelectedText(e.target.value)}
             placeholder="Selected word or phrase"
-            className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
+            className="w-full rounded-md border border-control-border px-2.5 py-1.5 text-sm"
           />
           <textarea
             value={sentence}
             onChange={(e) => setSentence(e.target.value)}
             placeholder="Sentence context"
             rows={3}
-            className="w-full resize-y rounded-md border border-gray-300 px-2.5 py-1.5 text-sm"
+            className="w-full resize-y rounded-md border border-control-border px-2.5 py-1.5 text-sm"
           />
           <button
             onClick={() => void run(mode, selectedText, sentence, contextParagraphIdRef.current)}
             disabled={isLoading}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action hover:bg-action-text disabled:opacity-50"
           >
             {isLoading ? 'Running...' : 'Run'}
           </button>
         </div>
       </div>
 
-      {error && <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>}
+      {error && <div className="border-b border-danger/25 bg-danger-subtle px-3 py-2 text-xs text-danger">{error}</div>}
 
       <div className="flex-1 overflow-y-auto p-3">
         {mode === 'dict' ? (
           <div className="space-y-3">
-            <div className="rounded border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded border border-border bg-surface-subtle p-3">
               <div className="mb-1 flex items-center gap-2">
-                <h3 className="text-base font-semibold text-gray-800">{dictResult.headword || selectedText || '—'}</h3>
+                <h3 className="text-base font-semibold text-foreground">{dictResult.headword || selectedText || '—'}</h3>
                 <button
                   onClick={() => void playPronunciation()}
                   disabled={isPlaying || !(dictResult.headword || selectedText)}
-                  className="rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                  className="rounded border border-control-border px-2 py-0.5 text-xs text-secondary hover:bg-surface-subtle disabled:opacity-50"
                 >
                   {isPlaying ? 'Playing...' : '🔊'}
                 </button>
               </div>
-              <p className="text-sm text-gray-600">IPA: {dictResult.ipa || 'N/A'}</p>
+              <p className="text-sm text-navigation">IPA: {dictResult.ipa || 'N/A'}</p>
             </div>
-            <div className="rounded border border-gray-200 p-3">
-              <h4 className="mb-1 text-sm font-semibold text-gray-800">Most Suitable Meaning</h4>
-              <div className="prose prose-sm max-w-none break-words text-gray-700">
+            <div className="rounded border border-border p-3">
+              <h4 className="mb-1 text-sm font-semibold text-foreground">Most Suitable Meaning</h4>
+              <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(dictResult.meaning || '—')}
                 </ReactMarkdown>
               </div>
             </div>
-            <div className="rounded border border-gray-200 p-3">
-              <h4 className="mb-1 text-sm font-semibold text-gray-800">Why This Meaning</h4>
-              <div className="prose prose-sm max-w-none break-words text-gray-700">
+            <div className="rounded border border-border p-3">
+              <h4 className="mb-1 text-sm font-semibold text-foreground">Why This Meaning</h4>
+              <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(dictResult.usage || '—')}
                 </ReactMarkdown>
               </div>
             </div>
-            <div className="rounded border border-gray-200 p-3">
-              <h4 className="mb-1 text-sm font-semibold text-gray-800">Sentence Translation</h4>
-              <div className="prose prose-sm max-w-none break-words text-gray-700">
+            <div className="rounded border border-border p-3">
+              <h4 className="mb-1 text-sm font-semibold text-foreground">Sentence Translation</h4>
+              <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(sentenceTranslation || '—')}
                 </ReactMarkdown>
@@ -368,8 +368,8 @@ export function DictPanel({ request }: DictPanelProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="rounded border border-gray-200 p-3">
-              <h4 className="mb-2 text-sm font-semibold text-gray-800">Sentence Analysis</h4>
+            <div className="rounded border border-border p-3">
+              <h4 className="mb-2 text-sm font-semibold text-foreground">Sentence Analysis</h4>
               {sentenceAnalysis ? (
                 <div className="prose prose-sm max-w-none">
                   <ReactMarkdown
@@ -393,12 +393,12 @@ export function DictPanel({ request }: DictPanelProps) {
                   </ReactMarkdown>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No analysis yet.</p>
+                <p className="text-sm text-muted">No analysis yet.</p>
               )}
             </div>
-            <div className="rounded border border-gray-200 p-3">
-              <h4 className="mb-1 text-sm font-semibold text-gray-800">Sentence Translation</h4>
-              <div className="prose prose-sm max-w-none break-words text-gray-700">
+            <div className="rounded border border-border p-3">
+              <h4 className="mb-1 text-sm font-semibold text-foreground">Sentence Translation</h4>
+              <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(sentenceTranslation || '—')}
                 </ReactMarkdown>

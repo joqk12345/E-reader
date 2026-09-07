@@ -110,7 +110,7 @@ const renderHighlight = (text: string, query: string): React.ReactNode => {
   if (parts.length <= 1) return text;
   return parts.map((part, idx) =>
     part.toLowerCase() === keyword.toLowerCase() ? (
-      <mark key={`m-${idx}`} className="rounded bg-yellow-200 px-0.5">
+      <mark key={`m-${idx}`} className="rounded bg-warning-subtle px-0.5">
         {part}
       </mark>
     ) : (
@@ -216,7 +216,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                     <div className="w-full space-y-2">
                       {parsed.visibleText ? (
                         <p
-                          className="text-blue-600"
+                          className="text-action"
                           style={{ fontSize: `${Math.max(readerFontSize - 3, 12)}px`, lineHeight: 1.75 }}
                         >
                           {parsed.visibleText}
@@ -232,7 +232,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
               ) : (
                 <button
                   onClick={() => onTranslateSentence(paragraphId, sentence, index)}
-                  className="text-xs text-blue-600 underline hover:text-blue-800"
+                  className="text-xs text-action underline hover:text-action"
                 >
                   Translate
                 </button>
@@ -261,22 +261,22 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
       {pageGroups.map(({ page, items }) => {
         const nodes = buildFlowNodes(items, matched);
         return (
-          <section key={`page-${page}`} className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-            <div className="mb-4 border-b border-slate-100 pb-2 text-xs font-semibold tracking-wide text-slate-500">
+          <section key={`page-${page}`} className="rounded-xl border border-border bg-surface px-6 py-5 shadow-sm">
+            <div className="mb-4 border-b border-border pb-2 text-xs font-semibold tracking-wide text-muted">
               PAGE {page}
             </div>
             <div className="space-y-4">
               {nodes.map((node) => {
                 if (node.kind === 'image') {
                   return (
-                    <figure key={node.id} className="my-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    <figure key={node.id} className="my-4 overflow-hidden rounded-lg border border-border bg-surface-subtle p-2">
                       <img
                         src={convertFileSrc(node.path)}
                         alt={node.caption || 'Extracted figure'}
                         className="mx-auto max-h-[32rem] w-auto max-w-full rounded object-contain"
                       />
                       {node.caption && (
-                        <figcaption className="mt-2 text-center text-sm text-slate-600">{node.caption}</figcaption>
+                        <figcaption className="mt-2 text-center text-sm text-navigation">{node.caption}</figcaption>
                       )}
                     </figure>
                   );
@@ -287,15 +287,15 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                   if (rows) {
                     return (
                       <div key={node.id}>
-                        <div className={`overflow-x-auto rounded-lg border p-2 ${node.highlight ? 'border-yellow-300 bg-yellow-50' : 'border-slate-200 bg-slate-50'}`}>
-                          <table className="min-w-full border-collapse text-left text-[0.92em] text-slate-800">
+                        <div className={`overflow-x-auto rounded-lg border p-2 ${node.highlight ? 'border-warning/25 bg-warning-subtle' : 'border-border bg-surface-subtle'}`}>
+                          <table className="min-w-full border-collapse text-left text-[0.92em] text-foreground">
                             <tbody>
                               {rows.map((row, rowIdx) => (
-                                <tr key={`${node.id}-r-${rowIdx}`} className="border-b border-slate-200 last:border-b-0">
+                                <tr key={`${node.id}-r-${rowIdx}`} className="border-b border-border last:border-b-0">
                                   {row.map((cell, cellIdx) => (
                                     <td
                                       key={`${node.id}-c-${rowIdx}-${cellIdx}`}
-                                      className={`px-2 py-1.5 align-top ${rowIdx === 0 ? 'font-semibold text-slate-900' : 'text-slate-700'}`}
+                                      className={`px-2 py-1.5 align-top ${rowIdx === 0 ? 'font-semibold text-heading' : 'text-secondary'}`}
                                     >
                                       {cell}
                                     </td>
@@ -313,9 +313,9 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                   }
                   return (
                     <div key={node.id}>
-                      <div className={`rounded-lg border p-2 ${node.highlight ? 'border-yellow-300 bg-yellow-50' : 'border-slate-200 bg-slate-50'}`}>
+                      <div className={`rounded-lg border p-2 ${node.highlight ? 'border-warning/25 bg-warning-subtle' : 'border-border bg-surface-subtle'}`}>
                         <pre
-                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-slate-700"
+                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-secondary"
                           style={{ fontSize: `${Math.max(readerFontSize - 2, 12)}px` }}
                         >
                           {node.text}
@@ -332,10 +332,10 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                   return (
                     <div key={node.id}>
                       <div
-                        className={`rounded-lg border p-2 ${node.highlight ? 'border-yellow-300 bg-yellow-50' : 'border-indigo-200 bg-indigo-50/40'}`}
+                        className={`rounded-lg border p-2 ${node.highlight ? 'bg-warning-subtle' : 'border-action-subtle bg-action-subtle/40'}`}
                       >
                         <pre
-                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-slate-700"
+                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-secondary"
                           style={{ fontSize: `${Math.max(readerFontSize - 1, 12)}px` }}
                         >
                           {node.text}
@@ -356,9 +356,9 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                         ? '检测到公式/特殊符号解析异常，可展开查看原页校对'
                         : '检测到表格解析可能异常，可展开查看原页校对';
                   return (
-                    <div key={node.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    <div key={node.id} className="rounded-lg border border-border bg-surface-subtle p-2">
                       <details>
-                        <summary className="cursor-pointer select-none text-xs font-medium text-slate-700">
+                        <summary className="cursor-pointer select-none text-xs font-medium text-secondary">
                           {reasonText}
                         </summary>
                         <iframe
@@ -378,7 +378,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                       node.text,
                       node.highlight,
                       true,
-                      `text-slate-800 ${node.highlight ? 'rounded bg-yellow-50 px-2 py-1' : ''}`
+                      `text-foreground ${node.highlight ? 'rounded bg-warning-subtle px-2 py-1' : ''}`
                     )}
                   </div>
                 );

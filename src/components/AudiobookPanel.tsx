@@ -420,11 +420,11 @@ export const AudiobookPanel: React.FC = () => {
     <div className="flex flex-col h-full p-4 overflow-y-auto">
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+          <label className="block text-sm font-medium text-secondary mb-1">Provider</label>
           <select
             value={ttsProvider}
             onChange={(e) => setTtsProvider(e.target.value as TtsProvider)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="auto">Auto</option>
             <option value="edge">Edge TTS</option>
@@ -433,11 +433,11 @@ export const AudiobookPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Read Target</label>
+          <label className="block text-sm font-medium text-secondary mb-1">Read Target</label>
           <select
             value={readTarget}
             onChange={(e) => setReadTarget(e.target.value as ReadTarget)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="source">Source Text</option>
             <option value="translation">Translation Text</option>
@@ -445,13 +445,13 @@ export const AudiobookPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary mb-1">
             Voice ({activeVoiceLang === 'zh' ? '中文' : 'English'})
           </label>
           <select
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="">Auto</option>
             {voiceOptions.map((item) => (
@@ -463,7 +463,7 @@ export const AudiobookPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rate: {rate.toFixed(1)}x</label>
+          <label className="block text-sm font-medium text-secondary mb-1">Rate: {rate.toFixed(1)}x</label>
           <input
             type="range"
             min={0.8}
@@ -480,31 +480,31 @@ export const AudiobookPanel: React.FC = () => {
         <button
           onClick={() => void startPlayback()}
           disabled={isPlaying || sentences.length === 0}
-          className="px-3 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          className="px-3 py-2 text-sm text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
         >
           Play
         </button>
         <button
           onClick={() => void togglePause()}
           disabled={!isPlaying}
-          className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+          className="px-3 py-2 text-sm text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           {isPaused ? 'Resume' : 'Pause'}
         </button>
         <button
           onClick={() => stopPlayback()}
           disabled={!isPlaying}
-          className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+          className="px-3 py-2 text-sm text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           Stop
         </button>
       </div>
 
-      <div className="mt-4 space-y-2 text-xs text-gray-600">
+      <div className="mt-4 space-y-2 text-xs text-navigation">
         <p>Sentence queue: {sentences.length}</p>
         {currentProvider && <p>Provider in use: {currentProvider}</p>}
         {currentSentence && <p className="line-clamp-3">Now reading: {currentSentence}</p>}
-        {error && <p className="text-red-600">{error}</p>}
+        {error && <p className="text-danger">{error}</p>}
       </div>
     </div>
   );

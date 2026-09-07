@@ -40,22 +40,22 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
 
   const actionPillSizeClassName = 'inline-flex h-8 w-12 items-center justify-center rounded-full transition-colors';
   const favoriteButtonClassName = `${actionPillSizeClassName} ${
-    isFavorite ? 'bg-slate-100 text-amber-600 hover:bg-slate-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+    isFavorite ? 'bg-surface-subtle text-warning hover:bg-surface-hover' : 'bg-surface-subtle text-muted hover:bg-surface-hover'
   }`;
-  const deleteButtonClassName = `${actionPillSizeClassName} bg-slate-100 text-gray-500 hover:bg-red-50 hover:text-red-500`;
+  const deleteButtonClassName = `${actionPillSizeClassName} bg-surface-subtle text-muted hover:bg-danger-subtle hover:text-danger`;
   const favoriteButtonTitle = isFavorite ? 'Remove from favorites' : 'Add to favorites';
 
   if (variant === 'compact') {
     return (
       <div
-        className="bg-white rounded border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer px-2 py-1"
+        className="bg-surface rounded border border-border hover:border-focus-border transition-colors cursor-pointer px-2 py-1"
         onClick={onClick}
       >
         <div className="flex items-center gap-2">
           <span className="text-base leading-none">{getFileTypeIcon()}</span>
-          <p className="flex-1 min-w-0 text-xs font-medium text-gray-900 truncate">{document.title}</p>
-          {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">{category}</span>}
-          <span className="text-[11px] text-gray-500">{getFileTypeLabel()}</span>
+          <p className="flex-1 min-w-0 text-xs font-medium text-heading truncate">{document.title}</p>
+          {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
+          <span className="text-[11px] text-muted">{getFileTypeLabel()}</span>
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => {
@@ -89,24 +89,24 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   if (variant === 'list') {
     return (
       <div
-        className="bg-white rounded-md border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer px-2.5 py-1.5"
+        className="bg-surface rounded-md border border-border hover:border-focus-border hover:shadow-sm transition-all cursor-pointer px-2.5 py-1.5"
         onClick={onClick}
       >
         <div className="flex items-start gap-2">
           <span className="text-lg leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-1.5">
-              <h3 className="flex-1 min-w-0 text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{document.title}</h3>
-              {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-2 py-0.5">{category}</span>}
-              <span className="text-[11px] text-gray-600 bg-gray-100 rounded px-2 py-0.5">{getFileTypeLabel()}</span>
+              <h3 className="flex-1 min-w-0 text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
+              {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-2 py-0.5">{category}</span>}
+              <span className="text-[11px] text-navigation bg-surface-subtle rounded px-2 py-0.5">{getFileTypeLabel()}</span>
             </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-muted mt-0.5">
               {document.author ? `${document.author} · ` : ''}Added {formatDate(document.created_at)}
             </p>
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] text-slate-600 bg-slate-100 rounded px-1 py-0.5">
+                  <span key={tag} className="text-[10px] text-navigation bg-surface-subtle rounded px-1 py-0.5">
                     #{tag}
                   </span>
                 ))}
@@ -145,27 +145,27 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
 
   return (
     <div
-      className="bg-white rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-2.5"
+      className="bg-surface rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-2.5"
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-2.5 flex-1">
           <span className="text-xl leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 break-words">{document.title}</h3>
+            <h3 className="text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
             <div className="mt-0.5 flex flex-wrap items-center gap-1">
-              {category && <span className="text-[11px] text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">{category}</span>}
+              {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
             </div>
             {document.author && (
-              <p className="text-xs text-gray-600 truncate">{document.author}</p>
+              <p className="text-xs text-navigation truncate">{document.author}</p>
             )}
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-muted mt-0.5">
               Added {formatDate(document.created_at)}
             </p>
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] text-slate-600 bg-slate-100 rounded px-1 py-0.5">
+                  <span key={tag} className="text-[10px] text-navigation bg-surface-subtle rounded px-1 py-0.5">
                     #{tag}
                   </span>
                 ))}

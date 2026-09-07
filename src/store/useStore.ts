@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { Document, Section, Paragraph } from '../types';
 import { defaultKeymap, normalizeKeymap, type Keymap } from '../utils/shortcuts';
+import { LEGACY_READER_BACKGROUND } from '../components/readerTheme';
 
 export type TranslationMode = 'off' | 'en-zh' | 'zh-en';
 
@@ -113,7 +114,7 @@ export const useStore = create<ReaderState>((set, get) => ({
 
   // Translation mode state
   translationMode: 'off',
-  readerBackgroundColor: '#F4F8EE',
+  readerBackgroundColor: LEGACY_READER_BACKGROUND,
   readerFontSize: 18,
   currentReadingSentenceKey: null,
   focusedParagraphId: null,
@@ -127,7 +128,7 @@ export const useStore = create<ReaderState>((set, get) => ({
       const config = await invoke<AppConfig>('get_config');
       set({
         translationMode: normalizeTranslationMode(config.translation_mode || config.translation_direction),
-        readerBackgroundColor: config.reader_background_color || '#F4F8EE',
+        readerBackgroundColor: config.reader_background_color || LEGACY_READER_BACKGROUND,
         readerFontSize: config.reader_font_size || 18,
         keymap: normalizeKeymap(config.keymap),
       });

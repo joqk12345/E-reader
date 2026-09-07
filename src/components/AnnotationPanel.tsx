@@ -58,43 +58,43 @@ export function AnnotationPanel() {
 
   if (isLoading) {
     return (
-      <div className="p-4 text-sm text-gray-500">Loading annotations...</div>
+      <div className="p-4 text-sm text-muted">Loading annotations...</div>
     );
   }
 
   return (
     <div className="p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800">Annotations & Highlights</h3>
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{annotations.length}</span>
+        <h3 className="text-sm font-semibold text-foreground">Annotations & Highlights</h3>
+        <span className="rounded bg-surface-subtle px-2 py-0.5 text-xs text-navigation">{annotations.length}</span>
       </div>
 
       {annotations.length === 0 ? (
-        <p className="text-sm text-gray-500">No annotations yet. Select text to create one.</p>
+        <p className="text-sm text-muted">No annotations yet. Select text to create one.</p>
       ) : (
         <div className="space-y-2">
           {annotations.map((item) => (
-            <div key={item.id} className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+            <div key={item.id} className="rounded border border-border bg-surface-subtle px-3 py-2">
               <div className="mb-1 flex items-center gap-2">
-                <span className="rounded bg-white px-2 py-0.5 text-xs text-gray-700">
+                <span className="rounded bg-surface px-2 py-0.5 text-xs text-secondary">
                   {annotationStyleLabel[item.style]}
                 </span>
                 <button
                   onClick={() => setFocusedParagraphId(item.paragraph_id)}
-                  className="text-xs text-blue-600 underline-offset-2 hover:underline"
+                  className="text-xs text-action underline-offset-2 hover:underline"
                 >
                   Go to Location
                 </button>
                 <button
                   onClick={() => void handleDelete(item.id)}
-                  className="ml-auto text-xs text-rose-600 underline-offset-2 hover:underline"
+                  className="ml-auto text-xs text-danger underline-offset-2 hover:underline"
                 >
                   Delete
                 </button>
               </div>
-              <p className="text-sm text-gray-800">"{item.selected_text}"</p>
+              <p className="text-sm text-foreground">"{item.selected_text}"</p>
               {item.note && item.note.trim().length > 0 && (
-                <p className="mt-1 text-xs text-amber-800">Note: {item.note}</p>
+                <p className="mt-1 text-xs text-warning">Note: {item.note}</p>
               )}
             </div>
           ))}

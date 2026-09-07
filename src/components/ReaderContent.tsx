@@ -15,6 +15,7 @@ import {
   clamp,
   loadReaderViewSettings,
   type ReaderViewSettings,
+  type ReaderSyntaxTokens,
 } from './readerTheme';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
@@ -187,15 +188,15 @@ const renderKatexHtml = (value: string, displayMode: boolean): string | null => 
   }
 };
 
-const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
-  const baseText = isDark ? '#d6d9de' : '#1f2937';
-  const keyword = isDark ? '#f38ba8' : '#8b1d1d';
-  const stringColor = isDark ? '#a6e3a1' : '#166534';
-  const numberColor = isDark ? '#f9e2af' : '#7c3aed';
-  const commentColor = isDark ? '#94a3b8' : '#64748b';
-  const functionColor = isDark ? '#89b4fa' : '#1d4ed8';
-  const propertyColor = isDark ? '#94e2d5' : '#0f766e';
-  const boolColor = isDark ? '#fab387' : '#b45309';
+const buildCodeRules = (language: string, syntax: ReaderSyntaxTokens): CodeRule[] => {
+  const baseText = syntax.base;
+  const keyword = syntax.keyword;
+  const stringColor = syntax.string;
+  const numberColor = syntax.number;
+  const commentColor = syntax.comment;
+  const functionColor = syntax.function;
+  const propertyColor = syntax.property;
+  const boolColor = syntax.boolean;
 
   if (language === 'json') {
     return [
@@ -251,8 +252,8 @@ const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
   ];
 };
 
-const renderHighlightedCode = (code: string, language: string, isDark: boolean): ReactNode => {
-  const rules = buildCodeRules(language, isDark);
+const renderHighlightedCode = (code: string, language: string, syntax: ReaderSyntaxTokens): ReactNode => {
+  const rules = buildCodeRules(language, syntax);
   if (rules.length === 0 || !code) return code;
 
   const tokens: Array<{ start: number; end: number; color: string; priority: number }> = [];
@@ -356,7 +357,7 @@ const renderTextWithHighlight = (text: string, query: string): ReactNode => {
   return parts.map((part, idx) => {
     if (part.toLowerCase() === keyword.toLowerCase()) {
       return (
-        <mark key={`mark-${idx}`} className="bg-yellow-200 text-inherit px-0.5 rounded">
+        <mark key={`mark-${idx}`} className="bg-warning-subtle text-inherit px-0.5 rounded">
           {part}
         </mark>
       );
@@ -367,12 +368,12 @@ const renderTextWithHighlight = (text: string, query: string): ReactNode => {
 
 const annotationClassName = (style: AnnotationStyle) => {
   if (style === 'double_underline') {
-    return 'decoration-2 underline decoration-double decoration-emerald-600 underline-offset-2';
+    return 'decoration-2 underline decoration-double decoration-success underline-offset-2';
   }
   if (style === 'wavy_strikethrough') {
-    return 'line-through decoration-rose-500 decoration-wavy decoration-2';
+    return 'line-through decoration-danger decoration-wavy decoration-2';
   }
-  return 'underline decoration-2 decoration-sky-600 underline-offset-2';
+  return 'underline decoration-2 decoration-action underline-offset-2';
 };
 
 const renderTextWithAnnotation = (text: string, annotation: Annotation, keyPrefix: string): ReactNode => {
@@ -566,7 +567,7 @@ const highlightSentenceInElement = (element: HTMLElement, sentence: string): HTM
 
   const mark = document.createElement('mark');
   mark.setAttribute('data-reading-sentence', 'true');
-  mark.className = 'rounded bg-amber-100 px-0.5 text-inherit ring-1 ring-amber-300';
+  mark.className = 'rounded bg-warning-subtle px-0.5 text-inherit ring-1 ring-warning';
   const fragment = range.extractContents();
   mark.appendChild(fragment);
   range.insertNode(mark);
@@ -1777,9 +1778,9 @@ export function ReaderContent() {
   const isTranslationEnabled = translationMode !== 'off';
   const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
   const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
-  const translationCardBg = currentTheme.isDark ? '#2f3540' : '#e8ebf2';
-  const translationCardBorder = currentTheme.isDark ? '#72a5ff' : '#8fb5ff';
-  const translationIconColor = currentTheme.isDark ? '#9fc0ff' : '#5f8fe5';
+  const translationCardBg = currentTheme.secondary;
+  const translationCardBorder = currentTheme.link;
+  const translationIconColor = currentTheme.link;
 
   useEffect(() => {
     let cancelled = false;
@@ -2830,8 +2831,8 @@ export function ReaderContent() {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-sm" style={{ color: currentTheme.isDark ? '#9ca3af' : '#4b5563' }}>Loading content...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-action"></div>
+          <p className="mt-2 text-sm" style={{ color: currentTheme.syntax.muted }}>Loading content...</p>
         </div>
       </div>
     );
@@ -2840,7 +2841,7 @@ export function ReaderContent() {
   if (paragraphs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
-        <p style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}>
+        <p style={{ color: currentTheme.syntax.muted }}>
           {currentSectionId
             ? 'No content extracted for this section. The parser may have failed.'
             : 'Select a section from the table of contents'}
@@ -2996,7 +2997,7 @@ export function ReaderContent() {
               >
                 {shouldShowPdfPreview && (
                   <section className="mb-3 rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
-                    <div className="mb-2 text-xs" style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}>Page {currentPage}</div>
+                    <div className="mb-2 text-xs" style={{ color: currentTheme.syntax.comment }}>Page {currentPage}</div>
                     <iframe
                       title={`PDF Page ${currentPage}`}
                       src={`${convertFileSrc(currentPdfPath)}#page=${currentPage}&zoom=page-width`}
@@ -3010,8 +3011,8 @@ export function ReaderContent() {
                   }}
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
-                    focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
-                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''}`}
+                    focusedParagraphId === paragraph.id ? 'bg-action-subtle/70 ring-1 ring-focus' : ''
+                  } ${isSearchMatchedParagraph ? 'bg-warning-subtle/60' : ''}`}
                 >
                 {isMarkdownParagraph ? (
                   <div className="space-y-2">
@@ -3034,7 +3035,7 @@ export function ReaderContent() {
                             ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
                             li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
-                            blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
+                            blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.syntax.quote }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
                             code: ({ className, children }) => {
                               const rawCode = toCodeText(children).replace(/\n$/, '');
                               const language = inferCodeLanguage(className);
@@ -3119,7 +3120,7 @@ export function ReaderContent() {
                                     style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
                                   >
                                     <code className={props.className || 'block'} style={{ backgroundColor: 'transparent', color: currentTheme.codeText }}>
-                                      {renderHighlightedCode(rawCode, language, currentTheme.isDark)}
+                                      {renderHighlightedCode(rawCode, language, currentTheme.syntax)}
                                     </code>
                                   </pre>
                                 );
@@ -3153,7 +3154,7 @@ export function ReaderContent() {
                                 return (
                                   <span
                                     className="my-2 block text-sm italic"
-                                    style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                    style={{ color: currentTheme.syntax.muted }}
                                   >
                                     {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
                                   </span>
@@ -3242,7 +3243,7 @@ export function ReaderContent() {
                                       img: ({ alt }) => (
                                         <span
                                           className="my-1 block text-xs italic"
-                                          style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                          style={{ color: currentTheme.syntax.muted }}
                                         >
                                           {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
                                         </span>
@@ -3264,12 +3265,12 @@ export function ReaderContent() {
                                   translatableMarkdownText
                                 )
                               }
-                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              className="text-xs text-action hover:text-action underline"
                             >
                               {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
                             </button>
                             {translationErrors[markdownTranslationKey(paragraph.id)] && (
-                              <span className="text-xs text-red-600">
+                              <span className="text-xs text-danger">
                                 {translationErrors[markdownTranslationKey(paragraph.id)]}
                               </span>
                             )}
@@ -3286,7 +3287,7 @@ export function ReaderContent() {
                         <div
                           className="my-3 rounded-lg border px-3 py-2 text-sm italic"
                           style={{
-                            color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                            color: currentTheme.syntax.quote,
                             borderColor: currentTheme.border,
                             backgroundColor: currentTheme.secondary,
                           }}
@@ -3301,7 +3302,7 @@ export function ReaderContent() {
                         return (
                           <header className="mb-6 text-center">
                             <h1
-                              className="text-3xl font-semibold leading-tight tracking-tight text-slate-900"
+                              className="text-3xl font-semibold leading-tight tracking-tight text-heading"
                               style={{ color: currentTheme.foreground }}
                             >
                               {renderWithSearchHighlight(
@@ -3344,8 +3345,8 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'caption') {
                         return (
                           <p
-                            className="mb-3 text-center text-sm italic text-slate-600"
-                            style={{ color: currentTheme.isDark ? '#cbd5e1' : '#475569' }}
+                            className="mb-3 text-center text-sm italic text-navigation"
+                            style={{ color: currentTheme.syntax.quote }}
                           >
                             {renderWithSearchHighlight(
                               pdfText,
@@ -3361,7 +3362,7 @@ export function ReaderContent() {
                           <p
                             className="mb-4 rounded-lg border px-3 py-2 text-sm italic"
                             style={{
-                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              color: currentTheme.syntax.quote,
                               borderColor: currentTheme.border,
                               backgroundColor: currentTheme.secondary,
                             }}
@@ -3379,7 +3380,7 @@ export function ReaderContent() {
                         return (
                           <p
                             className={`mb-3 text-sm ${currentPage === 1 ? 'text-center' : ''}`}
-                            style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}
+                            style={{ color: currentTheme.syntax.comment }}
                           >
                             {renderWithSearchHighlight(
                               pdfText,
@@ -3395,7 +3396,7 @@ export function ReaderContent() {
                           <pre
                             className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-sm leading-7"
                             style={{
-                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              color: currentTheme.syntax.quote,
                               fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
                               fontVariantNumeric: 'tabular-nums',
                             }}
@@ -3468,7 +3469,7 @@ export function ReaderContent() {
                             ref={(el) => {
                               sentenceRefs.current[key] = el;
                             }}
-                            className={isReading ? 'rounded px-2 py-1 border border-amber-300 bg-amber-100' : ''}
+                            className={isReading ? 'rounded border border-warning/25 bg-warning-subtle px-2 py-1' : ''}
                             style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                           >
                             {renderWithSearchHighlight(sentence, isSearchMatchedParagraph, paragraphAnnotations, `${paragraph.id}-${index}`)}
@@ -3490,7 +3491,7 @@ export function ReaderContent() {
                               <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>
                                 <button
                                   onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
-                                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                  className="text-xs text-action hover:text-action underline"
                                 >
                                   Translate
                                 </button>
@@ -3515,7 +3516,7 @@ export function ReaderContent() {
         <div
           ref={selectionPopoverRef}
           data-selection-popover="true"
-          className="fixed z-50 -translate-x-1/2 rounded-xl border border-slate-300 bg-white p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
+          className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
           style={{
             left: `${selectionPopoverLeft}px`,
             top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
@@ -3529,9 +3530,9 @@ export function ReaderContent() {
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
         >
-          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-50 to-zinc-50 px-2 py-1.5 shadow-sm backdrop-blur">
+          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-control-border bg-gradient-to-r from-surface-subtle to-surface-hover px-2 py-1.5 shadow-sm backdrop-blur">
             <button
-              className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100"
+              className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface-subtle"
               title="Drag to move panel"
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
@@ -3566,7 +3567,7 @@ export function ReaderContent() {
                 }}
               >
                 {action === 'ask' && !isSelectionReorderMode && isQuestionInputExpanded ? (
-                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-slate-300 bg-white px-3">
+                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-control-border bg-surface px-3">
                     <input
                       autoFocus
                       value={selectionQuestion}
@@ -3585,12 +3586,12 @@ export function ReaderContent() {
                         if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
                       }}
                       placeholder="Type your question and press Enter"
-                      className="w-full bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                      className="w-full bg-transparent text-[13px] text-secondary placeholder:text-faint focus:outline-none"
                     />
                     <button
                       onClick={handleAskQuestionFromSelection}
                       disabled={!selectionQuestion.trim()}
-                      className="shrink-0 whitespace-nowrap rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-[12px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-control-border bg-surface-subtle px-3.5 py-1.5 text-[12px] font-medium text-secondary hover:border-control-border hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Submit
                     </button>
@@ -3604,13 +3605,13 @@ export function ReaderContent() {
                     className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[12px] font-medium transition ${
                       isSelectionReorderMode
                         ? pointerSortAction === action
-                          ? 'cursor-grabbing border-slate-400 bg-slate-200 text-slate-800'
-                          : 'cursor-grab border-slate-300 bg-slate-100 text-slate-700'
-                        : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50'
+                          ? 'cursor-grabbing border-control-border bg-surface-hover text-foreground'
+                          : 'cursor-grab border-control-border bg-surface-subtle text-secondary'
+                        : 'border-control-border bg-surface text-foreground hover:border-control-border hover:bg-surface-subtle'
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5 align-middle">
-                      <span className="text-[11px] text-slate-500">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
+                      <span className="text-[11px] text-muted">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
                       <span>{selectionActionLabel[action]}</span>
                     </span>
                   </button>
@@ -3621,20 +3622,20 @@ export function ReaderContent() {
             <div className="relative">
               <button
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
-                className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+                className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-[12px] text-secondary hover:bg-surface-subtle"
                 title="More actions"
               >
                 ▾
               </button>
               {isSelectionMenuOpen && (
-                <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-slate-300 bg-white p-1.5 shadow-lg">
+                <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-control-border bg-surface p-1.5 shadow-lg">
                   <button
                     onClick={() => {
                       setIsQuestionInputExpanded(false);
                       setIsSelectionReorderMode((prev) => !prev);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
                   >
                     {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
                   </button>
@@ -3644,7 +3645,7 @@ export function ReaderContent() {
                       setIsSelectionReorderMode(false);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
                   >
                     Reset to Default
                   </button>
@@ -3653,16 +3654,16 @@ export function ReaderContent() {
             </div>
             <button
               onClick={clearSelectionDraft}
-              className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+              className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-[12px] text-secondary hover:bg-surface-subtle"
               title="Close"
             >
               ×
             </button>
           </div>
           {isSelectionReorderMode && (
-            <p className="mb-1.5 text-[10px] text-slate-500">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
+            <p className="mb-1.5 text-[10px] text-muted">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
           )}
-          <p className="mb-1.5 line-clamp-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
+          <p className="mb-1.5 line-clamp-2 rounded border border-control-border bg-surface-subtle px-2 py-1 text-[11px] text-navigation">
             “{selectionDraft.selectedText}”
           </p>
           {selectionActionMode === 'highlight' && (
@@ -3674,8 +3675,8 @@ export function ReaderContent() {
                     onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
                     className={`rounded border px-2 py-1 text-xs ${
                       selectionDraft.style === style
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        ? 'border-focus bg-action-subtle text-action-text'
+                        : 'border-control-border text-secondary hover:border-control-border'
                     }`}
                   >
                     {annotationStyleLabel[style]}
@@ -3685,13 +3686,13 @@ export function ReaderContent() {
               <div className="mb-2 flex justify-end gap-2">
                 <button
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                  className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => void handleCreateHighlightOnly()}
-                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                  className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
                 >
                   Save Highlight
                 </button>
@@ -3705,18 +3706,18 @@ export function ReaderContent() {
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
                 placeholder="Enter note content (optional)"
                 rows={3}
-                className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mb-2 w-full resize-none rounded border border-control-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
               />
               <div className="mb-2 flex justify-end gap-2">
                 <button
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                  className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleSaveNoteSelection}
-                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                  className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
                 >
                   Save Note
                 </button>
@@ -3724,7 +3725,7 @@ export function ReaderContent() {
             </>
           )}
           <div
-            className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-slate-400"
+            className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-faint"
             title="Drag to resize panel"
             onPointerDown={(event) => {
               if (event.button !== 0) return;
@@ -3748,25 +3749,25 @@ export function ReaderContent() {
         <>
           <div
             data-selection-popover="true"
-            className="fixed inset-0 z-50 bg-black/30"
+            className="fixed inset-0 z-50 bg-foreground/30"
             onClick={() => setTtsConfirmParagraphId(null)}
           />
           <div
             data-selection-popover="true"
-            className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white p-4 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-4 shadow-2xl"
           >
-            <h4 className="text-sm font-semibold text-gray-900">Start reading from here?</h4>
-            <p className="mt-2 text-xs text-gray-600">TTS will start from the paragraph containing the selected text.</p>
+            <h4 className="text-sm font-semibold text-heading">Start reading from here?</h4>
+            <p className="mt-2 text-xs text-navigation">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setTtsConfirmParagraphId(null)}
-                className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700"
+                className="rounded border border-control-border px-3 py-1.5 text-xs text-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmPlayFromSelection}
-                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+                className="rounded bg-action px-3 py-1.5 text-xs text-on-action hover:bg-action-text"
               >
                 Start Reading
               </button>
