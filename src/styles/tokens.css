@@ -1,26 +1,34 @@
 /* Application UI tokens; reading themes remain independent. RGB channels support opacity modifiers. */
 :root {
-  --color-surface: 255 255 255;
-  --color-surface-subtle: 241 245 249;
-  --color-surface-hover: 226 232 240;
-  --color-foreground: 30 41 59;
-  --color-heading: 15 23 42;
-  --color-muted: 100 116 139;
-  --color-secondary: 51 65 85;
-  --color-navigation: 71 85 105;
-  --color-faint: 148 163 184;
-  --color-border: 226 232 240;
-  --color-control-border: 203 213 225;
-  --color-action: 37 99 235;
-  --color-action-text: 29 78 216;
-  --color-action-subtle: 219 234 254;
-  --color-focus: 59 130 246;
-  --color-focus-border: 96 165 250;
-  --color-success: 5 150 105;
-  --color-success-indicator: 16 185 129;
+  /* Warm, editorial neutrals keep the reading surface quiet. */
+  --color-surface: 250 249 247;
+  --color-surface-subtle: 244 242 238;
+  --color-surface-hover: 235 232 226;
+  --color-foreground: 41 39 36;
+  --color-heading: 28 27 25;
+  --color-muted: 120 113 108;
+  --color-secondary: 68 64 60;
+  --color-navigation: 87 82 77;
+  --color-faint: 168 162 155;
+  --color-border: 226 222 215;
+  --color-control-border: 207 201 193;
+  /* Anthropic-inspired terracotta used only for actions and focus. */
+  --color-action: 201 98 69;
+  --color-action-text: 166 72 48;
+  --color-action-subtle: 249 230 221;
+  --color-focus: 201 98 69;
+  --color-focus-border: 224 139 116;
+  --color-success: 57 112 87;
+  --color-success-indicator: 82 145 111;
+  --color-warning: 153 98 35;
+  --color-warning-subtle: 250 239 218;
+  --color-danger: 174 76 70;
+  --color-danger-subtle: 251 229 227;
   --color-on-action: 255 255 255;
   --font-size-caption: 12px;
   --font-size-control: 13px;
   --font-size-label: 15px;
   --settings-control-width: 280px;
+  --radius-panel: 22px;
+  --shadow-panel: 0 24px 70px rgb(37 31 26 / 18%);
 }

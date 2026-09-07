@@ -553,9 +553,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35">
-        <div className="rounded-2xl bg-white p-8 shadow-xl">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm">
+        <div className="rounded-panel bg-surface p-8 shadow-panel">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-action" />
         </div>
       </div>
     );
@@ -632,13 +632,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const updateTargetUrl = updateResult?.downloadUrl || updateResult?.releaseUrl || APP_RELEASES_URL;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-[1px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="mx-4 flex h-[77vh] w-full max-w-[826px] overflow-hidden rounded-3xl border border-slate-200 bg-[#f6f7f9] shadow-[0_24px_60px_rgba(15,23,42,0.28)]"
+        data-settings-shell
+        className="flex h-[78vh] w-full max-w-[900px] overflow-hidden rounded-panel border border-border bg-surface-subtle shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <aside className="w-[168px] shrink-0 border-r border-slate-200 bg-[#eef0f3] px-2 py-3">
-          <div className="px-2 pb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Settings</div>
+        <aside className="w-[184px] shrink-0 border-r border-border bg-surface px-3 py-4">
+          <div className="px-2 pb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Reader settings</div>
           <nav className="space-y-1">
             {navItems.map((item) => {
               const active = activeSection === item.id;
@@ -656,12 +657,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-slate-200 bg-white/80 px-6 py-3">
-            <h1 className="text-center text-[20px] font-semibold tracking-tight text-slate-900">Settings</h1>
+          <header className="border-b border-border bg-surface/90 px-8 py-4">
+            <h1 className="text-center font-serif text-[21px] font-medium tracking-tight text-heading">Settings</h1>
           </header>
 
-          <main className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            <h2 className="mb-3 text-[22px] font-bold tracking-tight text-slate-900">
+          <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+            <h2 className="mb-5 font-serif text-[26px] font-medium tracking-tight text-heading">
               {activeSection === 'reading' && 'Appearance'}
               {activeSection === 'editor' && 'Typography'}
               {activeSection === 'translation' && 'Bilingual Translation'}
@@ -673,7 +674,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             </h2>
 
             {message && (
-              <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+              <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-success/25 bg-success/10 text-success' : 'border-danger/25 bg-danger-subtle text-danger'}`}>
                 {message.text}
               </div>
             )}
@@ -693,7 +694,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                           className="h-7 w-7 rounded-full border-2"
                           style={{
                             backgroundColor: READER_THEMES[id].background,
-                            borderColor: readerViewSettings.theme === id ? '#2563eb' : 'transparent',
+                            borderColor: readerViewSettings.theme === id ? 'rgb(var(--color-action))' : 'transparent',
                           }}
                         />
                       ))}
@@ -750,9 +751,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Main reading text size"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.fontSize}px</span>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
+                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.fontSize}px</span>
                     </>
                   }
                 />
@@ -761,9 +762,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Vertical rhythm and readability"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.lineHeight.toFixed(1)}</span>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
+                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
                     </>
                   }
                 />
@@ -772,9 +773,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Set line length for focus"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.contentWidth}em</span>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
+                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.contentWidth}em</span>
                     </>
                   }
                 />
@@ -783,9 +784,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Spacing between CJK characters"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</button>
+                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</button>
+                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
                     </>
                   }
                 />
@@ -1194,7 +1195,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             )}
           </main>
 
-          <footer className="flex items-center justify-between border-t border-slate-200 bg-white/90 px-6 py-2.5">
+          <footer className="flex items-center justify-between border-t border-border bg-surface/90 px-8 py-3">
             <SecondaryActionButton icon={<span>↻</span>} label="Reload" onClick={() => void loadConfig()} />
 
             <div className="flex items-center gap-3">

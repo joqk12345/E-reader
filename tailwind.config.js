@@ -26,6 +26,10 @@ export default {
         "focus-border": "rgb(var(--color-focus-border) / <alpha-value>)",
         "success": "rgb(var(--color-success) / <alpha-value>)",
         "success-indicator": "rgb(var(--color-success-indicator) / <alpha-value>)",
+        "warning": "rgb(var(--color-warning) / <alpha-value>)",
+        "warning-subtle": "rgb(var(--color-warning-subtle) / <alpha-value>)",
+        "danger": "rgb(var(--color-danger) / <alpha-value>)",
+        "danger-subtle": "rgb(var(--color-danger-subtle) / <alpha-value>)",
         "on-action": "rgb(var(--color-on-action) / <alpha-value>)"
       },
       "fontSize": {
@@ -39,6 +43,12 @@ export default {
       },
       "opacity": {
         "55": "0.55"
+      },
+      "borderRadius": {
+        "panel": "var(--radius-panel)"
+      },
+      "boxShadow": {
+        "panel": "var(--shadow-panel)"
       },
       "gridTemplateColumns": {
         "setting-row": "minmax(0, 1fr) var(--settings-control-width)"

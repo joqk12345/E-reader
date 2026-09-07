@@ -34,6 +34,7 @@
 - P0：已检查现有主题、全局 CSS、Tailwind 配置、设置控件及主要大组件。
 
 - P1：已实现 src/styles/tokens.css 和 Tailwind 语义映射；SettingsUI 完成试点迁移，ToggleSwitch 移入 components/ui 并保留旧路径导出。
+- 设计语言修订：参考 Claude 公开页面的内容优先和低噪声原则，将设置模态框改为温暖中性色画布、纸张式层级、窄侧栏和珊瑚色强调；不复制 Claude 的品牌资产。
 - 修复试点使用的未定义开关尺寸和禁用透明度。开关尺寸使用专用名称，避免影响旧页面中同名的 4.5 尺度类。
 - 已运行：npm run check:styles、npm run build、git diff --check；已检查生产 CSS 包含 tokens 和语义类、开关尺寸及设置行布局。
 - check:styles 已接入 CI，目前仅覆盖 SettingsUI 和 components/ui；这是逐步迁移的防回退检查，不是全项目覆盖率证明，也不是完整 CSS 解析器。
