@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from './ui/Button';
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -30,22 +31,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
 
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-control-border px-3 py-2 text-sm text-secondary hover:bg-surface-subtle"
-          >
+          <Button size="sm" onClick={onClose}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`rounded-md px-3 py-2 text-sm font-medium text-on-action ${
-              tone === 'danger' ? 'bg-danger hover:bg-danger' : 'bg-action hover:bg-action-text'
-            }`}
-          >
+          </Button>
+          <Button size="sm" variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

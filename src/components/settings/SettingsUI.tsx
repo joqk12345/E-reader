@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from '../ui/Button';
 
 export const compactControlClass =
   'h-9 rounded-xl border border-control-border bg-surface px-3 text-control text-foreground outline-none transition focus:border-focus-border focus:ring-2 focus:ring-focus/15';
@@ -95,14 +96,5 @@ export function SecondaryActionButton({
   label: string;
   onClick: () => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-control-border bg-surface-subtle px-2.5 py-1.5 text-control text-secondary shadow-sm hover:bg-surface-hover"
-    >
-      {icon}
-      {label}
-    </button>
-  );
+  return <Button size="sm" icon={icon} onClick={onClick}>{label}</Button>;
 }

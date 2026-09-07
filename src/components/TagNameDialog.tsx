@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from './ui/Button';
 
 type TagNameDialogProps = {
   open: boolean;
@@ -47,21 +48,12 @@ export const TagNameDialog: React.FC<TagNameDialogProps> = ({
         />
 
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-control-border px-3 py-2 text-sm text-secondary hover:bg-surface-subtle"
-          >
+          <Button size="sm" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={!value.trim()}
-            className="rounded-md bg-warning px-3 py-2 text-sm font-medium text-on-action hover:bg-warning disabled:bg-control-border"
-          >
+          </Button>
+          <Button size="sm" variant="primary" onClick={onConfirm} disabled={!value.trim()}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
