@@ -40,3 +40,7 @@
 - check:styles 已接入 CI，目前仅覆盖 SettingsUI 和 components/ui；这是逐步迁移的防回退检查，不是全项目覆盖率证明，也不是完整 CSS 解析器。
 - 构建使用主工作区现有 node_modules 的父目录解析；未变更依赖。现有构建仍提示 Browserslist 数据、onnxruntime eval 和包体积警告。
 - 待验收：真实 Tauri 设置页的视觉、开关交互和键盘行为；尚未完成全量迁移，P2–P7 保持待办。
+- V2 迁移进度：应用内 45 个样式文件已通过语义 token 检查，所有直接 Tailwind 调色板类已清零；Library、Reader、PDF/Markdown、双语、AI 工具和设置子页均完成颜色层迁移。
+- P2 进展：新增 `components/ui/Button.tsx`，ConfirmDialog、TagNameDialog、SettingsUI 的 SecondaryActionButton 已复用 Button；其余输入/选择器/标签页仍待提取。
+- P5 进展：ReaderContent 的代码高亮与正文辅助色已收敛到 `readerTheme.ts` 的 `ReaderSyntaxTokens`，五种阅读主题保留原设置存储兼容性。
+- P7 进展：`check:styles` 已扩大到整个 `src` 的 45 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。

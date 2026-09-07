@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
+import { inputClassName } from '../ui/Input';
 
-export const compactControlClass =
-  'h-9 rounded-xl border border-control-border bg-surface px-3 text-control text-foreground outline-none transition focus:border-focus-border focus:ring-2 focus:ring-focus/15';
+export const compactControlClass = inputClassName;
 
 export function StatusDot({ success, text }: { success: boolean; text: string }) {
   return (

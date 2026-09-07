@@ -19,6 +19,7 @@ import {
   type UpdateTarget,
 } from './services/updater';
 import { matchesAnyShortcut } from './utils/shortcuts';
+import { Tabs } from './components/ui/Tabs';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -377,24 +378,12 @@ function App() {
                   </div>
                 </div>
 
-                <nav aria-label="Workspace" className="inline-flex rounded-full border border-border bg-surface-subtle p-1">
-                  {([
-                    ['library', 'Library'],
-                    ['semantic-search', 'Semantic Search'],
-                  ] as const).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setHomeView(value)}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                        homeView === value
-                          ? 'bg-surface text-heading shadow-sm'
-                          : 'text-navigation hover:text-heading'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <nav aria-label="Workspace">
+                  <Tabs
+                    items={[{ value: 'library', label: 'Library' }, { value: 'semantic-search', label: 'Semantic Search' }]}
+                    value={homeView}
+                    onChange={setHomeView}
+                  />
                 </nav>
 
                 <button
