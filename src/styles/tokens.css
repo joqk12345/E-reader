@@ -1,0 +1,26 @@
+/* Application UI tokens; reading themes remain independent. RGB channels support opacity modifiers. */
+:root {
+  --color-surface: 255 255 255;
+  --color-surface-subtle: 241 245 249;
+  --color-surface-hover: 226 232 240;
+  --color-foreground: 30 41 59;
+  --color-heading: 15 23 42;
+  --color-muted: 100 116 139;
+  --color-secondary: 51 65 85;
+  --color-navigation: 71 85 105;
+  --color-faint: 148 163 184;
+  --color-border: 226 232 240;
+  --color-control-border: 203 213 225;
+  --color-action: 37 99 235;
+  --color-action-text: 29 78 216;
+  --color-action-subtle: 219 234 254;
+  --color-focus: 59 130 246;
+  --color-focus-border: 96 165 250;
+  --color-success: 5 150 105;
+  --color-success-indicator: 16 185 129;
+  --color-on-action: 255 255 255;
+  --font-size-caption: 12px;
+  --font-size-control: 13px;
+  --font-size-label: 15px;
+  --settings-control-width: 280px;
+}

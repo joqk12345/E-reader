@@ -8,7 +8,8 @@
     "tauri": "tauri",
     "website:dev": "npm run dev --prefix website",
     "website:build": "npm run build --prefix website",
-    "website:preview": "npm run preview --prefix website"
+    "website:preview": "npm run preview --prefix website",
+    "check:styles": "node scripts/check-style-tokens.mjs"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

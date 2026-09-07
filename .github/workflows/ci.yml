@@ -53,6 +53,9 @@ jobs:
         shell: bash
         run: ./scripts/align-tauri-npm.sh
 
+      - name: Check migrated style tokens
+        run: npm run check:styles
+
       - name: Run TypeScript type check
         run: npm run build
 
