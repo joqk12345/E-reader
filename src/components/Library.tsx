@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
@@ -29,6 +28,12 @@ import {
   addTagAlias,
 } from '../services/tagService';
 import { useLibrarySidebarResize } from '../features/library/useLibrarySidebarResize';
+import { useLibraryImport } from '../features/library/useLibraryImport';
+import {
+  FAVORITES_CATEGORY,
+  RECENTS_CATEGORY,
+  useLibraryDocumentFilters,
+} from '../features/library/useLibraryDocumentFilters';
 
 type LibraryProps = {
   statusBar?: React.ReactNode;
@@ -43,18 +48,7 @@ type DocumentInsight = {
   category: string;
 };
 
-const FAVORITES_CATEGORY = 'Favorites';
-const RECENTS_CATEGORY = 'Recents';
 const FAVORITES_STORAGE_KEY = 'reader.favoriteDocumentIds';
-
-const normalizeFileType = (fileType: string): 'epub' | 'pdf' | 'markdown' => {
-  const normalized = fileType.trim().toLowerCase();
-  if (normalized === 'md') return 'markdown';
-  if (normalized === 'epub' || normalized === 'pdf' || normalized === 'markdown') {
-    return normalized;
-  }
-  return 'markdown';
-};
 
 const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
   { name: 'AI/机器学习', keywords: ['ai', 'llm', 'ml', 'machine learning', '模型', '推理', 'agent', 'rag', 'vllm'] },
@@ -107,10 +101,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [groupByCategory, setGroupByCategory] = useState(true);
-  const [isImportingFile, setIsImportingFile] = useState(false);
-  const [isImportingUrl, setIsImportingUrl] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importUrlDraft, setImportUrlDraft] = useState('');
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
@@ -156,19 +146,16 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [tagManagerFeedback, setTagManagerFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const displayMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const formatImportErrorMessage = (error: unknown) => {
-    const raw = error instanceof Error ? error.message : String(error ?? '');
-    const normalized = raw.toLowerCase();
-    const isDuplicateFile =
-      normalized.includes('unique constraint failed: documents.file_path') ||
-      (normalized.includes('documents.file_path') && normalized.includes('unique'));
-
-    if (isDuplicateFile) {
-      return '该文件已导入到 Library，无需重复导入。';
-    }
-    return `导入失败：${raw}`;
-  };
-
+  const {
+    isImportingFile,
+    isImportingUrl,
+    showImportDialog,
+    setShowImportDialog,
+    importUrlDraft,
+    setImportUrlDraft,
+    handleImportFile,
+    handleImportUrlBeta,
+  } = useLibraryImport({ loadDocuments, importEpub, importPdf, importMarkdown, selectDocument });
 
   useEffect(() => {
     loadDocuments();
@@ -247,20 +234,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     setBatchSelectedTagIds((prev) => prev.filter((tagId) => tagLibrary.some((tag) => tag.id === tagId)));
   }, [tagFacets, tagLibrary]);
 
-  const getDocumentCategory = (docId: string) => {
-    if (favoriteDocumentIds[docId]) {
-      return FAVORITES_CATEGORY;
-    }
-    return documentInsights[docId]?.category || '其他';
-  };
-
-  const getDocumentCardCategory = (docId: string) => {
-    if (categoryFilter === RECENTS_CATEGORY) {
-      return undefined;
-    }
-    return getDocumentCategory(docId);
-  };
-
   const isFavoriteDocument = (docId: string) => Boolean(favoriteDocumentIds[docId]);
 
   const toggleFavoriteDocument = (docId: string) => {
@@ -324,74 +297,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     };
   }, [documents, runAutoClassification]);
 
-  const handleImportFile = async () => {
-    setIsImportingFile(true);
-    let importedSuccessfully = false;
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [
-          {
-            name: 'Documents',
-            extensions: ['epub', 'pdf', 'md']
-          }
-        ]
-      });
-
-      if (selected && typeof selected === 'string') {
-        const ext = selected.split('.').pop()?.toLowerCase();
-        if (ext === 'epub') {
-          await importEpub(selected);
-          importedSuccessfully = true;
-        } else if (ext === 'pdf') {
-          const docId = await importPdf(selected);
-          selectDocument(docId);
-          importedSuccessfully = true;
-        } else if (ext === 'md') {
-          await importMarkdown(selected);
-          importedSuccessfully = true;
-        }
-      }
-    } catch (error) {
-      console.error('Import failed:', error);
-      alert(formatImportErrorMessage(error));
-    } finally {
-      setIsImportingFile(false);
-      if (importedSuccessfully) {
-        setShowImportDialog(false);
-      }
-    }
-  };
-
-  const normalizeUrl = (input: string) => {
-    const trimmed = input.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    return `https://${trimmed}`;
-  };
-
-  const handleImportUrlBeta = async () => {
-    const url = normalizeUrl(importUrlDraft);
-    if (!url) return;
-    setIsImportingUrl(true);
-    let importedSuccessfully = false;
-    try {
-      const docId = await invoke<string>('import_url', { url });
-      await loadDocuments();
-      selectDocument(docId);
-      importedSuccessfully = true;
-    } catch (error) {
-      console.error('Import URL failed:', error);
-      alert(formatImportErrorMessage(error));
-    } finally {
-      setIsImportingUrl(false);
-      if (importedSuccessfully) {
-        setImportUrlDraft('');
-        setShowImportDialog(false);
-      }
-    }
-  };
-
   const handleDeleteRequest = (id: string, title: string) => {
     setPendingDelete({ id, title });
   };
@@ -427,90 +332,28 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     return tagFacets.filter((facet) => !query || facet.name.toLowerCase().includes(query));
   }, [tagFacets, tagSearchText]);
 
-  const shouldGroupDisplayedDocuments = groupByCategory && categoryFilter !== RECENTS_CATEGORY;
-
-  const displayedDocuments = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    const filtered = documents.filter((doc) => {
-      const docType = normalizeFileType(doc.file_type);
-      if (typeFilter !== 'all' && docType !== typeFilter) return false;
-      if (
-        categoryFilter !== 'all' &&
-        categoryFilter !== RECENTS_CATEGORY &&
-        getDocumentCategory(doc.id) !== categoryFilter
-      ) {
-        return false;
-      }
-      if (selectedTagIds.length > 0) {
-        const docTagIds = new Set((documentTagMap[doc.id] || []).map((item) => item.tag_id));
-        const matches =
-          tagMatchMode === 'all'
-            ? selectedTagIds.every((tagId) => docTagIds.has(tagId))
-            : selectedTagIds.some((tagId) => docTagIds.has(tagId));
-        if (!matches) return false;
-      }
-      if (!q) return true;
-      const title = doc.title.toLowerCase();
-      const author = (doc.author || '').toLowerCase();
-      const filePath = doc.file_path.toLowerCase();
-      return title.includes(q) || author.includes(q) || filePath.includes(q);
-    });
-
-    const sorted = [...filtered];
-    if (categoryFilter === RECENTS_CATEGORY || sortBy === 'recent') {
-      sorted.sort((a, b) => b.updated_at - a.updated_at);
-    } else if (sortBy === 'title') {
-      sorted.sort((a, b) => a.title.localeCompare(b.title));
-    } else {
-      sorted.sort((a, b) => normalizeFileType(a.file_type).localeCompare(normalizeFileType(b.file_type)) || a.title.localeCompare(b.title));
-    }
-    return sorted;
-  }, [categoryFilter, documents, documentTagMap, favoriteDocumentIds, searchText, selectedTagIds, sortBy, tagMatchMode, typeFilter, documentInsights]);
-
-  const categoryOptions = useMemo(() => {
-    const categories = new Set<string>();
-    documents.forEach((doc) => categories.add(getDocumentCategory(doc.id)));
-    return Array.from(categories).sort((a, b) => a.localeCompare(b));
-  }, [documents, favoriteDocumentIds, documentInsights]);
-
-  const regularCategoryOptions = useMemo(
-    () => categoryOptions.filter((category) => category !== FAVORITES_CATEGORY && category !== RECENTS_CATEGORY),
-    [categoryOptions]
-  );
-
-  const groupedEntries = useMemo(() => {
-    const grouped = displayedDocuments.reduce<Record<string, ReaderDocument[]>>((acc, doc) => {
-      const category = getDocumentCategory(doc.id);
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(doc);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).sort((a, b) => {
-      if (a[0] === FAVORITES_CATEGORY && b[0] !== FAVORITES_CATEGORY) return -1;
-      if (b[0] === FAVORITES_CATEGORY && a[0] !== FAVORITES_CATEGORY) return 1;
-      return b[1].length - a[1].length || a[0].localeCompare(b[0]);
-    });
-  }, [displayedDocuments, favoriteDocumentIds, documentInsights]);
-
-  const typeSummaries = useMemo(() => {
-    const markdownCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
-    const pdfCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'pdf').length;
-    const epubCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'epub').length;
-    return [
-      { key: 'all' as const, label: 'All', count: documents.length },
-      { key: 'epub' as const, label: 'EPUB', count: epubCount },
-      { key: 'pdf' as const, label: 'PDF', count: pdfCount },
-      { key: 'markdown' as const, label: 'Markdown', count: markdownCount },
-    ];
-  }, [documents]);
-
-  const favoriteCount = useMemo(
-    () => documents.reduce((acc, doc) => (isFavoriteDocument(doc.id) ? acc + 1 : acc), 0),
-    [documents, favoriteDocumentIds]
-  );
-
-  const quickCategories = useMemo(() => regularCategoryOptions.slice(0, 10), [regularCategoryOptions]);
+  const {
+    getDocumentCardCategory,
+    shouldGroupDisplayedDocuments,
+    displayedDocuments,
+    regularCategoryOptions,
+    groupedEntries,
+    typeSummaries,
+    favoriteCount,
+    quickCategories,
+  } = useLibraryDocumentFilters({
+    documents,
+    typeFilter,
+    sortBy,
+    searchText,
+    categoryFilter,
+    groupByCategory,
+    selectedTagIds,
+    tagMatchMode,
+    documentTagMap,
+    favoriteDocumentIds,
+    documentInsights,
+  });
 
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));

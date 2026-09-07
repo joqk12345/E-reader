@@ -11,12 +11,10 @@ import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/
 import type { Annotation, AnnotationStyle, Paragraph } from '../types';
 import {
   READER_THEMES,
-  VIEW_SETTINGS_KEY,
   clamp,
-  loadReaderViewSettings,
-  type ReaderViewSettings,
   type ReaderSyntaxTokens,
 } from './readerTheme';
+import { useReaderViewSettings } from '../features/reader/useReaderViewSettings';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -1746,9 +1744,7 @@ export function ReaderContent() {
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
   const [annotationRefreshTick, setAnnotationRefreshTick] = useState(0);
   const [columnPageIndex, setColumnPageIndex] = useState(0);
-  const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
-    loadReaderViewSettings(readerFontSize)
-  );
+  const { viewSettings, setViewSettings } = useReaderViewSettings(readerFontSize, setReaderFontSize);
   const [documentSourceUrl, setDocumentSourceUrl] = useState<string | null>(null);
   const [remoteArticleImages, setRemoteArticleImages] = useState<RemoteArticleImage[]>([]);
   const [supplementalReferences, setSupplementalReferences] = useState<string[]>([]);
@@ -2090,24 +2086,6 @@ export function ReaderContent() {
   }, [searchMatchedParagraphIds]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(viewSettings));
-    } catch (error) {
-      console.warn('Failed to persist reader view settings:', error);
-    }
-  }, [viewSettings]);
-
-  useEffect(() => {
-    const refresh = () => {
-      setViewSettings(loadReaderViewSettings(readerFontSize));
-    };
-    window.addEventListener('reader:view-settings-updated', refresh as EventListener);
-    return () => {
-      window.removeEventListener('reader:view-settings-updated', refresh as EventListener);
-    };
-  }, [readerFontSize]);
-
-  useEffect(() => {
     const onSetBilingualViewMode = (
       event: CustomEvent<{ mode?: 'both' | 'source' | 'translation' }>
     ) => {
@@ -2207,12 +2185,6 @@ export function ReaderContent() {
     return () =>
       window.removeEventListener('reader:request-flip-page', onFlipRequest as EventListener);
   }, [columnPageIndex, isTwoColumnLayout, totalColumnPages]);
-
-  useEffect(() => {
-    if (viewSettings.fontSize !== readerFontSize) {
-      setReaderFontSize(viewSettings.fontSize);
-    }
-  }, [readerFontSize, setReaderFontSize, viewSettings.fontSize]);
 
   useEffect(() => {
     const container = contentRef.current;

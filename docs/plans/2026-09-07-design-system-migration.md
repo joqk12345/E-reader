@@ -44,6 +44,7 @@
 - P2 进展：新增 `components/ui/Button.tsx`，ConfirmDialog、TagNameDialog、SettingsUI 的 SecondaryActionButton 已复用 Button；其余输入/选择器/标签页仍待提取。
 - P2 继续：新增 `Dialog`、`Input`、`Select`、`Tabs` 基础组件；Settings 与 AiProfilesPanel 的原生输入/选择控件已统一接入 Input/Select，首页工作区导航已接入 Tabs。
 - P5 进展：ReaderContent 的代码高亮与正文辅助色已收敛到 `readerTheme.ts` 的 `ReaderSyntaxTokens`，五种阅读主题保留原设置存储兼容性。
+- P6 进展：Reader 的动态阅读设置持久化已抽到 `features/reader/useReaderViewSettings`；Library 的导入与筛选/分组计算分别抽到 `features/library/useLibraryImport` 和 `useLibraryDocumentFilters`，页面组件只保留组合和展示职责。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 45 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
 - 2026-09-08 验收记录：`check:styles` 当前覆盖 50 个应用文件（包括全部 Settings、Library、Reader、工具面板和 UI primitives）；无直接调色板类或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200。
-- 2026-09-08 仍未宣称完成：Library 的筛选/导入业务拆分、Reader 的渲染/选区/翻译 hooks 拆分，以及真实 Tauri 下五种主题和 EPUB/PDF/Markdown 交互回归仍在待办。
+- 2026-09-08 仍未宣称完成：Reader 的渲染/选区/翻译 hooks 拆分，以及真实 Tauri 下五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责已完成首轮拆分。
