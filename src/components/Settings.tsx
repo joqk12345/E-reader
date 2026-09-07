@@ -561,16 +561,42 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     );
   }
 
-  const navItems: Array<{ id: SettingsSection; label: string }> = [
-    { id: 'reading', label: 'Appearance' },
-    { id: 'editor', label: 'Editor' },
-    { id: 'translation', label: 'Bilingual Translation' },
-    { id: 'ai', label: 'AI & Embedding' },
-    { id: 'audio', label: 'Audio' },
-    { id: 'shortcuts', label: 'Shortcuts' },
-    { id: 'integrations', label: 'Integrations' },
-    { id: 'about', label: 'About' },
+  const navGroups: Array<{ label: string; items: Array<{ id: SettingsSection; label: string }> }> = [
+    {
+      label: 'Reading',
+      items: [
+        { id: 'reading', label: 'Appearance' },
+        { id: 'editor', label: 'Typography' },
+        { id: 'translation', label: 'Translation' },
+      ],
+    },
+    {
+      label: 'Assistive tools',
+      items: [
+        { id: 'ai', label: 'AI & Embedding' },
+        { id: 'audio', label: 'Audio' },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { id: 'shortcuts', label: 'Shortcuts' },
+        { id: 'integrations', label: 'Integrations' },
+      ],
+    },
   ];
+
+  const sectionDetails: Record<SettingsSection, { eyebrow: string; title: string; description: string }> = {
+    reading: { eyebrow: 'Reading', title: 'Appearance', description: 'Set the atmosphere for every reading session.' },
+    editor: { eyebrow: 'Reading', title: 'Typography', description: 'Tune the page so long passages remain comfortable.' },
+    translation: { eyebrow: 'Reading', title: 'Translation', description: 'Choose how source text and translations meet.' },
+    ai: { eyebrow: 'Assistive tools', title: 'AI & Embedding', description: 'Connect the models that help you understand what you read.' },
+    audio: { eyebrow: 'Assistive tools', title: 'Audio', description: 'Configure narration and playback services.' },
+    shortcuts: { eyebrow: 'Workspace', title: 'Shortcuts', description: 'Make frequent reading actions feel effortless.' },
+    integrations: { eyebrow: 'Workspace', title: 'Integrations', description: 'Connect Reader to the tools around your library.' },
+    about: { eyebrow: 'Reader', title: 'About', description: 'Version, updates, and project information.' },
+  };
+  const activeSectionDetails = sectionDetails[activeSection];
 
   const edgeDisabled = config.tts_provider === 'cosyvoice';
   const cosyDisabled = config.tts_provider === 'edge';
@@ -638,40 +664,59 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         className="flex h-[78vh] w-full max-w-[900px] overflow-hidden rounded-panel border border-border bg-surface-subtle shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <aside className="w-[184px] shrink-0 border-r border-border bg-surface px-3 py-4">
-          <div className="px-2 pb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Reader settings</div>
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const active = activeSection === item.id;
-              return (
-                <SidebarNavItem
-                  key={item.id}
-                  active={active}
-                  label={item.label}
-                  icon={<SidebarIcon type={item.id} />}
-                  onClick={() => setActiveSection(item.id)}
-                />
-              );
-            })}
+        <aside className="flex w-[208px] shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
+          <div className="mb-6 px-2">
+            <div className="font-serif text-[19px] font-medium tracking-tight text-heading">Reader</div>
+            <div className="mt-1 text-[11px] leading-4 text-muted">A quiet place for difficult books.</div>
+          </div>
+          <nav className="space-y-5">
+            {navGroups.map((group) => (
+              <div key={group.label}>
+                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{group.label}</div>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = activeSection === item.id;
+                    return (
+                      <SidebarNavItem
+                        key={item.id}
+                        active={active}
+                        label={item.label}
+                        icon={<SidebarIcon type={item.id} />}
+                        onClick={() => setActiveSection(item.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
+          <div className="mt-auto border-t border-border px-2 pt-4 text-[11px] leading-4 text-muted">
+            Changes are saved when you choose <span className="font-medium text-secondary">Save settings</span>.
+          </div>
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-border bg-surface/90 px-8 py-4">
-            <h1 className="text-center font-serif text-[21px] font-medium tracking-tight text-heading">Settings</h1>
+          <header className="flex items-center justify-between border-b border-border bg-surface/90 px-8 py-4">
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif text-[21px] font-medium tracking-tight text-heading">Settings</h1>
+              <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-muted">⌘ ,</span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-lg text-muted transition hover:bg-surface-hover hover:text-heading"
+              aria-label="Close settings"
+            >
+              ×
+            </button>
           </header>
 
           <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
-            <h2 className="mb-5 font-serif text-[26px] font-medium tracking-tight text-heading">
-              {activeSection === 'reading' && 'Appearance'}
-              {activeSection === 'editor' && 'Typography'}
-              {activeSection === 'translation' && 'Bilingual Translation'}
-              {activeSection === 'ai' && 'AI & Embedding'}
-              {activeSection === 'audio' && 'Audio'}
-              {activeSection === 'shortcuts' && 'Shortcuts'}
-              {activeSection === 'integrations' && 'Integrations'}
-              {activeSection === 'about' && 'About'}
-            </h2>
+            <div className="mb-6">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-action">{activeSectionDetails.eyebrow}</div>
+              <h2 className="font-serif text-[29px] font-medium leading-tight tracking-tight text-heading">{activeSectionDetails.title}</h2>
+              <p className="mt-2 max-w-xl text-control leading-5 text-muted">{activeSectionDetails.description}</p>
+            </div>
 
             {message && (
               <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-success/25 bg-success/10 text-success' : 'border-danger/25 bg-danger-subtle text-danger'}`}>
@@ -1203,7 +1248,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-xl border border-control-border bg-surface px-4 py-2 text-control font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1211,7 +1256,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={isSaving}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-xl bg-action px-4 py-2 text-control font-medium text-on-action shadow-sm transition hover:bg-action-text disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save Settings'}
               </button>
