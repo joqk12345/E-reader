@@ -58,7 +58,9 @@ expect(settings.includes('aria-label="Decrease font size"'), 'Typography control
 expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
 expect(switchPrimitive.includes('aria-label={label}'), 'Switch primitive is missing accessible label support');
 expect(readerTheme.includes('export const persistReaderViewSettings'), 'Reader view persistence helper is missing');
+expect(readerTheme.includes("new CustomEvent<ReaderViewSettings>('reader:view-settings-updated', { detail: settings })"), 'Reader view update event is missing settings detail');
 expect(settings.includes('persistReaderViewSettings(readerViewSettings)'), 'Settings save path bypasses reader view persistence helper');
+expect(settings.includes('aria-live="polite"'), 'Appearance page is missing live theme preview');
 
 for (const importKind of ['importEpub', 'importPdf', 'importMarkdown']) {
   expect(libraryImport.includes(importKind), `Library import boundary is missing ${importKind}`);

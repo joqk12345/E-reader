@@ -779,7 +779,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             )}
 
             {activeSection === 'reading' && (
-              <SettingsCard>
+              <>
+                <SettingsCard>
                 <SettingRow
                   title="Theme"
                   description="Choose your reading canvas"
@@ -842,7 +843,35 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     </Select>
                   }
                 />
-              </SettingsCard>
+                </SettingsCard>
+                <div
+                className="mt-4 overflow-hidden rounded-2xl border p-5 transition-colors"
+                style={{
+                  backgroundColor: READER_THEMES[readerViewSettings.theme].background,
+                  borderColor: READER_THEMES[readerViewSettings.theme].border,
+                  color: READER_THEMES[readerViewSettings.theme].foreground,
+                }}
+                aria-live="polite"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-size-micro font-semibold uppercase tracking-[0.14em] opacity-70">Live preview</span>
+                  <span className="text-size-caption opacity-70">{readerViewSettings.theme}</span>
+                </div>
+                <p className="mt-4 font-serif text-size-hero-sm leading-tight">A quiet page for difficult books.</p>
+                <p className="mt-2 max-w-xl text-size-control leading-6 opacity-80">
+                  Theme changes are previewed here immediately and applied to the reader when you save.
+                </p>
+                <div
+                  className="mt-4 rounded-xl border px-4 py-3 text-size-control"
+                  style={{
+                    backgroundColor: READER_THEMES[readerViewSettings.theme].secondary,
+                    borderColor: READER_THEMES[readerViewSettings.theme].border,
+                  }}
+                >
+                  Reading surface · Aa 123
+                </div>
+                </div>
+              </>
             )}
 
             {activeSection === 'editor' && (

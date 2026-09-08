@@ -18,7 +18,10 @@ export function useReaderViewSettings(
   }, [viewSettings]);
 
   useEffect(() => {
-    const refresh = () => setViewSettings(loadReaderViewSettings(readerFontSize));
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<ReaderViewSettings>).detail;
+      setViewSettings(detail || loadReaderViewSettings(readerFontSize));
+    };
     window.addEventListener('reader:view-settings-updated', refresh as EventListener);
     return () => window.removeEventListener('reader:view-settings-updated', refresh as EventListener);
   }, [readerFontSize]);

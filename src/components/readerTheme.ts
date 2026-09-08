@@ -207,7 +207,9 @@ export const loadReaderViewSettings = (readerFontSize: number): ReaderViewSettin
 export const persistReaderViewSettings = (settings: ReaderViewSettings) => {
   try {
     localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(settings));
-    window.dispatchEvent(new CustomEvent('reader:view-settings-updated'));
+    window.dispatchEvent(
+      new CustomEvent<ReaderViewSettings>('reader:view-settings-updated', { detail: settings }),
+    );
   } catch (error) {
     console.warn('Failed to persist reader view settings:', error);
   }

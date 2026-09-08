@@ -8,7 +8,7 @@ import { TOCPanel } from './TOCPanel';
 import { ReaderContent } from './ReaderContent';
 import { ToolPanel } from './ToolPanel';
 import { FloatingAudiobookControl } from './FloatingAudiobookControl';
-import { loadReaderViewSettings } from './readerTheme';
+import { loadReaderViewSettings, type ReaderViewSettings } from './readerTheme';
 import { useReaderPanelLayout } from '../features/reader/useReaderPanelLayout';
 import { Button, type ButtonProps } from './ui/Button';
 
@@ -294,8 +294,9 @@ export function Reader() {
   }, []);
 
   useEffect(() => {
-    const refresh = () => {
-      const settings = loadReaderViewSettings(readerFontSize);
+    const refresh = (event?: Event) => {
+      const detail = event ? (event as CustomEvent<ReaderViewSettings>).detail : undefined;
+      const settings = detail || loadReaderViewSettings(readerFontSize);
       setBilingualViewMode(settings.bilingualViewMode);
       setMarkdownRenderMode(settings.markdownRenderMode);
     };
