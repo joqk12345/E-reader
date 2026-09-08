@@ -56,6 +56,9 @@ jobs:
       - name: Check migrated style tokens
         run: npm run check:styles
 
+      - name: Check design boundaries
+        run: npm run check:boundaries
+
       - name: Run TypeScript type check
         run: npm run build
 
