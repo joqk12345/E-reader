@@ -22,6 +22,7 @@ import {
   type SelectionAction,
 } from '../features/reader/useSelectionActionOrder';
 import { useReaderAnnotations } from '../features/reader/useReaderAnnotations';
+import { useReaderRenderModel } from '../features/reader/useReaderRenderModel';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -1926,36 +1927,28 @@ export function ReaderContent() {
       </div>
     );
   };
-  const markdownParagraphMeta = useMemo(
-    () => (currentDocumentType === 'markdown' ? buildMarkdownParagraphMeta(paragraphs) : {}),
-    [currentDocumentType, paragraphs]
-  );
-  const markdownFilterOptions = useMemo<MarkdownVisibilityFilterOptions>(
-    () => ({
-      dropLeadingBeforeFirstH1: isWebSourceDocument,
-      dropLeadingSummarySection: true,
-      hideMediaLinksSection: !isMultimediaMode,
-    }),
-    [isMultimediaMode, isWebSourceDocument]
-  );
-  const visibleParagraphs = useMemo(
-    () =>
-      currentDocumentType === 'markdown'
-        ? injectSupplementalReferencesParagraph(
-            filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions),
-            supplementalReferences
-          )
-        : currentDocumentType === 'pdf'
-          ? filterVisiblePdfParagraphs(filterLeadingSummaryParagraphs(paragraphs))
-          : filterLeadingSummaryParagraphs(paragraphs),
-    [
-      currentDocumentType,
-      markdownFilterOptions,
-      markdownParagraphMeta,
-      paragraphs,
-      supplementalReferences,
-    ]
-  );
+  const {
+    markdownParagraphMeta,
+    visibleParagraphs,
+    renderParagraphs,
+    pdfTableMemberIdsByLeader,
+    normalizedMarkdownTexts,
+  } = useReaderRenderModel({
+    currentDocumentType: currentDocumentType || 'epub',
+    paragraphs,
+    supplementalReferences,
+    isWebSourceDocument,
+    isMultimediaMode,
+    remoteArticleImages,
+    buildMarkdownParagraphMeta,
+    filterVisibleMarkdownParagraphs,
+    injectSupplementalReferencesParagraph,
+    filterVisiblePdfParagraphs,
+    filterLeadingSummaryParagraphs,
+    groupPdfTableParagraphs,
+    isReaderImagePlaceholderLine,
+    normalizeMarkdownForReader,
+  });
   const getTranslationItems = useMemo(
     () => (paragraph: { id: string; text: string }) => {
       if (currentDocumentType === 'markdown') {
@@ -1989,16 +1982,6 @@ export function ReaderContent() {
   const { annotationsByParagraph, setAnnotationsByParagraph } = useReaderAnnotations(
     paragraphs,
     annotationRefreshTick,
-  );
-  const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
-    () =>
-      currentDocumentType === 'pdf'
-        ? groupPdfTableParagraphs(visibleParagraphs)
-        : {
-            paragraphs: visibleParagraphs,
-            memberIdsByLeaderId: new Map<string, string[]>(),
-          },
-    [currentDocumentType, visibleParagraphs]
   );
   const sourceWordCount = useMemo(
     () => renderParagraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
@@ -2046,26 +2029,6 @@ export function ReaderContent() {
     const start = columnPageIndex * doubleColumnPageSize;
     return renderParagraphs.slice(start, start + doubleColumnPageSize);
   }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, renderParagraphs]);
-  const normalizedMarkdownTexts = useMemo(() => {
-    const cursor = { current: 0 };
-    const normalized: Record<string, string> = {};
-    const hasInlineImagePlaceholders = visibleParagraphs.some((paragraph) =>
-      paragraph.text.split('\n').some((line) => isReaderImagePlaceholderLine(line))
-    );
-    for (const paragraph of visibleParagraphs) {
-      normalized[paragraph.id] =
-        currentDocumentType === 'markdown'
-          ? normalizeMarkdownForReader(
-              paragraph.text,
-              isMultimediaMode ? remoteArticleImages : [],
-              isMultimediaMode ? cursor : undefined,
-              isMultimediaMode ? hasInlineImagePlaceholders : false
-            )
-          : paragraph.text;
-    }
-    return normalized;
-  }, [currentDocumentType, isMultimediaMode, remoteArticleImages, visibleParagraphs]);
-
   const openExternalUrl = (url: string) => {
     const normalized = url.trim();
     if (!normalized) return;
