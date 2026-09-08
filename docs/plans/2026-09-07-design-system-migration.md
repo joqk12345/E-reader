@@ -46,6 +46,7 @@
 - P2 继续：新增 `Dialog`、`Input`、`Select`、`Tabs` 基础组件；Settings 与 AiProfilesPanel 的原生输入/选择控件已统一接入 Input/Select，首页工作区导航已接入 Tabs。
 - P2 控件收敛：Settings 与 AiProfilesPanel 的原生按钮已统一接入共享 `Button`，保留页面级 className、事件、禁用和键盘语义。
 - P2 可访问性：共享 `Dialog` 已支持 Escape 关闭、打开时自动聚焦、Tab 循环，以及关闭后恢复触发元素焦点。
+- P2 收尾：Settings 侧栏导航也已复用共享 `Button`，统一 focus ring、禁用态和尺寸基线。
 - P5 进展：ReaderContent 的代码高亮与正文辅助色已收敛到 `readerTheme.ts` 的 `ReaderSyntaxTokens`，五种阅读主题保留原设置存储兼容性。
 - P4/P6 进展：Reader 的 TOC/工具面板宽度、折叠和沉浸式阅读模式已抽到 `features/reader/useReaderPanelLayout`；可见段落、PDF 表格分组和 Markdown 多媒体归一化已抽到 `useReaderRenderModel`；动态阅读设置持久化、翻译缓存/重试/并发队列、选区动作排序偏好和批注加载分别抽到 `useReaderViewSettings`、`useReaderTranslation`、`useSelectionActionOrder`、`useReaderAnnotations`；Library 的导入与筛选/分组计算分别抽到 `features/library/useLibraryImport` 和 `useLibraryDocumentFilters`，页面组件只保留组合和展示职责。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 45 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
