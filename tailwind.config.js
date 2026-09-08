@@ -32,6 +32,9 @@ export default {
         "danger-subtle": "rgb(var(--color-danger-subtle) / <alpha-value>)",
         "on-action": "rgb(var(--color-on-action) / <alpha-value>)"
       },
+      "accentColor": {
+        "action": "rgb(var(--color-action) / <alpha-value>)"
+      },
       "fontSize": {
         "caption": "var(--font-size-caption)",
         "control": "var(--font-size-control)",

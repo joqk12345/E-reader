@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
+import { Checkbox } from './ui/Checkbox';
+import { Button } from './ui/Button';
+import { Textarea } from './ui/Textarea';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -110,45 +113,50 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
           <span className="text-sm font-medium text-secondary">Target Language:</span>
           <div className="flex gap-2">
             {(['en', 'zh'] as TargetLang[]).map((lang) => (
-              <button
+              <Button
+                variant={targetLang === lang ? 'primary' : 'secondary'}
+                size="sm"
                 key={lang}
                 onClick={() => setTargetLang(lang)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`rounded-lg text-size-control ${
                   targetLang === lang
-                    ? 'bg-action text-on-action'
-                    : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
+                    ? ''
+                    : 'bg-surface-subtle hover:bg-surface-hover'
                 }`}
               >
                 {getLanguageName(lang)}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 text-sm text-secondary">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={autoDetect}
               onChange={(e) => setAutoDetect(e.target.checked)}
               className="h-4 w-4"
             />
             Auto-detect target language
           </label>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={useCurrentParagraph}
             disabled={!currentParagraph}
-            className="px-3 py-1.5 text-sm bg-surface-subtle text-secondary rounded-lg hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint transition-colors"
+            className="rounded-lg bg-surface-subtle text-size-control hover:bg-surface-hover"
           >
             Use Current Paragraph
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleTranslate}
             disabled={isTranslating || (!text.trim() && !currentParagraph)}
-            className="px-4 py-2 bg-action text-on-action rounded-lg hover:bg-action-text disabled:bg-muted transition-colors"
+            className="rounded-lg px-4 text-size-control"
           >
             {isTranslating ? 'Translating...' : 'Translate'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -167,11 +175,11 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
             <label className="block text-sm font-medium text-secondary mb-2">
               Original Text
             </label>
-            <textarea
+            <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Enter text to translate or click 'Use Current Paragraph'"
-              className="w-full p-3 border border-control-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-focus"
+              className="w-full resize-none rounded-lg p-3"
               rows={8}
             />
           </div>
