@@ -10,6 +10,11 @@ import { ToolPanel } from './ToolPanel';
 import { FloatingAudiobookControl } from './FloatingAudiobookControl';
 import { loadReaderViewSettings } from './readerTheme';
 import { useReaderPanelLayout } from '../features/reader/useReaderPanelLayout';
+import { Button, type ButtonProps } from './ui/Button';
+
+function ReaderButton({ variant = 'ghost', size = 'sm', ...props }: ButtonProps) {
+  return <Button variant={variant} size={size} {...props} />;
+}
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -416,7 +421,7 @@ export function Reader() {
       >
         <div className={`z-10 flex min-w-0 flex-1 items-center ${readingMode ? 'gap-1' : 'gap-3'}`}>
           {showCompactHeader && (
-            <button
+            <ReaderButton
               onClick={goBack}
               className={`inline-flex items-center justify-center rounded-md border bg-surface hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus ${
                 readingMode
@@ -427,17 +432,17 @@ export function Reader() {
               aria-label="Back to Library"
             >
               ←
-            </button>
+            </ReaderButton>
           )}
           {!showCompactHeader && (
             <>
-              <button
+              <ReaderButton
                 onClick={goBack}
                 className="px-4 py-2 text-sm font-medium text-secondary bg-surface border border-control-border rounded-md hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
               >
                 ← Back to Library
-              </button>
-              <button
+              </ReaderButton>
+              <ReaderButton
                 onClick={() => void cycleTranslationMode()}
                 className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                   translationMode !== 'off'
@@ -450,17 +455,17 @@ export function Reader() {
                   : translationMode === 'en-zh'
                     ? '🌐 Translation: EN→ZH'
                     : '🌐 Translation: ZH→EN'}
-              </button>
+              </ReaderButton>
               <div className="relative" ref={readingViewMenuRef}>
-                <button
+                <ReaderButton
                   onClick={() => setReadingViewMenuOpen((prev) => !prev)}
                   className="px-3 py-2 text-sm font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
                 >
                   Reading View ▾
-                </button>
+                </ReaderButton>
                 {readingViewMenuOpen && (
                   <div className="absolute left-0 top-11 z-40 min-w-[220px] rounded-lg border border-border bg-surface p-1.5 shadow-lg">
-                    <button
+                    <ReaderButton
                       onClick={() => setMarkdownRenderModeFromHeader('text')}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
                         markdownRenderMode === 'text'
@@ -470,8 +475,8 @@ export function Reader() {
                     >
                       <span>Text Parse</span>
                       <span>{markdownRenderMode === 'text' ? '✓' : ''}</span>
-                    </button>
-                    <button
+                    </ReaderButton>
+                    <ReaderButton
                       onClick={() => setMarkdownRenderModeFromHeader('multimedia')}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
                         markdownRenderMode === 'multimedia'
@@ -481,9 +486,9 @@ export function Reader() {
                     >
                       <span>Multimedia Parse</span>
                       <span>{markdownRenderMode === 'multimedia' ? '✓' : ''}</span>
-                    </button>
+                    </ReaderButton>
                     <div className="my-1 h-px bg-surface-hover" />
-                    <button
+                    <ReaderButton
                       onClick={() => setBilingualModeFromHeader('source')}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
                         bilingualViewMode === 'source'
@@ -493,8 +498,8 @@ export function Reader() {
                     >
                       <span>Source Only</span>
                       <span>{bilingualViewMode === 'source' ? '✓' : ''}</span>
-                    </button>
-                    <button
+                    </ReaderButton>
+                    <ReaderButton
                       onClick={() => setBilingualModeFromHeader('translation')}
                       disabled={translationMode === 'off'}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -505,8 +510,8 @@ export function Reader() {
                     >
                       <span>Translation Only</span>
                       <span>{bilingualViewMode === 'translation' ? '✓' : ''}</span>
-                    </button>
-                    <button
+                    </ReaderButton>
+                    <ReaderButton
                       onClick={() => setBilingualModeFromHeader('both')}
                       disabled={translationMode === 'off'}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -517,9 +522,9 @@ export function Reader() {
                     >
                       <span>Source + Translation</span>
                       <span>{bilingualViewMode === 'both' ? '✓' : ''}</span>
-                    </button>
+                    </ReaderButton>
                     <div className="my-1 h-px bg-surface-hover" />
-                    <button
+                    <ReaderButton
                       onClick={() => {
                         window.dispatchEvent(new CustomEvent('reader:open-annotations'));
                         setReadingViewMenuOpen(false);
@@ -528,8 +533,8 @@ export function Reader() {
                     >
                       <span>Open Annotations</span>
                       <span>→</span>
-                    </button>
-                    <button
+                    </ReaderButton>
+                    <ReaderButton
                       onClick={() => {
                         openChatPanel();
                         setReadingViewMenuOpen(false);
@@ -538,7 +543,7 @@ export function Reader() {
                     >
                       <span>Open Chat</span>
                       <span>→</span>
-                    </button>
+                    </ReaderButton>
                   </div>
                 )}
               </div>
@@ -559,28 +564,28 @@ export function Reader() {
 
         <div className="z-10 flex min-w-0 flex-1 items-center justify-end gap-2">
           {readingMode && selectedDocumentId && (
-            <button
+            <ReaderButton
               onClick={openChatPanel}
               className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-xs text-muted hover:bg-surface-subtle"
               title="Open chat for current text"
               aria-label="Open chat for current text"
             >
               💬
-            </button>
+            </ReaderButton>
           )}
           {!readingMode && showSourceLinkActions && (
             <div className="relative" ref={sourceLinkMenuRef}>
-              <button
+              <ReaderButton
                 onClick={() => setSourceLinkMenuOpen((prev) => !prev)}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-surface-hover text-foreground hover:bg-control-border"
                 title="Imported link actions"
                 aria-label="Imported link actions"
               >
                 ⤴
-              </button>
+              </ReaderButton>
               {sourceLinkMenuOpen && (
                 <div className="absolute right-0 top-11 z-40 min-w-[220px] rounded-2xl border border-control-border bg-surface-subtle p-1.5 shadow-lg">
-                  <button
+                  <ReaderButton
                     onClick={() => {
                       void copySourceUrl();
                       setSourceLinkMenuOpen(false);
@@ -588,8 +593,8 @@ export function Reader() {
                     className="flex w-full items-center rounded-lg px-3 py-2 text-left text-size-label leading-6 text-heading hover:bg-surface-hover/80"
                   >
                     Copy Link
-                  </button>
-                  <button
+                  </ReaderButton>
+                  <ReaderButton
                     onClick={() => {
                       openSourceUrlInBrowser();
                       setSourceLinkMenuOpen(false);
@@ -597,29 +602,29 @@ export function Reader() {
                     className="flex w-full items-center rounded-lg px-3 py-2 text-left text-size-label leading-6 text-heading hover:bg-surface-hover/80"
                   >
                     Open in DefaultBrowser
-                  </button>
+                  </ReaderButton>
                 </div>
               )}
             </div>
           )}
           {readingMode ? (
-            <button
+            <ReaderButton
               onClick={toggleReadingMode}
               className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-xs text-muted hover:bg-surface-subtle"
               title="Exit reading mode"
               aria-label="Exit reading mode"
             >
               ✕
-            </button>
+            </ReaderButton>
           ) : (
-            <button
+            <ReaderButton
               onClick={() => setHeaderToolsCollapsed((prev) => !prev)}
               className="px-3 py-1.5 text-sm font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
               title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
               aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
             >
               {headerToolsCollapsed ? 'Tools: Show' : 'Tools: Hide'}
-            </button>
+            </ReaderButton>
           )}
         </div>
       </header>
