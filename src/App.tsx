@@ -21,6 +21,7 @@ import {
 import { matchesAnyShortcut } from './utils/shortcuts';
 import { Tabs } from './components/ui/Tabs';
 import { Button } from './components/ui/Button';
+import type { SettingsSection } from './components/settings/settingsTypes';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -47,7 +48,6 @@ type EmbeddingStatus = {
   stale: number;
 };
 
-type SettingsSection = 'reading' | 'editor' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 type HomeView = 'library' | 'semantic-search';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {

@@ -29,6 +29,7 @@ import {
   compactControlClass,
 } from './settings/SettingsUI';
 import { AiProfilesPanel } from './settings/AiProfilesPanel';
+import type { SettingsSection } from './settings/settingsTypes';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Button } from './ui/Button';
@@ -49,8 +50,6 @@ import {
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
-type SettingsSection = 'reading' | 'editor' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
-
 interface Config {
   provider: AiProvider;
   lm_studio_url: string;
