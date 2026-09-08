@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
@@ -206,6 +206,7 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
 
 export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'reading' }) => {
   const loadAppConfig = useStore((state) => state.loadConfig);
+  const settingsShellRef = useRef<HTMLDivElement | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
@@ -289,6 +290,47 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    const panel = settingsShellRef.current;
+    if (!panel) return;
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+    const getFocusableElements = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+
+    requestAnimationFrame(() => {
+      getFocusableElements()[0]?.focus();
+    });
+
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusableElements();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onTab);
+    return () => {
+      document.removeEventListener('keydown', onTab);
+      previousActiveElement?.focus();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -668,7 +710,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
+        ref={settingsShellRef}
         data-settings-shell
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-settings-title"
+        tabIndex={-1}
         className="flex h-[78vh] w-full max-w-[900px] overflow-hidden rounded-panel border border-border bg-surface-subtle shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
@@ -706,7 +753,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="flex items-center justify-between border-b border-border bg-surface/90 px-8 py-4">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-size-display font-medium tracking-tight text-heading">Settings</h1>
+              <h1 id="reader-settings-title" className="font-serif text-size-display font-medium tracking-tight text-heading">Settings</h1>
               <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-size-micro font-medium text-muted">⌘ ,</span>
             </div>
             <Button

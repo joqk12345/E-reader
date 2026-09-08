@@ -47,7 +47,7 @@ type EmbeddingStatus = {
   stale: number;
 };
 
-type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
+type SettingsSection = 'reading' | 'editor' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 type HomeView = 'library' | 'semantic-search';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
