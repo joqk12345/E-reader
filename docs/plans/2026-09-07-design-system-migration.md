@@ -58,6 +58,7 @@
 - 全页面控件边界：业务页面不再直接渲染原生 `button`、`input`、`select` 或 `textarea`；原生元素仅保留在 `components/ui` primitive 内，新增 `Checkbox`、`Range`、`Textarea` 统一状态样式。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 62 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
 - 2026-09-08 验收记录：`check:styles` 当前覆盖 62 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类、默认字号、业务页原生控件或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
-- 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode，因此暂时无法启动真实 Tauri 窗口做视觉与交互回归；后端编译和单元测试已完成。
+- 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode；使用临时 1430 开发端口仍可完成 Tauri 后端编译并启动开发进程，Vite 返回 HTTP 200。当前运行环境没有可用的桌面自动化/截图权限，因此窗口内的视觉与交互回归仍待具备桌面检查能力的环境完成。
 - 2026-09-08 仍未宣称完成：真实 Tauri 窗口中的五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责和 Reader 的渲染模型、面板、翻译、批注、选区偏好职责已完成首轮拆分。
 - 2026-09-08 代码实现审计：P2–P6 的公共控件、业务页面迁移、主题边界和职责拆分均已落地；阶段勾选仍保留待验收状态，直到可用 Tauri 环境完成视觉与交互回归。
+- 2026-09-08 运行审计：在 worktree 内执行 `npm run tauri dev -- --no-watch --config '{"build":{"devUrl":"http://localhost:1430","beforeDevCommand":"npm run dev -- --host 127.0.0.1 --port 1430"}}'`，Rust 后端成功编译并启动，随后已停止进程；未修改默认 1420 端口，也未影响主工作区服务。
