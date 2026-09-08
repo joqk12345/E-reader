@@ -16,6 +16,7 @@ const switchPrimitive = read('src/components/ui/Switch.tsx');
 const libraryImport = read('src/features/library/useLibraryImport.ts');
 const reader = read('src/components/Reader.tsx');
 const readerContent = read('src/components/ReaderContent.tsx');
+const readerTheme = read('src/components/readerTheme.ts');
 
 const sections = ['reading', 'editor', 'translation', 'ai', 'audio', 'shortcuts', 'integrations', 'about'];
 for (const section of sections) {
@@ -56,6 +57,8 @@ expect(settings.includes('aria-pressed={readerViewSettings.theme === id}'), 'The
 expect(settings.includes('aria-label="Decrease font size"'), 'Typography controls are missing accessible labels');
 expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
 expect(switchPrimitive.includes('aria-label={label}'), 'Switch primitive is missing accessible label support');
+expect(readerTheme.includes('export const persistReaderViewSettings'), 'Reader view persistence helper is missing');
+expect(settings.includes('persistReaderViewSettings(readerViewSettings)'), 'Settings save path bypasses reader view persistence helper');
 
 for (const importKind of ['importEpub', 'importPdf', 'importMarkdown']) {
   expect(libraryImport.includes(importKind), `Library import boundary is missing ${importKind}`);
