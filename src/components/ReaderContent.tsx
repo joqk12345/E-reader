@@ -16,6 +16,11 @@ import {
 } from './readerTheme';
 import { useReaderViewSettings } from '../features/reader/useReaderViewSettings';
 import { useReaderTranslation } from '../features/reader/useReaderTranslation';
+import {
+  ALL_SELECTION_ACTIONS,
+  useSelectionActionOrder,
+  type SelectionAction,
+} from '../features/reader/useSelectionActionOrder';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -54,9 +59,7 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'simple' | 'context' | 'term' | 'dict' | 'takeaway' | 'ask' | 'play' | 'copy' | 'share' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['simple', 'context', 'term', 'dict', 'takeaway', 'ask', 'play', 'copy', 'share', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   simple: 'Explain Simply',
@@ -315,13 +318,6 @@ const renderHighlightedCode = (code: string, language: string, syntax: ReaderSyn
     nodes.push(<span key={`plain-tail-${cursor}`}>{code.slice(cursor)}</span>);
   }
   return nodes;
-};
-
-const normalizeSelectionActionOrder = (input: SelectionAction[]): SelectionAction[] => {
-  const dedup = input.filter((item, index) => input.indexOf(item) === index);
-  const valid = dedup.filter((item): item is SelectionAction => ALL_SELECTION_ACTIONS.includes(item));
-  const missing = ALL_SELECTION_ACTIONS.filter((item) => !valid.includes(item));
-  return [...valid, ...missing];
 };
 
 type AudiobookStartEventDetail = {
@@ -1743,16 +1739,7 @@ export function ReaderContent() {
   const [isQuestionInputExpanded, setIsQuestionInputExpanded] = useState(false);
   const [isSelectionMenuOpen, setIsSelectionMenuOpen] = useState(false);
   const [isSelectionReorderMode, setIsSelectionReorderMode] = useState(false);
-  const [selectionActionOrder, setSelectionActionOrder] = useState<SelectionAction[]>(() => {
-    try {
-      const raw = localStorage.getItem('reader_selection_action_order');
-      if (!raw) return ALL_SELECTION_ACTIONS;
-      const parsed = JSON.parse(raw) as SelectionAction[];
-      return normalizeSelectionActionOrder(parsed);
-    } catch {
-      return ALL_SELECTION_ACTIONS;
-    }
-  });
+  const { selectionActionOrder, setSelectionActionOrder, reorderSelectionActions } = useSelectionActionOrder();
   const [pointerSortAction, setPointerSortAction] = useState<SelectionAction | null>(null);
   const [selectionPopoverOffset, setSelectionPopoverOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectionPopoverSize, setSelectionPopoverSize] = useState<{ width: number; height: number }>({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
@@ -2571,17 +2558,6 @@ export function ReaderContent() {
   };
 
   useEffect(() => {
-    localStorage.setItem('reader_selection_action_order', JSON.stringify(selectionActionOrder));
-  }, [selectionActionOrder]);
-
-  useEffect(() => {
-    const normalized = normalizeSelectionActionOrder(selectionActionOrder);
-    if (normalized.join('|') !== selectionActionOrder.join('|')) {
-      setSelectionActionOrder(normalized);
-    }
-  }, [selectionActionOrder]);
-
-  useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       if (popoverDragRef.current) {
         const dx = event.clientX - popoverDragRef.current.startX;
@@ -2614,19 +2590,6 @@ export function ReaderContent() {
       window.removeEventListener('pointerup', onPointerUp);
     };
   }, []);
-
-  const reorderSelectionActions = (from: SelectionAction, to: SelectionAction) => {
-    if (from === to) return;
-    setSelectionActionOrder((prev) => {
-      const fromIndex = prev.indexOf(from);
-      const toIndex = prev.indexOf(to);
-      if (fromIndex < 0 || toIndex < 0) return prev;
-      const next = [...prev];
-      next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, from);
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (!isTwoColumnLayout || !currentReadingSentenceKey) return;
