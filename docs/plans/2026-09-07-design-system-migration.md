@@ -60,3 +60,4 @@
 - 2026-09-08 验收记录：`check:styles` 当前覆盖 62 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类、默认字号、业务页原生控件或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
 - 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode，因此暂时无法启动真实 Tauri 窗口做视觉与交互回归；后端编译和单元测试已完成。
 - 2026-09-08 仍未宣称完成：真实 Tauri 窗口中的五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责和 Reader 的渲染模型、面板、翻译、批注、选区偏好职责已完成首轮拆分。
+- 2026-09-08 代码实现审计：P2–P6 的公共控件、业务页面迁移、主题边界和职责拆分均已落地；阶段勾选仍保留待验收状态，直到可用 Tauri 环境完成视觉与交互回归。
