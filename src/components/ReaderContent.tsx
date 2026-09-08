@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo, type MouseEvent, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
+import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
@@ -2652,7 +2655,7 @@ export function ReaderContent() {
       >
         {currentDocumentType === 'pdf' && (
           <div className="mb-4 flex items-center justify-end gap-2">
-            <button
+            <PanelButton
               onClick={() => setPdfDisplayMode('text')}
               className="rounded-lg border px-3 py-1.5 text-sm"
               style={
@@ -2662,8 +2665,8 @@ export function ReaderContent() {
               }
             >
               Text View
-            </button>
-            <button
+            </PanelButton>
+            <PanelButton
               onClick={() => setPdfDisplayMode('original')}
               className="rounded-lg border px-3 py-1.5 text-sm"
               style={
@@ -2673,7 +2676,7 @@ export function ReaderContent() {
               }
             >
               PDF Original
-            </button>
+            </PanelButton>
           </div>
         )}
         {currentDocumentType === 'pdf' && pdfDisplayMode === 'original' && currentPdfPath ? (
@@ -3021,7 +3024,7 @@ export function ReaderContent() {
                           )
                         ) : canTranslateMarkdownParagraph ? (
                           <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2 py-1`}>
-                            <button
+                            <PanelButton
                               onClick={() =>
                                 void handleTranslateMarkdownParagraph(
                                   paragraph.id,
@@ -3031,7 +3034,7 @@ export function ReaderContent() {
                               className="text-xs text-action hover:text-action underline"
                             >
                               {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
-                            </button>
+                            </PanelButton>
                             {translationErrors[markdownTranslationKey(paragraph.id)] && (
                               <span className="text-xs text-danger">
                                 {translationErrors[markdownTranslationKey(paragraph.id)]}
@@ -3252,12 +3255,12 @@ export function ReaderContent() {
                               )
                             ) : (
                               <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>
-                                <button
+                                <PanelButton
                                   onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
                                   className="text-xs text-action hover:text-action underline"
                                 >
                                   Translate
-                                </button>
+                                </PanelButton>
                               </div>
                             )}
                           </div>
@@ -3294,7 +3297,7 @@ export function ReaderContent() {
           onMouseUp={(e) => e.stopPropagation()}
         >
           <div className="mb-2 flex items-center gap-1 rounded-2xl border border-control-border bg-gradient-to-r from-surface-subtle to-surface-hover px-2 py-1.5 shadow-sm backdrop-blur">
-            <button
+            <PanelButton
               className="rounded-md px-1.5 py-0.5 text-size-meta text-muted hover:bg-surface-subtle"
               title="Drag to move panel"
               onPointerDown={(event) => {
@@ -3310,7 +3313,7 @@ export function ReaderContent() {
               }}
             >
               ⋮⋮
-            </button>
+            </PanelButton>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             {selectionActionOrder.map((action) => (
               <div
@@ -3331,7 +3334,7 @@ export function ReaderContent() {
               >
                 {action === 'ask' && !isSelectionReorderMode && isQuestionInputExpanded ? (
                   <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-control-border bg-surface px-3">
-                    <input
+                    <Input
                       autoFocus
                       value={selectionQuestion}
                       onChange={(e) => setSelectionQuestion(e.target.value)}
@@ -3351,16 +3354,16 @@ export function ReaderContent() {
                       placeholder="Type your question and press Enter"
                       className="w-full bg-transparent text-size-control text-secondary placeholder:text-faint focus:outline-none"
                     />
-                    <button
+                    <PanelButton
                       onClick={handleAskQuestionFromSelection}
                       disabled={!selectionQuestion.trim()}
                       className="shrink-0 whitespace-nowrap rounded-full border border-control-border bg-surface-subtle px-3.5 py-1.5 text-size-caption font-medium text-secondary hover:border-control-border hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Submit
-                    </button>
+                    </PanelButton>
                   </div>
                 ) : (
-                  <button
+                  <PanelButton
                     onClick={() => {
                       if (isSelectionReorderMode) return;
                       handleSelectionAction(action);
@@ -3377,22 +3380,22 @@ export function ReaderContent() {
                       <span className="text-size-meta text-muted">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
                       <span>{selectionActionLabel[action]}</span>
                     </span>
-                  </button>
+                  </PanelButton>
                 )}
               </div>
             ))}
             </div>
             <div className="relative">
-              <button
+              <PanelButton
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
                 className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                 title="More actions"
               >
                 ▾
-              </button>
+              </PanelButton>
               {isSelectionMenuOpen && (
                 <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-control-border bg-surface p-1.5 shadow-lg">
-                  <button
+                  <PanelButton
                     onClick={() => {
                       setIsQuestionInputExpanded(false);
                       setIsSelectionReorderMode((prev) => !prev);
@@ -3401,8 +3404,8 @@ export function ReaderContent() {
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
                   >
                     {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
-                  </button>
-                  <button
+                  </PanelButton>
+                  <PanelButton
                     onClick={() => {
                       setSelectionActionOrder(ALL_SELECTION_ACTIONS);
                       setIsSelectionReorderMode(false);
@@ -3411,17 +3414,17 @@ export function ReaderContent() {
                     className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
                   >
                     Reset to Default
-                  </button>
+                  </PanelButton>
                 </div>
               )}
             </div>
-            <button
+            <PanelButton
               onClick={clearSelectionDraft}
               className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
               title="Close"
             >
               ×
-            </button>
+            </PanelButton>
           </div>
           {isSelectionReorderMode && (
             <p className="mb-1.5 text-size-micro text-muted">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
@@ -3433,7 +3436,7 @@ export function ReaderContent() {
             <>
               <div className="mb-2 flex items-center gap-2 flex-wrap">
                 {annotationStyleOrder.map((style) => (
-                  <button
+                  <PanelButton
                     key={style}
                     onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
                     className={`rounded border px-2 py-1 text-xs ${
@@ -3443,28 +3446,28 @@ export function ReaderContent() {
                     }`}
                   >
                     {annotationStyleLabel[style]}
-                  </button>
+                  </PanelButton>
                 ))}
               </div>
               <div className="mb-2 flex justify-end gap-2">
-                <button
+                <PanelButton
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
                 >
                   Back
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={() => void handleCreateHighlightOnly()}
                   className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
                 >
                   Save Highlight
-                </button>
+                </PanelButton>
               </div>
             </>
           )}
           {selectionActionMode === 'note' && (
             <>
-              <textarea
+              <Textarea
                 value={selectionDraft.note}
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
                 placeholder="Enter note content (optional)"
@@ -3472,18 +3475,18 @@ export function ReaderContent() {
                 className="mb-2 w-full resize-none rounded border border-control-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
               />
               <div className="mb-2 flex justify-end gap-2">
-                <button
+                <PanelButton
                   onClick={() => setSelectionActionMode(null)}
                   className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
                 >
                   Back
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={handleSaveNoteSelection}
                   className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
                 >
                   Save Note
-                </button>
+                </PanelButton>
               </div>
             </>
           )}
@@ -3522,18 +3525,18 @@ export function ReaderContent() {
             <h4 className="text-sm font-semibold text-heading">Start reading from here?</h4>
             <p className="mt-2 text-xs text-navigation">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
+              <PanelButton
                 onClick={() => setTtsConfirmParagraphId(null)}
                 className="rounded border border-control-border px-3 py-1.5 text-xs text-secondary"
               >
                 Cancel
-              </button>
-              <button
+              </PanelButton>
+              <PanelButton
                 onClick={handleConfirmPlayFromSelection}
                 className="rounded bg-action px-3 py-1.5 text-xs text-on-action hover:bg-action-text"
               >
                 Start Reading
-              </button>
+              </PanelButton>
             </div>
           </div>
         </>

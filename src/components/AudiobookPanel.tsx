@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Range } from './ui/Range';
+import { Select } from './ui/Select';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import { detectLang, splitIntoSentences, toSpeakableText, type TargetLang } from '../utils/sentences';
@@ -421,7 +424,7 @@ export const AudiobookPanel: React.FC = () => {
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Provider</label>
-          <select
+          <Select
             value={ttsProvider}
             onChange={(e) => setTtsProvider(e.target.value as TtsProvider)}
             className="w-full px-3 py-2 border border-control-border rounded-md"
@@ -429,26 +432,26 @@ export const AudiobookPanel: React.FC = () => {
             <option value="auto">Auto</option>
             <option value="edge">Edge TTS</option>
             <option value="cosyvoice">CosyVoice</option>
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Read Target</label>
-          <select
+          <Select
             value={readTarget}
             onChange={(e) => setReadTarget(e.target.value as ReadTarget)}
             className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="source">Source Text</option>
             <option value="translation">Translation Text</option>
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">
             Voice ({activeVoiceLang === 'zh' ? '中文' : 'English'})
           </label>
-          <select
+          <Select
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
             className="w-full px-3 py-2 border border-control-border rounded-md"
@@ -459,12 +462,12 @@ export const AudiobookPanel: React.FC = () => {
                 {item.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-secondary mb-1">Rate: {rate.toFixed(1)}x</label>
-          <input
+          <Range
             type="range"
             min={0.8}
             max={1.5}
@@ -477,27 +480,27 @@ export const AudiobookPanel: React.FC = () => {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button
+        <PanelButton
           onClick={() => void startPlayback()}
           disabled={isPlaying || sentences.length === 0}
           className="px-3 py-2 text-sm text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
         >
           Play
-        </button>
-        <button
+        </PanelButton>
+        <PanelButton
           onClick={() => void togglePause()}
           disabled={!isPlaying}
           className="px-3 py-2 text-sm text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           {isPaused ? 'Resume' : 'Pause'}
-        </button>
-        <button
+        </PanelButton>
+        <PanelButton
           onClick={() => stopPlayback()}
           disabled={!isPlaying}
           className="px-3 py-2 text-sm text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           Stop
-        </button>
+        </PanelButton>
       </div>
 
       <div className="mt-4 space-y-2 text-xs text-navigation">

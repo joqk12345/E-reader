@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PanelButton } from './ui/Button';
+import { Select } from './ui/Select';
+import { Textarea } from './ui/Textarea';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import {
@@ -512,7 +515,7 @@ export const SearchPanel: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
-        <textarea
+        <Textarea
           ref={queryInputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -525,7 +528,7 @@ export const SearchPanel: React.FC = () => {
         <div className="mt-3 flex items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-secondary">
             <span>{t.resultsLabel}</span>
-            <select
+            <Select
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
               className="border border-control-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-focus"
@@ -534,50 +537,50 @@ export const SearchPanel: React.FC = () => {
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
-            </select>
+            </Select>
           </label>
 
           {selectedDocumentId && (
-            <button
+            <PanelButton
               onClick={() => void handleIndexDocument()}
               disabled={isIndexing}
               className="px-3 py-2 text-sm bg-surface-subtle text-secondary rounded-lg hover:bg-surface-hover disabled:bg-surface-hover transition-colors"
             >
               {isIndexing ? t.reindexing : t.rebuildIndex}
-            </button>
+            </PanelButton>
           )}
 
-          <button
+          <PanelButton
             onClick={() => void handleSearch()}
             disabled={isSearching || !query.trim()}
             className="ml-auto px-4 py-2 bg-action text-on-action rounded-lg hover:bg-action-text disabled:bg-muted transition-colors"
           >
             {isSearching ? t.searching : t.search}
-          </button>
+          </PanelButton>
         </div>
 
         {searchHistory.length > 0 && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-medium text-navigation">{t.searchHistory}</span>
-              <button
+              <PanelButton
                 type="button"
                 onClick={() => setSearchHistory([])}
                 className="text-xs text-muted hover:text-secondary"
               >
                 {t.clearHistory}
-              </button>
+              </PanelButton>
             </div>
             <div className="flex flex-wrap gap-2">
               {searchHistory.map((item) => (
-                <button
+                <PanelButton
                   key={item}
                   type="button"
                   onClick={() => void handleSearch(item)}
                   className="rounded-full border border-control-border bg-surface px-3 py-1 text-xs text-secondary hover:border-focus-border hover:text-action-text"
                 >
                   {item}
-                </button>
+                </PanelButton>
               ))}
             </div>
           </div>
@@ -611,13 +614,13 @@ export const SearchPanel: React.FC = () => {
           <p className="text-sm text-warning">
             {t.modelHint}
           </p>
-          <button
+          <PanelButton
             onClick={() => void handleUseDefaultModelAndDownload()}
             disabled={isDownloadingModel}
             className="px-3 py-2 text-sm bg-warning text-on-action rounded hover:bg-warning disabled:bg-control-border"
           >
             {isDownloadingModel ? t.downloadingModel : t.useDefaultAndDownload}
-          </button>
+          </PanelButton>
         </div>
       )}
 

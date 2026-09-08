@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { PanelButton } from './ui/Button';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { Paragraph } from '../types';
 import type { TranslationMode } from '../store/useStore';
@@ -230,12 +231,12 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                   );
                 })()
               ) : (
-                <button
+                <PanelButton
                   onClick={() => onTranslateSentence(paragraphId, sentence, index)}
                   className="text-xs text-action underline hover:text-action"
                 >
                   Translate
-                </button>
+                </PanelButton>
               )}
             </div>
           )}

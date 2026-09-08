@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
@@ -47,7 +48,7 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-subtle">
         <h3 className="text-sm font-semibold text-heading">Bilingual View</h3>
         <div className="flex gap-2">
-          <button
+          <PanelButton
             onClick={() => handleLanguageChange('en')}
             className={`px-3 py-1 text-xs rounded-md transition-colors ${
               targetLang === 'en'
@@ -56,8 +57,8 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
             }`}
           >
             English
-          </button>
-          <button
+          </PanelButton>
+          <PanelButton
             onClick={() => handleLanguageChange('zh')}
             className={`px-3 py-1 text-xs rounded-md transition-colors ${
               targetLang === 'zh'
@@ -66,7 +67,7 @@ export const BilingualView: React.FC<BilingualViewProps> = ({ paragraphId, origi
             }`}
           >
             中文
-          </button>
+          </PanelButton>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PanelButton } from './ui/Button';
 
 type AudiobookControlAction = 'play' | 'toggle-pause' | 'stop';
 
@@ -56,27 +57,27 @@ export const FloatingAudiobookControl: React.FC = () => {
 
   if (isClosed) {
     return (
-      <button
+      <PanelButton
         onClick={() => setIsClosed(false)}
         className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Open audio player"
         aria-label="Open audio player"
       >
         🎧
-      </button>
+      </PanelButton>
     );
   }
 
   if (isMinimized) {
     return (
-      <button
+      <PanelButton
         onClick={() => setIsMinimized(false)}
         className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Expand audio player"
         aria-label="Expand audio player"
       >
         {state.isPlaying && !state.isPaused ? '🔊' : '🎧'}
-      </button>
+      </PanelButton>
     );
   }
 
@@ -88,22 +89,22 @@ export const FloatingAudiobookControl: React.FC = () => {
           {state.currentProvider && <p className="text-size-meta text-muted">Provider: {state.currentProvider}</p>}
         </div>
         <div className="flex items-center gap-1">
-          <button
+          <PanelButton
             onClick={() => setIsMinimized((prev) => !prev)}
             className="h-6 w-6 rounded text-xs text-navigation hover:bg-surface-subtle"
             title={isMinimized ? 'Expand' : 'Minimize'}
             aria-label={isMinimized ? 'Expand' : 'Minimize'}
           >
             {isMinimized ? '▢' : '—'}
-          </button>
-          <button
+          </PanelButton>
+          <PanelButton
             onClick={() => setIsClosed(true)}
             className="h-6 w-6 rounded text-sm text-navigation hover:bg-surface-subtle"
             title="Close"
             aria-label="Close"
           >
             ×
-          </button>
+          </PanelButton>
         </div>
       </div>
       {!isMinimized && (
@@ -115,20 +116,20 @@ export const FloatingAudiobookControl: React.FC = () => {
             {state.error && <p className="mt-1 text-size-meta text-danger line-clamp-2">{state.error}</p>}
           </div>
           <div className="px-3 pb-3 flex gap-2">
-            <button
+            <PanelButton
               onClick={handleMainAction}
               disabled={!hasQueue}
               className="flex-1 px-3 py-2 text-xs text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
             >
               {mainLabel}
-            </button>
-            <button
+            </PanelButton>
+            <PanelButton
               onClick={() => sendControl('stop')}
               disabled={!state.isPlaying}
               className="px-3 py-2 text-xs text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:text-faint disabled:bg-surface-subtle"
             >
               Stop
-            </button>
+            </PanelButton>
           </div>
         </>
       )}

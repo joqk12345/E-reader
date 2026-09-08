@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Textarea } from './ui/Textarea';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
@@ -255,12 +257,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
           <span className="text-sm text-navigation">
             Context: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
-          <button
+          <PanelButton
             onClick={clearChat}
             className="px-2 py-1 text-xs text-navigation border border-control-border rounded hover:bg-surface-subtle"
           >
             Clear
-          </button>
+          </PanelButton>
         </div>
       </div>
 
@@ -300,7 +302,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
 
       <div className="border-t border-border p-3">
         <div className="flex items-end">
-          <textarea
+          <Textarea
             value={questionInput}
             onChange={(event) => setQuestionInput(event.target.value)}
             onKeyDown={(event) => {

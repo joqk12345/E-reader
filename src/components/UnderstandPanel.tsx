@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -663,18 +664,18 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
           <span className="text-sm text-navigation">
             Target: <span className="font-medium text-heading">{targetLabel}</span>
           </span>
-          <button
+          <PanelButton
             onClick={() => void run()}
             disabled={!canRun || isRunning}
             className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action transition-colors hover:bg-action disabled:bg-control-border"
           >
             {isRunning ? 'Running...' : modeMeta[mode].button}
-          </button>
+          </PanelButton>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {(Object.keys(modeMeta) as UnderstandMode[]).map((item) => (
-            <button
+            <PanelButton
               key={item}
               onClick={() => {
                 setMode(item);
@@ -687,7 +688,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
               }`}
             >
               {modeMeta[item].label}
-            </button>
+            </PanelButton>
           ))}
         </div>
 
@@ -730,13 +731,13 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
           <div className="space-y-3">
             <div className="relative rounded-lg border border-border bg-surface p-4">
               <div className="absolute right-2 top-2 flex items-center gap-2">
-                <button
+                <PanelButton
                   onClick={handleAddToNotes}
                   className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-navigation hover:bg-surface-subtle hover:text-foreground"
                 >
                   Add to Notes
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={() => void handleCopy()}
                   className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                     isCopied
@@ -747,7 +748,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                   aria-label={isCopied ? 'Copied' : 'Copy result'}
                 >
                   {isCopied ? '✓' : '⧉'}
-                </button>
+                </PanelButton>
               </div>
               {mode === 'term' && termInsight ? (
                 <div className="space-y-4 pr-20">
@@ -772,18 +773,18 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                         Common Renderings In This Document
                       </div>
-                      <button
+                      <PanelButton
                         onClick={handleOpenGlossary}
                         className="text-xs text-action hover:underline"
                       >
                         Open Glossary
-                      </button>
+                      </PanelButton>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {(displayRenderings.length
                         ? displayRenderings
                         : ['—']).map((item) => (
-                        <button
+                        <PanelButton
                           key={item}
                           onClick={() => handlePinPreferredRendering(item)}
                           disabled={item === '—'}
@@ -801,7 +802,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                           }
                         >
                           {currentGlossaryEntry?.preferredRendering === item ? `Pinned: ${item}` : item}
-                        </button>
+                        </PanelButton>
                       ))}
                     </div>
                     {currentGlossaryEntry?.preferredRendering && (
@@ -838,7 +839,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                 <div className="mb-3 text-sm font-semibold text-foreground">Related Passages In This Document</div>
                 <div className="space-y-2">
                   {relatedPassages.map((item) => (
-                    <button
+                    <PanelButton
                       key={item.paragraphId}
                       onClick={() => void handlePassageClick(item)}
                       className="block w-full rounded-md border border-border bg-surface-subtle px-3 py-2 text-left transition-colors hover:border-action-subtle hover:bg-action-subtle"
@@ -852,7 +853,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       <div className="mt-1 text-sm leading-relaxed text-secondary">
                         {highlightTerm(item.snippet, selectedText)}
                       </div>
-                    </button>
+                    </PanelButton>
                   ))}
                 </div>
               </div>

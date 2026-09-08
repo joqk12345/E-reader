@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
@@ -58,13 +59,13 @@ export const DeepAnalysisPanel: React.FC = () => {
           <span className="text-sm text-navigation">
             Target: <span className="font-medium text-heading">{getTargetLabel()}</span>
           </span>
-          <button
+          <PanelButton
             onClick={() => void runAnalysis()}
             disabled={isRunning || !selectedDocumentId}
             className="px-3 py-1.5 text-sm bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
           >
             {isRunning ? 'Analyzing...' : 'Run Deep Analysis'}
-          </button>
+          </PanelButton>
         </div>
       </div>
 
@@ -82,7 +83,7 @@ export const DeepAnalysisPanel: React.FC = () => {
         )}
         {result && (
           <div className="relative bg-surface border border-border rounded-lg p-4">
-            <button
+            <PanelButton
               onClick={() => void handleCopy()}
               className={`absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                 isCopied
@@ -93,7 +94,7 @@ export const DeepAnalysisPanel: React.FC = () => {
               aria-label={isCopied ? 'Copied' : 'Copy analysis'}
             >
               {isCopied ? '✓' : '⧉'}
-            </button>
+            </PanelButton>
             <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
               {result}
             </pre>

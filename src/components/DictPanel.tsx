@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { PanelButton } from './ui/Button';
+import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
 import { invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -280,7 +283,7 @@ export function DictPanel({ request }: DictPanelProps) {
     <div className="flex h-full flex-col">
       <div className="border-b border-border p-3">
         <div className="mb-2 flex items-center gap-2">
-          <button
+          <PanelButton
             onClick={() => {
               setMode('dict');
               void run('dict', selectedText, sentence, contextParagraphIdRef.current);
@@ -288,8 +291,8 @@ export function DictPanel({ request }: DictPanelProps) {
             className={`rounded-md px-3 py-1.5 text-sm ${mode === 'dict' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Dict
-          </button>
-          <button
+          </PanelButton>
+          <PanelButton
             onClick={() => {
               setMode('sentence');
               void run('sentence', selectedText, sentence, contextParagraphIdRef.current);
@@ -297,29 +300,29 @@ export function DictPanel({ request }: DictPanelProps) {
             className={`rounded-md px-3 py-1.5 text-sm ${mode === 'sentence' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Sentence
-          </button>
+          </PanelButton>
         </div>
         <div className="space-y-2">
-          <input
+          <Input
             value={selectedText}
             onChange={(e) => setSelectedText(e.target.value)}
             placeholder="Selected word or phrase"
             className="w-full rounded-md border border-control-border px-2.5 py-1.5 text-sm"
           />
-          <textarea
+          <Textarea
             value={sentence}
             onChange={(e) => setSentence(e.target.value)}
             placeholder="Sentence context"
             rows={3}
             className="w-full resize-y rounded-md border border-control-border px-2.5 py-1.5 text-sm"
           />
-          <button
+          <PanelButton
             onClick={() => void run(mode, selectedText, sentence, contextParagraphIdRef.current)}
             disabled={isLoading}
             className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action hover:bg-action-text disabled:opacity-50"
           >
             {isLoading ? 'Running...' : 'Run'}
-          </button>
+          </PanelButton>
         </div>
       </div>
 
@@ -331,13 +334,13 @@ export function DictPanel({ request }: DictPanelProps) {
             <div className="rounded border border-border bg-surface-subtle p-3">
               <div className="mb-1 flex items-center gap-2">
                 <h3 className="text-base font-semibold text-foreground">{dictResult.headword || selectedText || '—'}</h3>
-                <button
+                <PanelButton
                   onClick={() => void playPronunciation()}
                   disabled={isPlaying || !(dictResult.headword || selectedText)}
                   className="rounded border border-control-border px-2 py-0.5 text-xs text-secondary hover:bg-surface-subtle disabled:opacity-50"
                 >
                   {isPlaying ? 'Playing...' : '🔊'}
-                </button>
+                </PanelButton>
               </div>
               <p className="text-sm text-navigation">IPA: {dictResult.ipa || 'N/A'}</p>
             </div>

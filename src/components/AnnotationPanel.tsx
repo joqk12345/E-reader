@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import type { Annotation, AnnotationStyle } from '../types';
@@ -79,18 +80,18 @@ export function AnnotationPanel() {
                 <span className="rounded bg-surface px-2 py-0.5 text-xs text-secondary">
                   {annotationStyleLabel[item.style]}
                 </span>
-                <button
+                <PanelButton
                   onClick={() => setFocusedParagraphId(item.paragraph_id)}
                   className="text-xs text-action underline-offset-2 hover:underline"
                 >
                   Go to Location
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={() => void handleDelete(item.id)}
                   className="ml-auto text-xs text-danger underline-offset-2 hover:underline"
                 >
                   Delete
-                </button>
+                </PanelButton>
               </div>
               <p className="text-sm text-foreground">"{item.selected_text}"</p>
               {item.note && item.note.trim().length > 0 && (

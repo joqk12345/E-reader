@@ -60,3 +60,7 @@ export function IconButton({
     </Button>
   );
 }
+
+export function PanelButton({ variant = 'ghost', size = 'sm', ...props }: ButtonProps) {
+  return <Button variant={variant} size={size} {...props} />;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 
 type TOCPanelProps = {
@@ -74,7 +75,7 @@ export function TOCPanel({
     >
       {collapsed ? (
         <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
-          <button
+          <PanelButton
             onClick={onToggleCollapse}
             className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
             title="Expand sidebar"
@@ -92,12 +93,12 @@ export function TOCPanel({
             >
               <path d="M8 4l6 6-6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       ) : (
         <div className="flex items-center justify-between border-b border-border p-4 flex-shrink-0">
           <h2 className="text-lg font-semibold text-heading">Table of Contents</h2>
-          <button
+          <PanelButton
             onClick={onToggleCollapse}
             className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
             title="Collapse sidebar"
@@ -115,7 +116,7 @@ export function TOCPanel({
             >
               <path d="M12 4l-6 6 6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       )}
       <nav className={`flex-1 overflow-y-auto ${collapsed ? 'p-1' : 'p-2'}`}>
@@ -127,7 +128,7 @@ export function TOCPanel({
           <ul className="space-y-1">
             {sections.map((section) => (
               <li key={section.id}>
-                <button
+                <PanelButton
                   onClick={() => handleSectionClick(section.id)}
                   title={section.title}
                   className={`w-full rounded-md text-sm transition-colors ${
@@ -139,7 +140,7 @@ export function TOCPanel({
                   }`}
                 >
                   {collapsed ? section.title.slice(0, 1).toUpperCase() : section.title}
-                </button>
+                </PanelButton>
               </li>
             ))}
           </ul>

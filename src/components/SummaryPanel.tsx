@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
@@ -258,7 +259,7 @@ export const SummaryPanel: React.FC = () => {
             {(['document', 'section', 'paragraph'] as SummaryScope[]).map((item) => {
               const enabled = availableScopes.includes(item);
               return (
-                <button
+                <PanelButton
                   key={item}
                   onClick={() => setScope(item)}
                   disabled={!enabled}
@@ -269,7 +270,7 @@ export const SummaryPanel: React.FC = () => {
                   }`}
                 >
                   {item.charAt(0).toUpperCase() + item.slice(1)}
-                </button>
+                </PanelButton>
               );
             })}
           </div>
@@ -279,7 +280,7 @@ export const SummaryPanel: React.FC = () => {
           <span className="text-sm font-medium text-secondary">Style:</span>
           <div className="flex gap-2">
             {SUMMARY_STYLE_OPTIONS.map((item) => (
-              <button
+              <PanelButton
                 key={item.value}
                 onClick={() => setStyle(item.value)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
@@ -289,7 +290,7 @@ export const SummaryPanel: React.FC = () => {
                 }`}
               >
                 {item.label}
-              </button>
+              </PanelButton>
             ))}
           </div>
         </div>
@@ -298,13 +299,13 @@ export const SummaryPanel: React.FC = () => {
           <span className="text-sm text-navigation">
             Target: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
-          <button
+          <PanelButton
             onClick={() => void handleSummarize()}
             disabled={isSummarizing || !target}
             className="px-3 py-1.5 text-sm bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
           >
             {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
-          </button>
+          </PanelButton>
         </div>
       </div>
 
@@ -329,7 +330,7 @@ export const SummaryPanel: React.FC = () => {
             <div className="bg-surface border border-border rounded-lg p-4">
               <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div className="text-sm font-medium text-secondary">Generated Summary</div>
-                <button
+                <PanelButton
                   onClick={() => void handleCopy()}
                   className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${
                     isCopied
@@ -350,7 +351,7 @@ export const SummaryPanel: React.FC = () => {
                     </svg>
                   )}
                   <span>{isCopied ? 'Copied' : 'Copy'}</span>
-                </button>
+                </PanelButton>
               </div>
 
               {style === 'bullet' ? (

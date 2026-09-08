@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { SearchPanel } from './SearchPanel';
 import { SummaryPanel } from './SummaryPanel';
 import { TranslatePanel } from './TranslatePanel';
@@ -307,7 +308,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     >
       {collapsed ? (
         <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
-          <button
+          <PanelButton
             onClick={onToggleCollapse}
             className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
             title="Expand tools"
@@ -325,12 +326,12 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             >
               <path d="M12 4l-6 6 6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       ) : (
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
           <span className="text-sm font-semibold text-foreground">Tools</span>
-          <button
+          <PanelButton
             onClick={onToggleCollapse}
             className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
             title="Collapse tools"
@@ -348,14 +349,14 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             >
               <path d="M8 4l6 6-6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       )}
 
       {collapsed ? (
         <div className="flex-1 min-h-0 py-2 space-y-1 overflow-y-auto">
           {tabs.map((tab) => (
-            <button
+            <PanelButton
               key={tab.key}
               onClick={() => {
                 setActiveTab(tab.key);
@@ -369,7 +370,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
               }`}
             >
               <span>{tab.icon}</span>
-            </button>
+            </PanelButton>
           ))}
         </div>
       ) : (
@@ -377,7 +378,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           {/* Tabs */}
           <div className="grid grid-cols-3 border-b border-border">
             {tabs.map((tab) => (
-              <button
+              <PanelButton
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={`flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-r border-b border-border last:border-r-0 ${
@@ -388,7 +389,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
-              </button>
+              </PanelButton>
             ))}
           </div>
           {/* Content */}

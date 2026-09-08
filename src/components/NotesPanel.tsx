@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Textarea } from './ui/Textarea';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 
 type NoteRequest = {
@@ -156,25 +158,25 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
           <span className="text-xs text-muted">{currentDocNotes.length} notes</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <PanelButton
             onClick={exportJson}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
             className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Export JSON
-          </button>
-          <button
+          </PanelButton>
+          <PanelButton
             onClick={() => void exportMarkdown()}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
             className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Copy Markdown
-          </button>
+          </PanelButton>
         </div>
       </div>
 
       <div className="p-3 border-b border-border space-y-2">
-        <textarea
+        <Textarea
           rows={3}
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
@@ -182,13 +184,13 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
           className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
         />
         <div className="flex items-center justify-between">
-          <button
+          <PanelButton
             onClick={importFromJson}
             disabled={!importText.trim()}
             className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Import JSON
-          </button>
+          </PanelButton>
           {importError && <span className="text-xs text-danger">{importError}</span>}
         </div>
       </div>
@@ -208,17 +210,17 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
           <div key={note.id} className="border border-border rounded-lg p-3 bg-surface">
             <div className="flex items-center justify-between mb-2">
               <span className="text-size-meta text-muted">{formatTime(note.updatedAt)}</span>
-              <button
+              <PanelButton
                 onClick={() => deleteNote(note.id)}
                 className="text-xs text-danger hover:text-danger"
               >
                 Delete
-              </button>
+              </PanelButton>
             </div>
             <blockquote className="text-sm text-foreground border-l-2 border-action-subtle pl-2 mb-2 whitespace-pre-wrap">
               {note.selectedText}
             </blockquote>
-            <textarea
+            <Textarea
               rows={3}
               value={note.noteText}
               onChange={(e) => updateNoteText(note.id, e.target.value)}

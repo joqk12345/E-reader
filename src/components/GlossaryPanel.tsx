@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Input } from './ui/Input';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 import {
   loadTermGlossary,
@@ -81,13 +83,13 @@ export const GlossaryPanel: React.FC = () => {
             </div>
             <div className="mt-1 text-xs text-muted">{visibleEntries.length} glossary entries</div>
           </div>
-          <button
+          <PanelButton
             onClick={clearVisibleEntries}
             disabled={visibleEntries.length === 0}
             className="rounded-md border border-control-border px-2.5 py-1.5 text-xs text-navigation hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear Scope
-          </button>
+          </PanelButton>
         </div>
       </div>
 
@@ -105,19 +107,19 @@ export const GlossaryPanel: React.FC = () => {
                     <div className="text-sm font-semibold text-heading">{entry.term}</div>
                     <div className="mt-1 text-xs text-muted">{formatTime(entry.updatedAt)}</div>
                   </div>
-                  <button
+                  <PanelButton
                     onClick={() => deleteEntry(entry.docId, entry.termKey)}
                     className="text-xs text-danger hover:underline"
                   >
                     Delete
-                  </button>
+                  </PanelButton>
                 </div>
 
                 <div className="mt-3">
                   <label className="text-size-meta font-medium uppercase tracking-wide text-muted">
                     Preferred Rendering
                   </label>
-                  <input
+                  <Input
                     value={entry.preferredRendering}
                     onChange={(event) =>
                       updateEntry(entry.docId, entry.termKey, {
@@ -132,7 +134,7 @@ export const GlossaryPanel: React.FC = () => {
                   <label className="text-size-meta font-medium uppercase tracking-wide text-muted">
                     Concept Tags
                   </label>
-                  <input
+                  <Input
                     value={entry.conceptTags.join(', ')}
                     onChange={(event) =>
                       updateEntry(entry.docId, entry.termKey, {

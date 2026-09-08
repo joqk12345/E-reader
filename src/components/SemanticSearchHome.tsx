@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { SearchPanel } from './SearchPanel';
 
 type SemanticSearchHomeProps = {
@@ -71,13 +72,13 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
                 <div className="text-xs text-muted">Click to search again.</div>
               </div>
               {searchHistory.length > 0 && (
-                <button
+                <PanelButton
                   type="button"
                   onClick={clearHistory}
                   className="text-xs text-muted hover:text-secondary"
                 >
                   Clear
-                </button>
+                </PanelButton>
               )}
             </div>
 
@@ -89,14 +90,14 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
               ) : (
                 <div className="space-y-2">
                   {searchHistory.map((item) => (
-                    <button
+                    <PanelButton
                       key={item}
                       type="button"
                       onClick={() => runHistoryQuery(item)}
                       className="block w-full rounded-xl border border-border bg-surface-subtle px-3 py-2 text-left text-sm text-secondary transition-colors hover:border-focus-border hover:bg-action-subtle hover:text-action-text"
                     >
                       {item}
-                    </button>
+                    </PanelButton>
                   ))}
                 </div>
               )}
