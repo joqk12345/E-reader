@@ -30,6 +30,8 @@ import {
 } from './settings/SettingsUI';
 import { AiProfilesPanel } from './settings/AiProfilesPanel';
 import type { SettingsSection } from './settings/settingsTypes';
+import { useAppTheme } from '../features/app/useAppTheme';
+import type { AppThemePreference } from './appTheme';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Button } from './ui/Button';
@@ -204,6 +206,7 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'reading' }) => {
+  const { preference: appTheme, setPreference: setAppTheme } = useAppTheme();
   const loadAppConfig = useStore((state) => state.loadConfig);
   const setReaderBackgroundColor = useStore((state) => state.setReaderBackgroundColor);
   const setReaderFontSize = useStore((state) => state.setReaderFontSize);
@@ -745,7 +748,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             ))}
           </nav>
           <div className="mt-auto border-t border-border px-2 pt-4 text-size-meta leading-4 text-muted">
-            Changes are saved when you choose <span className="font-medium text-secondary">Save settings</span>.
+            App theme applies immediately. Reading preferences are saved with <span className="font-medium text-secondary">Save settings</span>.
           </div>
         </aside>
 
@@ -781,6 +784,23 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             {activeSection === 'reading' && (
               <>
                 <SettingsCard>
+                <SettingRow
+                  title="App theme"
+                  description="Set the appearance of the Reader workspace"
+                  right={
+                    <Select
+                      aria-label="App theme"
+                      className={`${compactControlClass} w-[200px]`}
+                      value={appTheme}
+                      onChange={(event) => setAppTheme(event.target.value as AppThemePreference)}
+                    >
+                      <option value="system">System</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </Select>
+                  }
+                />
+                <SettingsDivider />
                 <SettingRow
                   title="Theme"
                   description="Choose your reading canvas"

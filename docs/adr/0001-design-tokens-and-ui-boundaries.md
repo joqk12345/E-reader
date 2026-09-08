@@ -12,7 +12,7 @@
 
 1. 以 CSS 自定义属性作为应用视觉 tokens 的运行时来源，并在 Tailwind 中映射语义名称。保留现有 Tailwind 间距、圆角尺度；产品字号和阴影通过命名 token 暴露，避免业务页面直接依赖默认字号或 arbitrary shadow。
 2. 区分基础尺度、语义 tokens 和按需引入的组件 tokens。颜色用用途命名，例如 surface、foreground、action、border，不以当前色值命名。
-3. 应用界面主题与阅读主题分别作用于各自容器。保留 white/paper/mint/sepia/night 标识、设置存储键和用户偏好兼容性。第一批仅建立当前浅色应用主题，不默认新增全局夜间模式。
+3. 应用界面主题与阅读主题分别作用于各自容器。应用壳层使用 `light`、`dark`、`system` 三种偏好，通过语义 tokens 切换；阅读层继续保留 white/paper/mint/sepia/night 标识、设置存储键和用户偏好兼容性。两层主题互不覆盖，避免阅读纸张颜色改变导航、设置和控件的对比度。
 4. 用户字号、行距、栏宽和拖拽几何属于运行时输入，可通过 inline style 或 CSS 变量传递。百分比、零值、布局结构、第三方 KaTeX 和文档固有样式属于明确例外。
 5. “100% tokenized”指范围内所有产品视觉决策都引用统一规则，且例外可解释；不指删除一切 CSS 字面量。迁移中的旧代码以计划记录，不宣称全量完成。
 6. 公共 UI 放在 components/ui；业务组件逐步按 features/library、reader、settings、ai-tools 组织。先按职责识别边界，再迁移；不按行数强制切文件。
@@ -38,3 +38,4 @@
 
 - 2026-09-08：业务页面已完成命名字号、阴影和公共控件入口迁移；布局间距仍保留 Tailwind 基础尺度，`components/ui` 是原生交互元素的唯一实现边界。
 - 2026-09-08：Tauri 开发进程已在临时 1430 端口完成后端编译并启动；视觉与交互验收仍需可访问桌面窗口的运行环境。
+- 2026-09-08：增加应用壳层主题偏好 `light`/`dark`/`system`，通过 `appTheme.ts` 和 `useAppTheme` 应用到全局语义 tokens；阅读主题保持独立，Settings 提供即时切换并持久化到 localStorage。

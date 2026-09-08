@@ -71,3 +71,4 @@
 - 2026-09-08 可观察运行：Tauri 开发窗口已用临时 1430 端口启动并保持运行，Rust 编译完成，`curl http://127.0.0.1:1430/` 返回 200；主工作区默认 1420 端口未被修改。
 - 2026-09-08 Appearance 修复：统一 `persistReaderViewSettings` 写入 localStorage、广播 Reader 更新事件，并在 Save Settings 时同步当前 store；边界检查确保保存路径继续使用该 helper。
 - 2026-09-08 Theme 修复：Reader 更新事件现在携带完整 `ReaderViewSettings`，Reader/ReaderContent 直接应用事件 detail；Appearance 增加实时主题预览，避免选择后无可见反馈。
+- 2026-09-08 应用主题层：新增 `light`/`dark`/`system` app-level theme 偏好；`useAppTheme` 监听 Settings 事件和系统深浅变化，`tokens.css` 的语义颜色、边框、状态色和阴影随应用壳层切换。阅读页五种主题仍独立，避免 App theme 覆盖阅读画布。

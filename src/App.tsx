@@ -22,6 +22,7 @@ import { matchesAnyShortcut } from './utils/shortcuts';
 import { Tabs } from './components/ui/Tabs';
 import { Button } from './components/ui/Button';
 import type { SettingsSection } from './components/settings/settingsTypes';
+import { useAppTheme } from './features/app/useAppTheme';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -71,6 +72,7 @@ const statusToneClass = (status: string): string => {
 };
 
 function App() {
+  useAppTheme();
   const {
     selectedDocumentId,
     loadConfig,

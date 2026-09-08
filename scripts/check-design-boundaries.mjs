@@ -17,6 +17,10 @@ const libraryImport = read('src/features/library/useLibraryImport.ts');
 const reader = read('src/components/Reader.tsx');
 const readerContent = read('src/components/ReaderContent.tsx');
 const readerTheme = read('src/components/readerTheme.ts');
+const appTheme = read('src/components/appTheme.ts');
+const appThemeHook = read('src/features/app/useAppTheme.ts');
+const app = read('src/App.tsx');
+const tokens = read('src/styles/tokens.css');
 
 const sections = ['reading', 'editor', 'translation', 'ai', 'audio', 'shortcuts', 'integrations', 'about'];
 for (const section of sections) {
@@ -61,6 +65,13 @@ expect(readerTheme.includes('export const persistReaderViewSettings'), 'Reader v
 expect(readerTheme.includes("new CustomEvent<ReaderViewSettings>('reader:view-settings-updated', { detail: settings })"), 'Reader view update event is missing settings detail');
 expect(settings.includes('persistReaderViewSettings(readerViewSettings)'), 'Settings save path bypasses reader view persistence helper');
 expect(settings.includes('aria-live="polite"'), 'Appearance page is missing live theme preview');
+expect(appTheme.includes("'light' | 'dark' | 'system'"), 'App theme preference is missing light/dark/system options');
+expect(appTheme.includes('APP_THEME_STORAGE_KEY'), 'App theme preference is missing persistence key');
+expect(appTheme.includes('APP_THEME_EVENT'), 'App theme preference is missing update event');
+expect(appThemeHook.includes('applyAppTheme'), 'App theme hook is missing document application');
+expect(app.includes('useAppTheme()'), 'App shell is missing app theme subscription');
+expect(settings.includes('title="App theme"'), 'Settings is missing app theme control');
+expect(tokens.includes("[data-app-theme='dark']"), 'Application tokens are missing dark theme values');
 
 for (const importKind of ['importEpub', 'importPdf', 'importMarkdown']) {
   expect(libraryImport.includes(importKind), `Library import boundary is missing ${importKind}`);
@@ -85,5 +96,5 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Design boundary checks passed for ${sections.length} settings sections, 5 reader themes, 15 shared boundaries, and 4 reader flow anchors.`);
+  console.log(`Design boundary checks passed for ${sections.length} settings sections, 5 reader themes, app-level light/dark/system themes, 15 shared boundaries, and 4 reader flow anchors.`);
 }

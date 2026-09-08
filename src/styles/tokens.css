@@ -45,3 +45,32 @@
   --shadow-panel: 0 24px 70px rgb(37 31 26 / 18%);
   --shadow-floating: 0 14px 36px rgb(28 27 25 / 16%);
 }
+
+/* The application shell follows the selected app theme; reader palettes stay independent. */
+[data-app-theme='dark'] {
+  --color-surface: 28 28 31;
+  --color-surface-subtle: 20 20 23;
+  --color-surface-hover: 43 43 48;
+  --color-foreground: 229 229 234;
+  --color-heading: 250 250 249;
+  --color-muted: 161 161 170;
+  --color-secondary: 212 212 216;
+  --color-navigation: 179 179 188;
+  --color-faint: 113 113 122;
+  --color-border: 63 63 70;
+  --color-control-border: 82 82 91;
+  --color-action: 221 112 82;
+  --color-action-text: 247 161 132;
+  --color-action-subtle: 74 41 33;
+  --color-focus: 221 112 82;
+  --color-focus-border: 241 145 120;
+  --color-success: 105 190 145;
+  --color-success-indicator: 105 190 145;
+  --color-warning: 230 177 82;
+  --color-warning-subtle: 73 54 25;
+  --color-danger: 241 132 124;
+  --color-danger-subtle: 77 38 37;
+  --color-on-action: 255 255 255;
+  --shadow-panel: 0 24px 70px rgb(0 0 0 / 40%);
+  --shadow-floating: 0 14px 36px rgb(0 0 0 / 34%);
+}
