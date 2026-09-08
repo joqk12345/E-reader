@@ -66,3 +66,4 @@
 - 2026-09-08 回归防线：新增 `npm run check:boundaries`，在 CI 中校验 8 个 Settings 子页面、5 个阅读主题、15 个职责边界文件及 Settings dialog 可访问性标记。
 - 2026-09-08 可访问性收尾：Settings 的主题选择、排版调整按钮和侧栏当前项补齐可访问名称、pressed/current 状态，边界检查同步防止这些语义回退。
 - 2026-09-08 开关语义收尾：共享 ToggleSwitch 支持可访问标签，Settings 与 AiProfilesPanel 的所有开关均提供明确名称，边界检查验证基础能力。
+- 2026-09-08 开关回归门：`check:boundaries` 逐个检查 Settings 与 AiProfilesPanel 的 ToggleSwitch 使用点，缺少 `label` 会直接失败。
