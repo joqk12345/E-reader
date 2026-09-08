@@ -588,6 +588,10 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         { id: 'integrations', label: 'Integrations' },
       ],
     },
+    {
+      label: 'Reader',
+      items: [{ id: 'about', label: 'About' }],
+    },
   ];
 
   const sectionDetails: Record<SettingsSection, { eyebrow: string; title: string; description: string }> = {
