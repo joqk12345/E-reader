@@ -62,3 +62,4 @@
 - 2026-09-08 仍未宣称完成：真实 Tauri 窗口中的五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责和 Reader 的渲染模型、面板、翻译、批注、选区偏好职责已完成首轮拆分。
 - 2026-09-08 代码实现审计：P2–P6 的公共控件、业务页面迁移、主题边界和职责拆分均已落地；阶段勾选仍保留待验收状态，直到可用 Tauri 环境完成视觉与交互回归。
 - 2026-09-08 运行审计：在 worktree 内执行 `npm run tauri dev -- --no-watch --config '{"build":{"devUrl":"http://localhost:1430","beforeDevCommand":"npm run dev -- --host 127.0.0.1 --port 1430"}}'`，Rust 后端成功编译并启动，随后已停止进程；未修改默认 1420 端口，也未影响主工作区服务。
+- 2026-09-08 Settings 收尾：About 子页面已加入侧栏导航，Settings 外壳补齐 `role="dialog"`、初始焦点和 Tab 循环；`App` 的 SettingsSection 类型与全部页面保持一致。
