@@ -57,16 +57,17 @@ export function SidebarNavItem({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 rounded-full px-3 py-2 text-left transition ${
+      className={`h-auto justify-start rounded-full px-3 py-2 text-left text-size-caption ${
         active ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover/70'
       }`}
     >
       <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center ${active ? 'text-action' : 'text-muted'}`}>{icon}</span>
-      <span className="text-size-caption font-medium">{label}</span>
-    </button>
+      <span className="font-medium">{label}</span>
+    </Button>
   );
 }
 
