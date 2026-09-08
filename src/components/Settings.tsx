@@ -31,6 +31,7 @@ import {
 import { AiProfilesPanel } from './settings/AiProfilesPanel';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+import { Button } from './ui/Button';
 import {
   checkForUpdates,
   clearDismissedUpdateVersion,
@@ -704,14 +705,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
               <h1 className="font-serif text-size-display font-medium tracking-tight text-heading">Settings</h1>
               <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-size-micro font-medium text-muted">⌘ ,</span>
             </div>
-            <button
+            <Button
               type="button"
               onClick={onClose}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-lg text-muted transition hover:bg-surface-hover hover:text-heading"
               aria-label="Close settings"
             >
               ×
-            </button>
+            </Button>
           </header>
 
           <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
@@ -735,7 +736,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   right={
                     <div className="flex items-center gap-3">
                       {themeOrder.map((id) => (
-                        <button
+                        <Button
                           key={id}
                           type="button"
                           onClick={() => setReaderViewSettings((prev) => ({ ...prev, theme: id }))}
@@ -799,8 +800,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Main reading text size"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.fontSize}px</span>
                     </>
                   }
@@ -810,8 +811,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Vertical rhythm and readability"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
                     </>
                   }
@@ -821,8 +822,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Set line length for focus"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.contentWidth}em</span>
                     </>
                   }
@@ -832,8 +833,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Spacing between CJK characters"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
                     </>
                   }
@@ -1002,13 +1003,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     <p className="flex items-center gap-2 text-size-control text-muted">
                       <span>Listening on</span>
                       <code className="rounded bg-surface-subtle px-2 py-0.5 font-mono text-size-caption text-secondary">{listeningLabel}</code>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void handleCopy(mcpLaunchCommand || mcpSnippet, 'MCP command copied.')}
                         className="rounded border border-control-border bg-surface px-1.5 py-0.5 text-size-meta text-navigation hover:bg-surface-subtle"
                       >
                         Copy
-                      </button>
+                      </Button>
                     </p>
                     <p className="mt-2 text-size-caption text-muted">
                       Project-level stdio MCP server. AI clients discover it via <code>.mcp.json</code>.
@@ -1016,21 +1017,21 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   </div>
                   <SettingsDivider />
                   <div className="flex items-center gap-2 py-1">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void loadMcpStatus(true)}
                       disabled={isTestingMcp}
                       className="rounded-lg border border-control-border bg-surface-subtle px-2.5 py-1.5 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isTestingMcp ? 'Checking...' : 'Test Connection'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => void loadMcpStatus(false)}
                       className="rounded-lg border border-control-border bg-surface px-2.5 py-1.5 text-size-control text-secondary hover:bg-surface-subtle"
                     >
                       Refresh Status
-                    </button>
+                    </Button>
                   </div>
                 </SettingsCard>
 
@@ -1080,13 +1081,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   <div className="space-y-3 py-2">
                     <div className="flex items-center justify-between">
                       <div className="text-size-subheading font-semibold text-heading">Install MCP Configuration</div>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => void handleCopy(mcpSnippet, 'MCP snippet copied.')}
                         className="rounded-lg border border-control-border bg-surface px-2.5 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                       >
                         Copy
-                      </button>
+                      </Button>
                     </div>
                     <pre className="overflow-x-auto rounded-lg bg-heading p-3 text-size-caption text-surface-subtle">{mcpSnippet}</pre>
                     <a
@@ -1175,20 +1176,20 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         </a>
                       </div>
                       <div className="flex min-w-[180px] flex-col gap-3">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
                           className="rounded-lg bg-action px-4 py-2.5 text-size-control font-medium text-on-action hover:bg-action-text"
                         >
                           Download
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={handleSkipThisVersion}
                           className="rounded-lg border border-control-border bg-surface px-4 py-2.5 text-size-control font-medium text-secondary hover:bg-surface-subtle"
                         >
                           Skip
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </SettingsCard>
@@ -1210,14 +1211,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         <div className="text-size-label font-semibold text-heading">Check for updates</div>
                         <div className="flex items-center gap-4">
                           <div className="text-size-label text-action">{updateStatusText}</div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => void runUpdateCheck(true)}
                             disabled={isCheckingUpdates}
                             className="rounded-lg border border-control-border bg-surface px-3 py-1.5 text-size-control font-medium text-secondary hover:bg-surface-subtle disabled:opacity-60"
                           >
                             {isCheckingUpdates ? 'Checking...' : 'Check Now'}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                       <div className="mt-2 text-size-caption text-muted">Last checked: {updateCheckedAt}</div>
@@ -1228,13 +1229,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         <div className="text-size-control text-muted">{updateSubtext}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
                           className="min-w-[132px] rounded-lg bg-action px-2.5 py-1 text-size-caption font-medium text-on-action hover:bg-action-text"
                         >
                           {updateResult?.updateAvailable ? `Download v${updateResult.latestVersion}` : 'Open Releases'}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1247,22 +1248,22 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             <SecondaryActionButton icon={<span>↻</span>} label="Reload" onClick={() => void loadConfig()} />
 
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
                 className="rounded-xl border border-control-border bg-surface px-4 py-2 text-size-control font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={isSaving}
                 className="rounded-xl bg-action px-4 py-2 text-size-control font-medium text-on-action shadow-sm transition hover:bg-action-text disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save Settings'}
-              </button>
+              </Button>
             </div>
           </footer>
         </section>

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { compactControlClass, SettingsCard, SettingsDivider, StatusDot, ToggleSwitch } from './SettingsUI';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 
 type ProviderType =
   | 'open_ai_compatible'
@@ -206,7 +207,7 @@ function CompactIconButton({
       : 'border-control-border bg-surface text-secondary hover:bg-surface-subtle';
 
   return (
-    <button
+    <Button
       type="button"
       aria-label={label}
       title={label}
@@ -215,7 +216,7 @@ function CompactIconButton({
       className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border ${toneClass} disabled:opacity-60`}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -894,13 +895,13 @@ export const AiProfilesPanel: React.FC = () => {
           {providerOptions.length === 0 ? (
             <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-sm text-warning">
               <div>No enabled providers with a compatible model are available for this task yet.</div>
-              <button
+              <Button
                 type="button"
                 onClick={() => openAdvancedForSlot(slot)}
                 className="mt-2 inline-flex h-8 items-center rounded-lg border border-warning/25 bg-surface px-3 text-size-control text-warning hover:bg-warning-subtle"
               >
                 Open Advanced
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -981,15 +982,15 @@ export const AiProfilesPanel: React.FC = () => {
                 />
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
-                <button
+                <Button
                   type="button"
                   onClick={() => void saveQuickSlot(slot)}
                   disabled={saving || !canSave}
                   className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60"
                 >
                   Save
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => void testQuickSlot(slot)}
                   disabled={
@@ -1001,14 +1002,14 @@ export const AiProfilesPanel: React.FC = () => {
                   className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60"
                 >
                   {quickTestingSlot === slot ? 'Testing...' : 'Test'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => openAdvancedForSlot(slot)}
                   className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface px-3 text-size-control text-secondary hover:bg-surface-subtle"
                 >
                   Advanced
-                </button>
+                </Button>
               </div>
               {draft.enabled && !selectedModelId && (
                 <div className="text-xs text-warning">Enabled tasks need a primary model.</div>
@@ -1082,13 +1083,13 @@ export const AiProfilesPanel: React.FC = () => {
               {providerOptions.length === 0 ? (
                 <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-sm text-warning">
                   <div>No embedding provider with a compatible model is available yet.</div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => openAdvancedForSlot(slot)}
                     className="mt-2 inline-flex h-8 items-center rounded-lg border border-warning/25 bg-surface px-3 text-size-control text-warning hover:bg-warning-subtle"
                   >
                     Open Advanced
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -1159,15 +1160,15 @@ export const AiProfilesPanel: React.FC = () => {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void saveQuickSlot(slot)}
                       disabled={saving || !canSave}
                       className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60"
                     >
                       Save
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => void testQuickSlot(slot)}
                       disabled={
@@ -1179,14 +1180,14 @@ export const AiProfilesPanel: React.FC = () => {
                       className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60"
                     >
                       {quickTestingSlot === slot ? 'Testing...' : 'Test'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => openAdvancedForSlot(slot)}
                       className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface px-3 text-size-control text-secondary hover:bg-surface-subtle"
                     >
                       Advanced
-                    </button>
+                    </Button>
                   </div>
                   {draft.enabled && !selectedModelId && (
                     <div className="text-xs text-warning">Enabled tasks need a primary model.</div>
@@ -1231,13 +1232,13 @@ export const AiProfilesPanel: React.FC = () => {
                       : 'Unavailable'}
                   </span>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => void refreshEmbeddingStatus()}
                   className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface px-3 text-size-control text-secondary hover:bg-surface-subtle"
                 >
                   Refresh Status
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -1260,20 +1261,20 @@ export const AiProfilesPanel: React.FC = () => {
               </div>
             </div>
             <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-sm">
-              <button
+              <Button
                 type="button"
                 className={`rounded-md px-3 py-1.5 ${setupMode === 'quick' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
                 onClick={() => setSetupMode('quick')}
               >
                 Quick Setup
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 className={`rounded-md px-3 py-1.5 ${setupMode === 'advanced' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
                 onClick={() => setSetupMode('advanced')}
               >
                 Advanced
-              </button>
+              </Button>
             </div>
           </div>
           {setupMode === 'advanced' ? (
@@ -1281,27 +1282,27 @@ export const AiProfilesPanel: React.FC = () => {
               <SettingsDivider />
               <div className="flex items-center justify-between">
                 <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-sm">
-                  <button
+                  <Button
                     type="button"
                     className={`rounded-md px-3 py-1.5 ${activeTab === 'providers' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
                     onClick={() => setActiveTab('providers')}
                   >
                     Providers
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     className={`rounded-md px-3 py-1.5 ${activeTab === 'models' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
                     onClick={() => setActiveTab('models')}
                   >
                     Models
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     className={`rounded-md px-3 py-1.5 ${activeTab === 'agents' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
                     onClick={() => setActiveTab('agents')}
                   >
                     Agents
-                  </button>
+                  </Button>
                 </div>
                 {loading ? <span className="text-xs text-muted">Loading...</span> : null}
               </div>
@@ -1374,16 +1375,16 @@ export const AiProfilesPanel: React.FC = () => {
           <SettingsCard>
             <div className="space-y-2 py-2">
               {providerOptions.map((p) => (
-                <button
+                <Button
                   type="button"
                   key={p.id}
                   onClick={() => setSelectedProviderId(p.id)}
                   className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedProviderId === p.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {p.display_name}
-                </button>
+                </Button>
               ))}
-              <button
+              <Button
                 type="button"
                 className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-sm"
                 onClick={() => {
@@ -1394,7 +1395,7 @@ export const AiProfilesPanel: React.FC = () => {
                 }}
               >
                 + New Provider
-              </button>
+              </Button>
             </div>
           </SettingsCard>
 
@@ -1445,7 +1446,7 @@ export const AiProfilesPanel: React.FC = () => {
                 <ToggleSwitch checked={providerDraft.enabled} onChange={(next) => setProviderDraft((prev) => ({ ...prev, enabled: next }))} />
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
-                <button type="button" onClick={() => void saveProvider()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</button>
+                <Button type="button" onClick={() => void saveProvider()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
                 <CompactIconButton
                   label="Reset provider draft"
                   onClick={() => setProviderDraft(selectedProviderId ? profiles.providers.find((p) => p.id === selectedProviderId) || defaultProvider() : defaultProvider())}
@@ -1466,7 +1467,7 @@ export const AiProfilesPanel: React.FC = () => {
                   </svg>
                 </CompactIconButton>
                 {providerSupportsProbe && (
-                  <button type="button" onClick={() => void testProvider()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60">Test</button>
+                  <Button type="button" onClick={() => void testProvider()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60">Test</Button>
                 )}
                 <CompactIconButton
                   label="Delete provider"
@@ -1498,16 +1499,16 @@ export const AiProfilesPanel: React.FC = () => {
           <SettingsCard>
             <div className="space-y-2 py-2">
               {profiles.models.map((m) => (
-                <button
+                <Button
                   type="button"
                   key={m.id}
                   onClick={() => setSelectedModelId(m.id)}
                   className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedModelId === m.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {m.profile_name}
-                </button>
+                </Button>
               ))}
-              <button
+              <Button
                 type="button"
                 className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-sm"
                 onClick={() => {
@@ -1516,7 +1517,7 @@ export const AiProfilesPanel: React.FC = () => {
                 }}
               >
                 + New Model
-              </button>
+              </Button>
             </div>
           </SettingsCard>
 
@@ -1524,7 +1525,7 @@ export const AiProfilesPanel: React.FC = () => {
             {profiles.providers.length === 0 ? (
               <div className="space-y-2 py-2">
                 <p className="text-sm text-navigation">No providers available.</p>
-                <button type="button" className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary" onClick={() => setActiveTab('providers')}>Create Provider</button>
+                <Button type="button" className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary" onClick={() => setActiveTab('providers')}>Create Provider</Button>
               </div>
             ) : (
               <div className="space-y-3 py-2">
@@ -1564,9 +1565,9 @@ export const AiProfilesPanel: React.FC = () => {
                   </label>
                 )}
                 <div>
-                  <button type="button" className="text-sm text-action hover:underline" onClick={() => setShowModelAdvanced((prev) => !prev)}>
+                  <Button type="button" className="text-sm text-action hover:underline" onClick={() => setShowModelAdvanced((prev) => !prev)}>
                     {showModelAdvanced ? 'Hide advanced' : 'Show advanced'}
-                  </button>
+                  </Button>
                   {showModelAdvanced && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <Input className={`${compactControlClass} w-full`} placeholder="temperature" value={modelDraft.temperature ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, temperature: e.target.value ? Number(e.target.value) : undefined }))} />
@@ -1585,7 +1586,7 @@ export const AiProfilesPanel: React.FC = () => {
                   <ToggleSwitch checked={modelDraft.enabled} onChange={(next) => setModelDraft((prev) => ({ ...prev, enabled: next }))} />
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <button type="button" onClick={() => void saveModel()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</button>
+                  <Button type="button" onClick={() => void saveModel()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
                   <CompactIconButton
                     label="Reset model draft"
                     onClick={() => setModelDraft(selectedModelId ? profiles.models.find((m) => m.id === selectedModelId) || defaultModel() : defaultModel())}
@@ -1605,7 +1606,7 @@ export const AiProfilesPanel: React.FC = () => {
                       <rect x="5" y="5" width="10" height="10" rx="2" />
                     </svg>
                   </CompactIconButton>
-                  <button type="button" onClick={() => void testModel()} disabled={saving || !modelSupportsDirectTest} className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60">Test</button>
+                  <Button type="button" onClick={() => void testModel()} disabled={saving || !modelSupportsDirectTest} className="inline-flex h-8 items-center rounded-lg border border-focus-border bg-action-subtle px-3 text-size-control text-action-text hover:bg-action-subtle disabled:opacity-60">Test</Button>
                   <CompactIconButton
                     label="Delete model"
                     onClick={handleDeleteModelClick}
@@ -1642,14 +1643,14 @@ export const AiProfilesPanel: React.FC = () => {
           <SettingsCard>
             <div className="space-y-2 py-2">
               {SLOT_ORDER.map((slot) => (
-                <button
+                <Button
                   type="button"
                   key={slot}
                   onClick={() => setSelectedSlot(slot)}
                   className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedSlot === slot ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {AGENT_SLOT_LABEL[slot]}
-                </button>
+                </Button>
               ))}
             </div>
           </SettingsCard>
@@ -1677,21 +1678,21 @@ export const AiProfilesPanel: React.FC = () => {
                           </option>
                         ))}
                       </Select>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => agentCopySourceSlot && copyAgentConfigFromSlot(agentCopySourceSlot)}
                         disabled={!agentCopySourceSlot}
                         className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface px-3 text-size-control text-secondary hover:bg-surface-subtle disabled:opacity-60"
                       >
                         Copy Config
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : null}
                 {candidateModels.length === 0 ? (
                   <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3">
                     <p className="text-sm text-warning">No models available for this slot capability.</p>
-                    <button type="button" className="mt-2 inline-flex h-8 items-center rounded-lg border border-warning/25 bg-surface px-3 text-size-control text-warning" onClick={() => setActiveTab('models')}>Go to Models</button>
+                    <Button type="button" className="mt-2 inline-flex h-8 items-center rounded-lg border border-warning/25 bg-surface px-3 text-size-control text-warning" onClick={() => setActiveTab('models')}>Go to Models</Button>
                   </div>
                 ) : (
                   <>
@@ -1729,9 +1730,9 @@ export const AiProfilesPanel: React.FC = () => {
                       </Select>
                     </label>
                     <div>
-                      <button type="button" className="text-sm text-action hover:underline" onClick={() => setShowAgentAdvanced((prev) => !prev)}>
+                      <Button type="button" className="text-sm text-action hover:underline" onClick={() => setShowAgentAdvanced((prev) => !prev)}>
                         {showAgentAdvanced ? 'Hide advanced' : 'Show advanced'}
-                      </button>
+                      </Button>
                       {showAgentAdvanced && (
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <Input className={`${compactControlClass} w-full`} placeholder="temperature" value={agentDraft.temperature ?? ''} onChange={(e) => setAgentDraft((prev) => (prev ? { ...prev, temperature: e.target.value ? Number(e.target.value) : undefined } : prev))} />
@@ -1773,7 +1774,7 @@ export const AiProfilesPanel: React.FC = () => {
                     </div>
                     <SettingsDivider />
                     <div className="flex items-center justify-between">
-                      <button type="button" onClick={() => void saveAgent()} disabled={saving || !agentCanSave} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</button>
+                      <Button type="button" onClick={() => void saveAgent()} disabled={saving || !agentCanSave} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
                       <a href="#" className="text-sm text-action hover:underline">custom prompts</a>
                     </div>
                     {agentDraft.enabled && !agentDraft.primary_model_id && (
