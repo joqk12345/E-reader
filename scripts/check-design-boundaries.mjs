@@ -13,6 +13,9 @@ const settings = read('src/components/Settings.tsx');
 const settingsTypes = read('src/components/settings/settingsTypes.ts');
 const theme = read('src/components/readerTheme.ts');
 const switchPrimitive = read('src/components/ui/Switch.tsx');
+const libraryImport = read('src/features/library/useLibraryImport.ts');
+const reader = read('src/components/Reader.tsx');
+const readerContent = read('src/components/ReaderContent.tsx');
 
 const sections = ['reading', 'editor', 'translation', 'ai', 'audio', 'shortcuts', 'integrations', 'about'];
 for (const section of sections) {
@@ -54,6 +57,16 @@ expect(settings.includes('aria-label="Decrease font size"'), 'Typography control
 expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
 expect(switchPrimitive.includes('aria-label={label}'), 'Switch primitive is missing accessible label support');
 
+for (const importKind of ['importEpub', 'importPdf', 'importMarkdown']) {
+  expect(libraryImport.includes(importKind), `Library import boundary is missing ${importKind}`);
+}
+for (const readerSetting of ['layoutMode', 'bilingualViewMode', 'markdownRenderMode']) {
+  expect(reader.includes(readerSetting) || readerContent.includes(readerSetting), `Reader flow is missing ${readerSetting}`);
+}
+for (const readerSetting of ['fontSize', 'lineHeight', 'contentWidth']) {
+  expect(settings.includes(readerSetting) && readerContent.includes(readerSetting), `Reader flow is missing persisted ${readerSetting}`);
+}
+
 for (const relativePath of ['src/components/Settings.tsx', 'src/components/settings/AiProfilesPanel.tsx']) {
   const source = read(relativePath);
   for (const match of source.matchAll(/<ToggleSwitch\b/g)) {
@@ -67,5 +80,5 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Design boundary checks passed for ${sections.length} settings sections, 5 reader themes, and 15 shared boundaries.`);
+  console.log(`Design boundary checks passed for ${sections.length} settings sections, 5 reader themes, 15 shared boundaries, and 4 reader flow anchors.`);
 }
