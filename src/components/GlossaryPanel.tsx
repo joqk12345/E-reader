@@ -114,7 +114,7 @@ export const GlossaryPanel: React.FC = () => {
                 </div>
 
                 <div className="mt-3">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                  <label className="text-size-meta font-medium uppercase tracking-wide text-muted">
                     Preferred Rendering
                   </label>
                   <input
@@ -129,7 +129,7 @@ export const GlossaryPanel: React.FC = () => {
                 </div>
 
                 <div className="mt-3">
-                  <label className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                  <label className="text-size-meta font-medium uppercase tracking-wide text-muted">
                     Concept Tags
                   </label>
                   <input

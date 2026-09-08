@@ -54,8 +54,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-base leading-none">{getFileTypeIcon()}</span>
           <p className="flex-1 min-w-0 text-xs font-medium text-heading truncate">{document.title}</p>
-          {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
-          <span className="text-[11px] text-muted">{getFileTypeLabel()}</span>
+          {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
+          <span className="text-size-meta text-muted">{getFileTypeLabel()}</span>
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => {
@@ -97,16 +97,16 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-1.5">
               <h3 className="flex-1 min-w-0 text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
-              {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-2 py-0.5">{category}</span>}
-              <span className="text-[11px] text-navigation bg-surface-subtle rounded px-2 py-0.5">{getFileTypeLabel()}</span>
+              {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-2 py-0.5">{category}</span>}
+              <span className="text-size-meta text-navigation bg-surface-subtle rounded px-2 py-0.5">{getFileTypeLabel()}</span>
             </div>
-            <p className="text-[11px] text-muted mt-0.5">
+            <p className="text-size-meta text-muted mt-0.5">
               {document.author ? `${document.author} · ` : ''}Added {formatDate(document.created_at)}
             </p>
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] text-navigation bg-surface-subtle rounded px-1 py-0.5">
+                  <span key={tag} className="text-size-micro text-navigation bg-surface-subtle rounded px-1 py-0.5">
                     #{tag}
                   </span>
                 ))}
@@ -154,18 +154,18 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
             <div className="mt-0.5 flex flex-wrap items-center gap-1">
-              {category && <span className="text-[11px] text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
+              {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
             </div>
             {document.author && (
               <p className="text-xs text-navigation truncate">{document.author}</p>
             )}
-            <p className="text-[11px] text-muted mt-0.5">
+            <p className="text-size-meta text-muted mt-0.5">
               Added {formatDate(document.created_at)}
             </p>
             {tags.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] text-navigation bg-surface-subtle rounded px-1 py-0.5">
+                  <span key={tag} className="text-size-micro text-navigation bg-surface-subtle rounded px-1 py-0.5">
                     #{tag}
                   </span>
                 ))}

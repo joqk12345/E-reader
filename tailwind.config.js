@@ -35,7 +35,17 @@ export default {
       "fontSize": {
         "caption": "var(--font-size-caption)",
         "control": "var(--font-size-control)",
-        "label": "var(--font-size-label)"
+        "label": "var(--font-size-label)",
+        "size-micro": "var(--font-size-micro)",
+        "size-meta": "var(--font-size-meta)",
+        "size-title": "var(--font-size-title)",
+        "size-subheading": "var(--font-size-subheading)",
+        "size-brand": "var(--font-size-brand)",
+        "size-heading": "var(--font-size-heading)",
+        "size-display": "var(--font-size-display)",
+        "size-hero": "var(--font-size-hero)",
+        "size-reading-sm": "var(--font-size-reading-sm)",
+        "size-reading-md": "var(--font-size-reading-md)"
       },
       "spacing": {
         "switch-thumb": "1.125rem",

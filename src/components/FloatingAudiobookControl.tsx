@@ -85,7 +85,7 @@ export const FloatingAudiobookControl: React.FC = () => {
       <div className="px-3 py-2 border-b border-border flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-secondary">Audio Player</p>
-          {state.currentProvider && <p className="text-[11px] text-muted">Provider: {state.currentProvider}</p>}
+          {state.currentProvider && <p className="text-size-meta text-muted">Provider: {state.currentProvider}</p>}
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -112,7 +112,7 @@ export const FloatingAudiobookControl: React.FC = () => {
             <p className="text-xs text-secondary line-clamp-2 min-h-[2rem]">
               {state.currentSentence || (hasQueue ? 'Ready to play' : 'No readable sentence found')}
             </p>
-            {state.error && <p className="mt-1 text-[11px] text-danger line-clamp-2">{state.error}</p>}
+            {state.error && <p className="mt-1 text-size-meta text-danger line-clamp-2">{state.error}</p>}
           </div>
           <div className="px-3 pb-3 flex gap-2">
             <button

@@ -18,7 +18,7 @@ export function Tabs<T extends string>({
           role="tab"
           aria-selected={value === item.value}
           onClick={() => onChange(item.value)}
-          className={`rounded-full px-3 py-1.5 text-control font-medium transition ${value === item.value ? 'bg-surface text-heading shadow-sm' : 'text-navigation hover:text-heading'}`}
+          className={`rounded-full px-3 py-1.5 text-size-control font-medium transition ${value === item.value ? 'bg-surface text-heading shadow-sm' : 'text-navigation hover:text-heading'}`}
         >
           {item.label}
         </button>

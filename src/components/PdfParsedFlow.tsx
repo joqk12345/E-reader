@@ -288,7 +288,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                     return (
                       <div key={node.id}>
                         <div className={`overflow-x-auto rounded-lg border p-2 ${node.highlight ? 'border-warning/25 bg-warning-subtle' : 'border-border bg-surface-subtle'}`}>
-                          <table className="min-w-full border-collapse text-left text-[0.92em] text-foreground">
+                          <table className="min-w-full border-collapse text-left text-size-reading-md text-foreground">
                             <tbody>
                               {rows.map((row, rowIdx) => (
                                 <tr key={`${node.id}-r-${rowIdx}`} className="border-b border-border last:border-b-0">
@@ -315,7 +315,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                     <div key={node.id}>
                       <div className={`rounded-lg border p-2 ${node.highlight ? 'border-warning/25 bg-warning-subtle' : 'border-border bg-surface-subtle'}`}>
                         <pre
-                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-secondary"
+                          className="overflow-x-auto whitespace-pre-wrap font-mono text-size-reading-sm leading-relaxed text-secondary"
                           style={{ fontSize: `${Math.max(readerFontSize - 2, 12)}px` }}
                         >
                           {node.text}
@@ -335,7 +335,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                         className={`rounded-lg border p-2 ${node.highlight ? 'bg-warning-subtle' : 'border-action-subtle bg-action-subtle/40'}`}
                       >
                         <pre
-                          className="overflow-x-auto whitespace-pre-wrap font-mono text-[0.9em] leading-relaxed text-secondary"
+                          className="overflow-x-auto whitespace-pre-wrap font-mono text-size-reading-sm leading-relaxed text-secondary"
                           style={{ fontSize: `${Math.max(readerFontSize - 1, 12)}px` }}
                         >
                           {node.text}

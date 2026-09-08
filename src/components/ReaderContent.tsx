@@ -3295,7 +3295,7 @@ export function ReaderContent() {
         >
           <div className="mb-2 flex items-center gap-1 rounded-2xl border border-control-border bg-gradient-to-r from-surface-subtle to-surface-hover px-2 py-1.5 shadow-sm backdrop-blur">
             <button
-              className="rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-surface-subtle"
+              className="rounded-md px-1.5 py-0.5 text-size-meta text-muted hover:bg-surface-subtle"
               title="Drag to move panel"
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
@@ -3349,12 +3349,12 @@ export function ReaderContent() {
                         if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
                       }}
                       placeholder="Type your question and press Enter"
-                      className="w-full bg-transparent text-[13px] text-secondary placeholder:text-faint focus:outline-none"
+                      className="w-full bg-transparent text-size-control text-secondary placeholder:text-faint focus:outline-none"
                     />
                     <button
                       onClick={handleAskQuestionFromSelection}
                       disabled={!selectionQuestion.trim()}
-                      className="shrink-0 whitespace-nowrap rounded-full border border-control-border bg-surface-subtle px-3.5 py-1.5 text-[12px] font-medium text-secondary hover:border-control-border hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-control-border bg-surface-subtle px-3.5 py-1.5 text-size-caption font-medium text-secondary hover:border-control-border hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Submit
                     </button>
@@ -3365,7 +3365,7 @@ export function ReaderContent() {
                       if (isSelectionReorderMode) return;
                       handleSelectionAction(action);
                     }}
-                    className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[12px] font-medium transition ${
+                    className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-size-caption font-medium transition ${
                       isSelectionReorderMode
                         ? pointerSortAction === action
                           ? 'cursor-grabbing border-control-border bg-surface-hover text-foreground'
@@ -3374,7 +3374,7 @@ export function ReaderContent() {
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5 align-middle">
-                      <span className="text-[11px] text-muted">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
+                      <span className="text-size-meta text-muted">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
                       <span>{selectionActionLabel[action]}</span>
                     </span>
                   </button>
@@ -3385,7 +3385,7 @@ export function ReaderContent() {
             <div className="relative">
               <button
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
-                className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-[12px] text-secondary hover:bg-surface-subtle"
+                className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                 title="More actions"
               >
                 ▾
@@ -3417,16 +3417,16 @@ export function ReaderContent() {
             </div>
             <button
               onClick={clearSelectionDraft}
-              className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-[12px] text-secondary hover:bg-surface-subtle"
+              className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
               title="Close"
             >
               ×
             </button>
           </div>
           {isSelectionReorderMode && (
-            <p className="mb-1.5 text-[10px] text-muted">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
+            <p className="mb-1.5 text-size-micro text-muted">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
           )}
-          <p className="mb-1.5 line-clamp-2 rounded border border-control-border bg-surface-subtle px-2 py-1 text-[11px] text-navigation">
+          <p className="mb-1.5 line-clamp-2 rounded border border-control-border bg-surface-subtle px-2 py-1 text-size-meta text-navigation">
             “{selectionDraft.selectedText}”
           </p>
           {selectionActionMode === 'highlight' && (

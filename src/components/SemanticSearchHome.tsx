@@ -110,7 +110,7 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
       </div>
 
       {statusBar && (
-        <div className="h-7 border-t border-border bg-surface px-3 text-[11px] text-navigation flex items-center overflow-x-auto whitespace-nowrap">
+        <div className="h-7 border-t border-border bg-surface px-3 text-size-meta text-navigation flex items-center overflow-x-auto whitespace-nowrap">
           {statusBar}
         </div>
       )}

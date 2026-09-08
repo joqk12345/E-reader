@@ -6,7 +6,7 @@ export const compactControlClass = inputClassName;
 
 export function StatusDot({ success, text }: { success: boolean; text: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-caption ${success ? 'text-success' : 'text-muted'}`}>
+    <span className={`inline-flex items-center gap-1.5 text-size-caption ${success ? 'text-success' : 'text-muted'}`}>
       <span className={`h-2 w-2 rounded-full ${success ? 'bg-success-indicator' : 'bg-control-border'}`} />
       {text}
     </span>
@@ -37,8 +37,8 @@ export function SettingRow({
   return (
     <div className={`grid grid-cols-setting-row items-center gap-6 py-3 ${disabled ? 'opacity-55 saturate-0' : ''}`}>
       <div>
-        <p className="text-label font-semibold text-heading">{title}</p>
-        {description ? <p className="mt-0.5 text-caption text-muted">{description}</p> : null}
+        <p className="text-size-label font-semibold text-heading">{title}</p>
+        {description ? <p className="mt-0.5 text-size-caption text-muted">{description}</p> : null}
       </div>
       <div className="flex items-center justify-end gap-2.5">{right}</div>
     </div>
@@ -65,7 +65,7 @@ export function SidebarNavItem({
       }`}
     >
       <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center ${active ? 'text-action' : 'text-muted'}`}>{icon}</span>
-      <span className="text-caption font-medium">{label}</span>
+      <span className="text-size-caption font-medium">{label}</span>
     </button>
   );
 }
@@ -76,7 +76,7 @@ export function KVInfo({
   rows: Array<{ key: string; value: ReactNode }>;
 }) {
   return (
-    <div className="space-y-1.5 text-control">
+    <div className="space-y-1.5 text-size-control">
       {rows.map((row) => (
         <div key={row.key} className="grid grid-cols-[1fr_auto] items-center gap-4">
           <span className="text-faint">{row.key}</span>

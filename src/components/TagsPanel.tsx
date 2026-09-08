@@ -349,7 +349,7 @@ export const TagsPanel: React.FC = () => {
               >
                 #{tag.tag_name}
                 {tag.is_temporary && (
-                  <span className="rounded bg-warning-subtle px-1 text-[10px] text-warning">temp</span>
+                  <span className="rounded bg-warning-subtle px-1 text-size-micro text-warning">temp</span>
                 )}
                 <button
                   type="button"
@@ -395,18 +395,18 @@ export const TagsPanel: React.FC = () => {
                         <span className="break-words text-sm font-semibold text-heading">
                           #{suggestion.proposed_name}
                         </span>
-                        <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                        <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro uppercase tracking-wide text-muted">
                           {suggestion.source}
                         </span>
                         {matched && suggestion.matched_tag_name && (
-                          <span className="rounded bg-success/10 px-1.5 py-0.5 text-[10px] text-success">
+                          <span className="rounded bg-success/10 px-1.5 py-0.5 text-size-micro text-success">
                             match: {suggestion.matched_tag_name}
                           </span>
                         )}
                       </div>
                       {suggestion.reason && <p className="mt-1 text-xs text-navigation">{suggestion.reason}</p>}
                       {typeof suggestion.confidence === 'number' && (
-                        <p className="mt-1 text-[11px] text-muted">
+                        <p className="mt-1 text-size-meta text-muted">
                           Confidence: {(suggestion.confidence * 100).toFixed(0)}%
                         </p>
                       )}
@@ -416,7 +416,7 @@ export const TagsPanel: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => void handleAcceptMatchedSuggestion(suggestion.id)}
-                          className="rounded-md bg-success px-2 py-1 text-[11px] font-medium text-on-action hover:bg-success"
+                          className="rounded-md bg-success px-2 py-1 text-size-meta font-medium text-on-action hover:bg-success"
                         >
                           Accept
                         </button>
@@ -425,14 +425,14 @@ export const TagsPanel: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => void handleCreateTemporaryFromSuggestion(suggestion)}
-                            className="rounded-md bg-warning px-2 py-1 text-[11px] font-medium text-on-action hover:bg-warning"
+                            className="rounded-md bg-warning px-2 py-1 text-size-meta font-medium text-on-action hover:bg-warning"
                           >
                             Create Temp
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleMapSuggestion(suggestion)}
-                            className="rounded-md border border-control-border px-2 py-1 text-[11px] font-medium text-secondary hover:bg-surface-subtle"
+                            className="rounded-md border border-control-border px-2 py-1 text-size-meta font-medium text-secondary hover:bg-surface-subtle"
                           >
                             Map
                           </button>
@@ -441,7 +441,7 @@ export const TagsPanel: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => void handleRejectSuggestion(suggestion.id)}
-                        className="rounded-md border border-danger/25 px-2 py-1 text-[11px] font-medium text-danger hover:bg-danger-subtle"
+                        className="rounded-md border border-danger/25 px-2 py-1 text-size-meta font-medium text-danger hover:bg-danger-subtle"
                       >
                         Reject
                       </button>
@@ -474,7 +474,7 @@ export const TagsPanel: React.FC = () => {
                 className="inline-flex items-center gap-1 rounded-full border border-control-border px-2.5 py-1 text-xs text-secondary hover:border-focus-border hover:bg-action-subtle"
               >
                 <span>#{tag.name}</span>
-                <span className="text-[10px] text-faint">{tag.usage_count}</span>
+                <span className="text-size-micro text-faint">{tag.usage_count}</span>
               </button>
             ))
           )}
@@ -487,7 +487,7 @@ export const TagsPanel: React.FC = () => {
           <div className="mt-3 rounded-lg border border-action-subtle bg-action-subtle px-3 py-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-action-text">Original Article</div>
+                <div className="text-size-meta font-semibold uppercase tracking-wide text-action-text">Original Article</div>
                 <div className="mt-1 truncate text-sm text-action">{relatedOriginDoc.title}</div>
               </div>
               <button
@@ -514,11 +514,11 @@ export const TagsPanel: React.FC = () => {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-heading">{doc.title}</div>
-                    <div className="mt-1 text-[11px] text-muted">
+                    <div className="mt-1 text-size-meta text-muted">
                       {doc.shared_tag_count} shared tags · {new Date(doc.updated_at * 1000).toLocaleDateString()}
                     </div>
                   </div>
-                  <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] uppercase text-navigation">
+                  <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro uppercase text-navigation">
                     {doc.file_type}
                   </span>
                 </div>
@@ -527,7 +527,7 @@ export const TagsPanel: React.FC = () => {
                     {doc.shared_tags.slice(0, 5).map((tag) => (
                       <span
                         key={`${doc.doc_id}-${tag}`}
-                        className="rounded bg-surface-subtle px-1.5 py-0.5 text-[10px] text-navigation"
+                        className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro text-navigation"
                       >
                         #{tag}
                       </span>

@@ -27,8 +27,8 @@ export function Dialog({
         className="w-full max-w-md rounded-panel border border-border bg-surface p-5 shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <h3 id={titleId} className="font-serif text-[21px] font-medium tracking-tight text-heading">{title}</h3>
-        {description && <p className="mt-1 text-control leading-5 text-muted">{description}</p>}
+        <h3 id={titleId} className="font-serif text-size-display font-medium tracking-tight text-heading">{title}</h3>
+        {description && <p className="mt-1 text-size-control leading-5 text-muted">{description}</p>}
         {children}
       </div>
     </div>

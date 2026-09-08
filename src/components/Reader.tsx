@@ -585,7 +585,7 @@ export function Reader() {
                       void copySourceUrl();
                       setSourceLinkMenuOpen(false);
                     }}
-                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[15px] leading-6 text-heading hover:bg-surface-hover/80"
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-size-label leading-6 text-heading hover:bg-surface-hover/80"
                   >
                     Copy Link
                   </button>
@@ -594,7 +594,7 @@ export function Reader() {
                       openSourceUrlInBrowser();
                       setSourceLinkMenuOpen(false);
                     }}
-                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[15px] leading-6 text-heading hover:bg-surface-hover/80"
+                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-size-label leading-6 text-heading hover:bg-surface-hover/80"
                   >
                     Open in DefaultBrowser
                   </button>
@@ -628,7 +628,7 @@ export function Reader() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <ReaderContent />
           {!readingMode && (
-            <div className="h-7 border-t border-border bg-surface px-3 text-[11px] text-navigation flex items-center justify-end overflow-x-auto whitespace-nowrap">
+            <div className="h-7 border-t border-border bg-surface px-3 text-size-meta text-navigation flex items-center justify-end overflow-x-auto whitespace-nowrap">
               <span>
                 Word Stats: Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount} · Page {contentStats.currentPage}/{contentStats.totalPages}
               </span>

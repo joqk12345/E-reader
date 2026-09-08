@@ -669,13 +669,13 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       >
         <aside className="flex w-[208px] shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
           <div className="mb-6 px-2">
-            <div className="font-serif text-[19px] font-medium tracking-tight text-heading">Reader</div>
-            <div className="mt-1 text-[11px] leading-4 text-muted">A quiet place for difficult books.</div>
+            <div className="font-serif text-size-brand font-medium tracking-tight text-heading">Reader</div>
+            <div className="mt-1 text-size-meta leading-4 text-muted">A quiet place for difficult books.</div>
           </div>
           <nav className="space-y-5">
             {navGroups.map((group) => (
               <div key={group.label}>
-                <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{group.label}</div>
+                <div className="mb-1 px-2 text-size-micro font-semibold uppercase tracking-[0.14em] text-faint">{group.label}</div>
                 <div className="space-y-0.5">
                   {group.items.map((item) => {
                     const active = activeSection === item.id;
@@ -693,7 +693,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
               </div>
             ))}
           </nav>
-          <div className="mt-auto border-t border-border px-2 pt-4 text-[11px] leading-4 text-muted">
+          <div className="mt-auto border-t border-border px-2 pt-4 text-size-meta leading-4 text-muted">
             Changes are saved when you choose <span className="font-medium text-secondary">Save settings</span>.
           </div>
         </aside>
@@ -701,8 +701,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="flex items-center justify-between border-b border-border bg-surface/90 px-8 py-4">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-[21px] font-medium tracking-tight text-heading">Settings</h1>
-              <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-[10px] font-medium text-muted">⌘ ,</span>
+              <h1 className="font-serif text-size-display font-medium tracking-tight text-heading">Settings</h1>
+              <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-size-micro font-medium text-muted">⌘ ,</span>
             </div>
             <button
               type="button"
@@ -716,9 +716,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
           <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-action">{activeSectionDetails.eyebrow}</div>
-              <h2 className="font-serif text-[29px] font-medium leading-tight tracking-tight text-heading">{activeSectionDetails.title}</h2>
-              <p className="mt-2 max-w-xl text-control leading-5 text-muted">{activeSectionDetails.description}</p>
+              <div className="mb-2 text-size-micro font-semibold uppercase tracking-[0.16em] text-action">{activeSectionDetails.eyebrow}</div>
+              <h2 className="font-serif text-size-hero font-medium leading-tight tracking-tight text-heading">{activeSectionDetails.title}</h2>
+              <p className="mt-2 max-w-xl text-size-control leading-5 text-muted">{activeSectionDetails.description}</p>
             </div>
 
             {message && (
@@ -801,7 +801,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     <>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
-                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.fontSize}px</span>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.fontSize}px</span>
                     </>
                   }
                 />
@@ -812,7 +812,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     <>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
-                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
                     </>
                   }
                 />
@@ -823,7 +823,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     <>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
-                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.contentWidth}em</span>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.contentWidth}em</span>
                     </>
                   }
                 />
@@ -834,7 +834,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     <>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</button>
                       <button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</button>
-                      <span className="w-14 text-right text-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
                     </>
                   }
                 />
@@ -999,18 +999,18 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   />
                   <SettingsDivider />
                   <div className="px-1 py-2">
-                    <p className="flex items-center gap-2 text-[13px] text-muted">
+                    <p className="flex items-center gap-2 text-size-control text-muted">
                       <span>Listening on</span>
-                      <code className="rounded bg-surface-subtle px-2 py-0.5 font-mono text-[12px] text-secondary">{listeningLabel}</code>
+                      <code className="rounded bg-surface-subtle px-2 py-0.5 font-mono text-size-caption text-secondary">{listeningLabel}</code>
                       <button
                         type="button"
                         onClick={() => void handleCopy(mcpLaunchCommand || mcpSnippet, 'MCP command copied.')}
-                        className="rounded border border-control-border bg-surface px-1.5 py-0.5 text-[11px] text-navigation hover:bg-surface-subtle"
+                        className="rounded border border-control-border bg-surface px-1.5 py-0.5 text-size-meta text-navigation hover:bg-surface-subtle"
                       >
                         Copy
                       </button>
                     </p>
-                    <p className="mt-2 text-[12px] text-muted">
+                    <p className="mt-2 text-size-caption text-muted">
                       Project-level stdio MCP server. AI clients discover it via <code>.mcp.json</code>.
                     </p>
                   </div>
@@ -1020,14 +1020,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       type="button"
                       onClick={() => void loadMcpStatus(true)}
                       disabled={isTestingMcp}
-                      className="rounded-lg border border-control-border bg-surface-subtle px-2.5 py-1.5 text-[13px] text-secondary shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-control-border bg-surface-subtle px-2.5 py-1.5 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isTestingMcp ? 'Checking...' : 'Test Connection'}
                     </button>
                     <button
                       type="button"
                       onClick={() => void loadMcpStatus(false)}
-                      className="rounded-lg border border-control-border bg-surface px-2.5 py-1.5 text-[13px] text-secondary hover:bg-surface-subtle"
+                      className="rounded-lg border border-control-border bg-surface px-2.5 py-1.5 text-size-control text-secondary hover:bg-surface-subtle"
                     >
                       Refresh Status
                     </button>
@@ -1039,7 +1039,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     rows={[
                       {
                         key: 'Version',
-                        value: <span className="font-mono text-[11px] text-secondary">{mcpVersion}</span>,
+                        value: <span className="font-mono text-size-meta text-secondary">{mcpVersion}</span>,
                       },
                       {
                         key: 'Tools Available',
@@ -1062,7 +1062,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       {
                         key: 'Config',
                         value: (
-                          <span className="font-mono text-[11px] text-secondary">
+                          <span className="font-mono text-size-meta text-secondary">
                             {mcpStatus?.config_exists ? 'loaded' : 'missing'}
                           </span>
                         ),
@@ -1070,7 +1070,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     ]}
                   />
                   {mcpStatus?.test_error ? (
-                    <div className="mt-3 rounded-lg border border-danger/25 bg-danger-subtle px-3 py-2 text-[12px] text-danger">
+                    <div className="mt-3 rounded-lg border border-danger/25 bg-danger-subtle px-3 py-2 text-size-caption text-danger">
                       {mcpStatus.test_error}
                     </div>
                   ) : null}
@@ -1079,21 +1079,21 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingsCard>
                   <div className="space-y-3 py-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-[14px] font-semibold text-heading">Install MCP Configuration</div>
+                      <div className="text-size-subheading font-semibold text-heading">Install MCP Configuration</div>
                       <button
                         type="button"
                         onClick={() => void handleCopy(mcpSnippet, 'MCP snippet copied.')}
-                        className="rounded-lg border border-control-border bg-surface px-2.5 py-1 text-[12px] text-secondary hover:bg-surface-subtle"
+                        className="rounded-lg border border-control-border bg-surface px-2.5 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                       >
                         Copy
                       </button>
                     </div>
-                    <pre className="overflow-x-auto rounded-lg bg-heading p-3 text-[12px] text-surface-subtle">{mcpSnippet}</pre>
+                    <pre className="overflow-x-auto rounded-lg bg-heading p-3 text-size-caption text-surface-subtle">{mcpSnippet}</pre>
                     <a
                       href={MCP_SETUP_DOCS_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-[13px] text-action hover:underline"
+                      className="inline-flex items-center gap-1 text-size-control text-action hover:underline"
                     >
                       MCP Setup Guide ↗
                     </a>
@@ -1119,8 +1119,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         className="h-14 w-14 rounded-xl border border-border bg-surface p-1 shadow-sm"
                       />
                       <div>
-                        <div className="text-[20px] leading-none font-semibold tracking-tight text-heading group-hover:text-action">Reader</div>
-                        <div className="mt-1 text-[13px] text-muted">Version {appVersion}</div>
+                        <div className="text-size-heading leading-none font-semibold tracking-tight text-heading group-hover:text-action">Reader</div>
+                        <div className="mt-1 text-size-control text-muted">Version {appVersion}</div>
                       </div>
                     </a>
                     <div className="flex flex-col items-end gap-1.5 pt-1">
@@ -1129,7 +1129,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_WEBSITE_URL)}
-                        className="flex items-center gap-1.5 text-[15px] text-muted transition-colors hover:text-action"
+                        className="flex items-center gap-1.5 text-size-label text-muted transition-colors hover:text-action"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                           <circle cx="12" cy="12" r="9" />
@@ -1142,7 +1142,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_GITHUB_URL)}
-                        className="flex items-center gap-1.5 text-[15px] text-muted transition-colors hover:text-action"
+                        className="flex items-center gap-1.5 text-size-label text-muted transition-colors hover:text-action"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.8 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.8 11.8 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.5-2.8 5.5-5.5 5.8.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
@@ -1157,19 +1157,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   <SettingsCard>
                     <div className="flex items-start justify-between gap-4 px-1 py-1">
                       <div>
-                        <div className="text-[20px] leading-tight font-semibold tracking-tight text-heading">Update Available</div>
-                        <div className="mt-3 text-[18px] leading-tight font-semibold tracking-tight text-heading">
+                        <div className="text-size-heading leading-tight font-semibold tracking-tight text-heading">Update Available</div>
+                        <div className="mt-3 text-size-title leading-tight font-semibold tracking-tight text-heading">
                           Version {updateResult?.latestVersion}
-                          <span className="ml-2 text-[15px] font-medium text-faint">(current: {appVersion})</span>
+                          <span className="ml-2 text-size-label font-medium text-faint">(current: {appVersion})</span>
                         </div>
-                        <div className="mt-2 text-[13px] text-muted">Released: {updatePublishedAt}</div>
-                        <div className="mt-4 text-[13px] text-muted">See release notes at</div>
+                        <div className="mt-2 text-size-control text-muted">Released: {updatePublishedAt}</div>
+                        <div className="mt-4 text-size-control text-muted">See release notes at</div>
                         <a
                           href={updateResult?.releaseUrl || APP_RELEASES_URL}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => handleExternalLinkClick(event, updateResult?.releaseUrl || APP_RELEASES_URL)}
-                          className="text-[13px] text-navigation hover:text-action hover:underline break-all"
+                          className="text-size-control text-navigation hover:text-action hover:underline break-all"
                         >
                           {updateResult?.releaseUrl || APP_RELEASES_URL}
                         </a>
@@ -1178,14 +1178,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         <button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
-                          className="rounded-lg bg-action px-4 py-2.5 text-[13px] font-medium text-on-action hover:bg-action-text"
+                          className="rounded-lg bg-action px-4 py-2.5 text-size-control font-medium text-on-action hover:bg-action-text"
                         >
                           Download
                         </button>
                         <button
                           type="button"
                           onClick={handleSkipThisVersion}
-                          className="rounded-lg border border-control-border bg-surface px-4 py-2.5 text-[13px] font-medium text-secondary hover:bg-surface-subtle"
+                          className="rounded-lg border border-control-border bg-surface px-4 py-2.5 text-size-control font-medium text-secondary hover:bg-surface-subtle"
                         >
                           Skip
                         </button>
@@ -1197,7 +1197,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingsCard>
                   <div className="space-y-3 px-1 py-1">
                     <div>
-                      <div className="text-[20px] leading-tight font-semibold tracking-tight text-heading">Updates</div>
+                      <div className="text-size-heading leading-tight font-semibold tracking-tight text-heading">Updates</div>
                     </div>
                     <div className="rounded-xl border border-border bg-surface-subtle px-4 py-3">
                       <SettingRow
@@ -1207,31 +1207,31 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       />
                       <SettingsDivider />
                       <div className="flex items-center justify-between gap-4">
-                        <div className="text-[15px] font-semibold text-heading">Check for updates</div>
+                        <div className="text-size-label font-semibold text-heading">Check for updates</div>
                         <div className="flex items-center gap-4">
-                          <div className="text-[15px] text-action">{updateStatusText}</div>
+                          <div className="text-size-label text-action">{updateStatusText}</div>
                           <button
                             type="button"
                             onClick={() => void runUpdateCheck(true)}
                             disabled={isCheckingUpdates}
-                            className="rounded-lg border border-control-border bg-surface px-3 py-1.5 text-[13px] font-medium text-secondary hover:bg-surface-subtle disabled:opacity-60"
+                            className="rounded-lg border border-control-border bg-surface px-3 py-1.5 text-size-control font-medium text-secondary hover:bg-surface-subtle disabled:opacity-60"
                           >
                             {isCheckingUpdates ? 'Checking...' : 'Check Now'}
                           </button>
                         </div>
                       </div>
-                      <div className="mt-2 text-[12px] text-muted">Last checked: {updateCheckedAt}</div>
+                      <div className="mt-2 text-size-caption text-muted">Last checked: {updateCheckedAt}</div>
                     </div>
                     <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-subtle px-4 py-3">
                       <div>
-                        <div className="text-[15px] font-semibold text-heading">Current version: {appVersion}</div>
-                        <div className="text-[13px] text-muted">{updateSubtext}</div>
+                        <div className="text-size-label font-semibold text-heading">Current version: {appVersion}</div>
+                        <div className="text-size-control text-muted">{updateSubtext}</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
-                          className="min-w-[132px] rounded-lg bg-action px-2.5 py-1 text-[12px] font-medium text-on-action hover:bg-action-text"
+                          className="min-w-[132px] rounded-lg bg-action px-2.5 py-1 text-size-caption font-medium text-on-action hover:bg-action-text"
                         >
                           {updateResult?.updateAvailable ? `Download v${updateResult.latestVersion}` : 'Open Releases'}
                         </button>
@@ -1251,7 +1251,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
-                className="rounded-xl border border-control-border bg-surface px-4 py-2 text-control font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-50"
+                className="rounded-xl border border-control-border bg-surface px-4 py-2 text-size-control font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1259,7 +1259,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={isSaving}
-                className="rounded-xl bg-action px-4 py-2 text-control font-medium text-on-action shadow-sm transition hover:bg-action-text disabled:opacity-50"
+                className="rounded-xl bg-action px-4 py-2 text-size-control font-medium text-on-action shadow-sm transition hover:bg-action-text disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save Settings'}
               </button>

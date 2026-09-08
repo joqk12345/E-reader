@@ -17,6 +17,7 @@ collect('src');
 const rules = [
   ['raw color', /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?)\((?!\s*var\(--color-)/i],
   ['palette utility', /\b(?:bg|text|border|ring|outline|fill|stroke|divide|from|via|to|shadow|decoration|placeholder|accent|caret)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b|\b(?:bg|text|border|ring|fill|stroke)-(?:white|black)\b/],
+  ['arbitrary font size', /\btext-\[[^\]]+\]/],
 ];
 const failures = [];
 for (const file of files) {

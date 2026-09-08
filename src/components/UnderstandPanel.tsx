@@ -692,20 +692,20 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
         </div>
 
         <div className="rounded-lg border border-border bg-surface-subtle px-3 py-2">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Selection</div>
+          <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Selection</div>
           <div className="mt-1 text-sm leading-relaxed text-foreground">{selectedText || 'No selection yet.'}</div>
         </div>
 
         {sentence && sentence.trim() && sentence.trim() !== selectedText.trim() && (
           <div className="rounded-lg border border-border bg-surface px-3 py-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Sentence Context</div>
+            <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Sentence Context</div>
             <div className="mt-1 text-sm leading-relaxed text-secondary">{sentence}</div>
           </div>
         )}
 
         {mode === 'context' && sectionContext && (
           <div className="rounded-lg border border-border bg-surface px-3 py-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Nearby Section Context</div>
+            <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Nearby Section Context</div>
             <pre className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-secondary font-sans">
               {sectionContext}
             </pre>
@@ -752,7 +752,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
               {mode === 'term' && termInsight ? (
                 <div className="space-y-4 pr-20">
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                    <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                       Term Meaning
                     </div>
                     <div className="mt-1 text-sm leading-relaxed text-foreground">
@@ -760,7 +760,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                     </div>
                   </div>
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                    <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                       Why It Matters Here
                     </div>
                     <div className="mt-1 text-sm leading-relaxed text-foreground">
@@ -769,7 +769,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                      <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                         Common Renderings In This Document
                       </div>
                       <button
@@ -811,7 +811,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                     )}
                   </div>
                   <div>
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                    <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                       Concept Tags
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -844,7 +844,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       className="block w-full rounded-md border border-border bg-surface-subtle px-3 py-2 text-left transition-colors hover:border-action-subtle hover:bg-action-subtle"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                        <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                           {item.sectionTitle}
                         </div>
                         <span className="text-xs text-action">Jump</span>

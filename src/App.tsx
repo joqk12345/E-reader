@@ -373,8 +373,8 @@ function App() {
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-action text-sm font-semibold text-on-action shadow-sm">R</div>
                   <div className="leading-none">
-                    <div className="font-serif text-[18px] font-medium tracking-tight text-heading">Reader</div>
-                    <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Your reading desk</div>
+                    <div className="font-serif text-size-title font-medium tracking-tight text-heading">Reader</div>
+                    <div className="mt-1 text-size-micro font-medium uppercase tracking-[0.16em] text-muted">Your reading desk</div>
                   </div>
                 </div>
 
@@ -389,7 +389,7 @@ function App() {
                 <button
                   type="button"
                   onClick={() => openSettings('reading')}
-                  className="inline-flex items-center gap-2 rounded-full border border-control-border bg-surface px-3 py-1.5 text-control font-medium text-secondary transition hover:border-focus-border hover:text-action-text"
+                  className="inline-flex items-center gap-2 rounded-full border border-control-border bg-surface px-3 py-1.5 text-size-control font-medium text-secondary transition hover:border-focus-border hover:text-action-text"
                 >
                   <span aria-hidden="true">⚙</span>
                   Preferences

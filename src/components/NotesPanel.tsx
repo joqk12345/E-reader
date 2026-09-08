@@ -207,7 +207,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
         {currentDocNotes.map((note) => (
           <div key={note.id} className="border border-border rounded-lg p-3 bg-surface">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-muted">{formatTime(note.updatedAt)}</span>
+              <span className="text-size-meta text-muted">{formatTime(note.updatedAt)}</span>
               <button
                 onClick={() => deleteNote(note.id)}
                 className="text-xs text-danger hover:text-danger"
