@@ -53,8 +53,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         onClick={onClick}
       >
         <div className="flex items-center gap-2">
-          <span className="text-base leading-none">{getFileTypeIcon()}</span>
-          <p className="flex-1 min-w-0 text-xs font-medium text-heading truncate">{document.title}</p>
+          <span className="text-size-body leading-none">{getFileTypeIcon()}</span>
+          <p className="flex-1 min-w-0 text-size-caption font-medium text-heading truncate">{document.title}</p>
           {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
           <span className="text-size-meta text-muted">{getFileTypeLabel()}</span>
           <div className="flex items-center gap-1">
@@ -69,7 +69,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               aria-label={favoriteButtonTitle}
               title={favoriteButtonTitle}
             >
-              <span className="text-lg leading-none">☆</span>
+              <span className="text-size-title leading-none">☆</span>
             </Button>
             <Button
               variant="ghost"
@@ -98,10 +98,10 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         onClick={onClick}
       >
         <div className="flex items-start gap-2">
-          <span className="text-lg leading-none">{getFileTypeIcon()}</span>
+          <span className="text-size-title leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-1.5">
-              <h3 className="flex-1 min-w-0 text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
+              <h3 className="flex-1 min-w-0 text-size-subheading font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
               {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-2 py-0.5">{category}</span>}
               <span className="text-size-meta text-navigation bg-surface-subtle rounded px-2 py-0.5">{getFileTypeLabel()}</span>
             </div>
@@ -130,7 +130,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               aria-label={favoriteButtonTitle}
               title={favoriteButtonTitle}
             >
-              <span className="text-lg leading-none">☆</span>
+              <span className="text-size-title leading-none">☆</span>
             </Button>
             <Button
               variant="ghost"
@@ -159,14 +159,14 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-2.5 flex-1">
-          <span className="text-xl leading-none">{getFileTypeIcon()}</span>
+          <span className="text-size-heading leading-none">{getFileTypeIcon()}</span>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
+            <h3 className="text-size-subheading font-semibold text-heading leading-tight line-clamp-2 break-words">{document.title}</h3>
             <div className="mt-0.5 flex flex-wrap items-center gap-1">
               {category && <span className="text-size-meta text-action-text bg-action-subtle rounded px-1.5 py-0.5">{category}</span>}
             </div>
             {document.author && (
-              <p className="text-xs text-navigation truncate">{document.author}</p>
+              <p className="text-size-caption text-navigation truncate">{document.author}</p>
             )}
             <p className="text-size-meta text-muted mt-0.5">
               Added {formatDate(document.created_at)}
@@ -194,7 +194,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             aria-label={favoriteButtonTitle}
             title={favoriteButtonTitle}
           >
-            <span className="text-lg leading-none">☆</span>
+            <span className="text-size-title leading-none">☆</span>
           </Button>
           <Button
             variant="ghost"

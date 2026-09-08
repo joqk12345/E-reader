@@ -152,23 +152,23 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-navigation">
+          <span className="text-size-subheading text-navigation">
             Notes Target: <span className="font-medium text-heading">{currentDocTitle}</span>
           </span>
-          <span className="text-xs text-muted">{currentDocNotes.length} notes</span>
+          <span className="text-size-caption text-muted">{currentDocNotes.length} notes</span>
         </div>
         <div className="flex items-center gap-2">
           <PanelButton
             onClick={exportJson}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
-            className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Export JSON
           </PanelButton>
           <PanelButton
             onClick={() => void exportMarkdown()}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
-            className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Copy Markdown
           </PanelButton>
@@ -181,28 +181,28 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           placeholder="Paste notes JSON for import..."
-          className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
+          className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
         />
         <div className="flex items-center justify-between">
           <PanelButton
             onClick={importFromJson}
             disabled={!importText.trim()}
-            className="px-2 py-1 text-xs border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Import JSON
           </PanelButton>
-          {importError && <span className="text-xs text-danger">{importError}</span>}
+          {importError && <span className="text-size-caption text-danger">{importError}</span>}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {!selectedDocumentId && (
-          <div className="h-full flex items-center justify-center text-sm text-muted">
+          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
             Please select a document first.
           </div>
         )}
         {selectedDocumentId && currentDocNotes.length === 0 && (
-          <div className="h-full flex items-center justify-center text-sm text-muted">
+          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
             No notes yet. Select text in Reader and click “笔记” in the popup toolbar.
           </div>
         )}
@@ -212,12 +212,12 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
               <span className="text-size-meta text-muted">{formatTime(note.updatedAt)}</span>
               <PanelButton
                 onClick={() => deleteNote(note.id)}
-                className="text-xs text-danger hover:text-danger"
+                className="text-size-caption text-danger hover:text-danger"
               >
                 Delete
               </PanelButton>
             </div>
-            <blockquote className="text-sm text-foreground border-l-2 border-action-subtle pl-2 mb-2 whitespace-pre-wrap">
+            <blockquote className="text-size-subheading text-foreground border-l-2 border-action-subtle pl-2 mb-2 whitespace-pre-wrap">
               {note.selectedText}
             </blockquote>
             <Textarea
@@ -225,7 +225,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
               value={note.noteText}
               onChange={(e) => updateNoteText(note.id, e.target.value)}
               placeholder="Write your note..."
-              className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
+              className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
             />
           </div>
         ))}

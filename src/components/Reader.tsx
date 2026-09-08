@@ -425,7 +425,7 @@ export function Reader() {
               onClick={goBack}
               className={`inline-flex items-center justify-center rounded-md border bg-surface hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus ${
                 readingMode
-                  ? 'h-6 w-6 border-border text-xs text-muted'
+                  ? 'h-6 w-6 border-border text-size-caption text-muted'
                   : 'h-8 w-8 border-control-border text-secondary'
               }`}
               title="Back to Library"
@@ -438,13 +438,13 @@ export function Reader() {
             <>
               <ReaderButton
                 onClick={goBack}
-                className="px-4 py-2 text-sm font-medium text-secondary bg-surface border border-control-border rounded-md hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
+                className="px-4 py-2 text-size-subheading font-medium text-secondary bg-surface border border-control-border rounded-md hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
               >
                 ← Back to Library
               </ReaderButton>
               <ReaderButton
                 onClick={() => void cycleTranslationMode()}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`px-4 py-2 text-size-subheading font-medium rounded-md transition-colors ${
                   translationMode !== 'off'
                     ? 'bg-action text-on-action hover:bg-action-text'
                     : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
@@ -459,7 +459,7 @@ export function Reader() {
               <div className="relative" ref={readingViewMenuRef}>
                 <ReaderButton
                   onClick={() => setReadingViewMenuOpen((prev) => !prev)}
-                  className="px-3 py-2 text-sm font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
+                  className="px-3 py-2 text-size-subheading font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
                 >
                   Reading View ▾
                 </ReaderButton>
@@ -467,7 +467,7 @@ export function Reader() {
                   <div className="absolute left-0 top-11 z-40 min-w-[220px] rounded-lg border border-border bg-surface p-1.5 shadow-lg">
                     <ReaderButton
                       onClick={() => setMarkdownRenderModeFromHeader('text')}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
                         markdownRenderMode === 'text'
                           ? 'bg-action-subtle text-action-text'
                           : 'text-secondary hover:bg-surface-subtle'
@@ -478,7 +478,7 @@ export function Reader() {
                     </ReaderButton>
                     <ReaderButton
                       onClick={() => setMarkdownRenderModeFromHeader('multimedia')}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
                         markdownRenderMode === 'multimedia'
                           ? 'bg-action-subtle text-action-text'
                           : 'text-secondary hover:bg-surface-subtle'
@@ -490,7 +490,7 @@ export function Reader() {
                     <div className="my-1 h-px bg-surface-hover" />
                     <ReaderButton
                       onClick={() => setBilingualModeFromHeader('source')}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm ${
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
                         bilingualViewMode === 'source'
                           ? 'bg-action-subtle text-action-text'
                           : 'text-secondary hover:bg-surface-subtle'
@@ -502,7 +502,7 @@ export function Reader() {
                     <ReaderButton
                       onClick={() => setBilingualModeFromHeader('translation')}
                       disabled={translationMode === 'off'}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading disabled:cursor-not-allowed disabled:opacity-50 ${
                         bilingualViewMode === 'translation'
                           ? 'bg-action-subtle text-action-text'
                           : 'text-secondary hover:bg-surface-subtle'
@@ -514,7 +514,7 @@ export function Reader() {
                     <ReaderButton
                       onClick={() => setBilingualModeFromHeader('both')}
                       disabled={translationMode === 'off'}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
+                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading disabled:cursor-not-allowed disabled:opacity-50 ${
                         bilingualViewMode === 'both'
                           ? 'bg-action-subtle text-action-text'
                           : 'text-secondary hover:bg-surface-subtle'
@@ -529,7 +529,7 @@ export function Reader() {
                         window.dispatchEvent(new CustomEvent('reader:open-annotations'));
                         setReadingViewMenuOpen(false);
                       }}
-                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm text-secondary hover:bg-surface-subtle"
+                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading text-secondary hover:bg-surface-subtle"
                     >
                       <span>Open Annotations</span>
                       <span>→</span>
@@ -539,7 +539,7 @@ export function Reader() {
                         openChatPanel();
                         setReadingViewMenuOpen(false);
                       }}
-                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-sm text-secondary hover:bg-surface-subtle"
+                      className="flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading text-secondary hover:bg-surface-subtle"
                     >
                       <span>Open Chat</span>
                       <span>→</span>
@@ -552,7 +552,7 @@ export function Reader() {
         </div>
 
         {!readingMode && (
-          <h1 className="pointer-events-none absolute left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 text-xl font-semibold text-heading">
+          <h1 className="pointer-events-none absolute left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 text-size-heading font-semibold text-heading">
             <img
               src="/reader-logo.svg"
               alt="Reader Logo"
@@ -566,7 +566,7 @@ export function Reader() {
           {readingMode && selectedDocumentId && (
             <ReaderButton
               onClick={openChatPanel}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-xs text-muted hover:bg-surface-subtle"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-size-caption text-muted hover:bg-surface-subtle"
               title="Open chat for current text"
               aria-label="Open chat for current text"
             >
@@ -610,7 +610,7 @@ export function Reader() {
           {readingMode ? (
             <ReaderButton
               onClick={toggleReadingMode}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-xs text-muted hover:bg-surface-subtle"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-surface text-size-caption text-muted hover:bg-surface-subtle"
               title="Exit reading mode"
               aria-label="Exit reading mode"
             >
@@ -619,7 +619,7 @@ export function Reader() {
           ) : (
             <ReaderButton
               onClick={() => setHeaderToolsCollapsed((prev) => !prev)}
-              className="px-3 py-1.5 text-sm font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
+              className="px-3 py-1.5 text-size-subheading font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
               title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
               aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
             >

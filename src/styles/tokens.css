@@ -28,6 +28,7 @@
   --font-size-caption: 12px;
   --font-size-control: 13px;
   --font-size-label: 15px;
+  --font-size-body: 16px;
   --font-size-micro: 10px;
   --font-size-meta: 11px;
   --font-size-title: 18px;
@@ -35,6 +36,7 @@
   --font-size-brand: 19px;
   --font-size-heading: 20px;
   --font-size-display: 21px;
+  --font-size-hero-sm: 24px;
   --font-size-hero: 29px;
   --font-size-reading-sm: 0.9em;
   --font-size-reading-md: 0.92em;

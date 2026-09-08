@@ -59,43 +59,43 @@ export function AnnotationPanel() {
 
   if (isLoading) {
     return (
-      <div className="p-4 text-sm text-muted">Loading annotations...</div>
+      <div className="p-4 text-size-subheading text-muted">Loading annotations...</div>
     );
   }
 
   return (
     <div className="p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Annotations & Highlights</h3>
-        <span className="rounded bg-surface-subtle px-2 py-0.5 text-xs text-navigation">{annotations.length}</span>
+        <h3 className="text-size-subheading font-semibold text-foreground">Annotations & Highlights</h3>
+        <span className="rounded bg-surface-subtle px-2 py-0.5 text-size-caption text-navigation">{annotations.length}</span>
       </div>
 
       {annotations.length === 0 ? (
-        <p className="text-sm text-muted">No annotations yet. Select text to create one.</p>
+        <p className="text-size-subheading text-muted">No annotations yet. Select text to create one.</p>
       ) : (
         <div className="space-y-2">
           {annotations.map((item) => (
             <div key={item.id} className="rounded border border-border bg-surface-subtle px-3 py-2">
               <div className="mb-1 flex items-center gap-2">
-                <span className="rounded bg-surface px-2 py-0.5 text-xs text-secondary">
+                <span className="rounded bg-surface px-2 py-0.5 text-size-caption text-secondary">
                   {annotationStyleLabel[item.style]}
                 </span>
                 <PanelButton
                   onClick={() => setFocusedParagraphId(item.paragraph_id)}
-                  className="text-xs text-action underline-offset-2 hover:underline"
+                  className="text-size-caption text-action underline-offset-2 hover:underline"
                 >
                   Go to Location
                 </PanelButton>
                 <PanelButton
                   onClick={() => void handleDelete(item.id)}
-                  className="ml-auto text-xs text-danger underline-offset-2 hover:underline"
+                  className="ml-auto text-size-caption text-danger underline-offset-2 hover:underline"
                 >
                   Delete
                 </PanelButton>
               </div>
-              <p className="text-sm text-foreground">"{item.selected_text}"</p>
+              <p className="text-size-subheading text-foreground">"{item.selected_text}"</p>
               {item.note && item.note.trim().length > 0 && (
-                <p className="mt-1 text-xs text-warning">Note: {item.note}</p>
+                <p className="mt-1 text-size-caption text-warning">Note: {item.note}</p>
               )}
             </div>
           ))}

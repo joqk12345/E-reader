@@ -526,7 +526,7 @@ export const SearchPanel: React.FC = () => {
         />
 
         <div className="mt-3 flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-secondary">
+          <label className="flex items-center gap-2 text-size-subheading text-secondary">
             <span>{t.resultsLabel}</span>
             <Select
               value={topK}
@@ -544,7 +544,7 @@ export const SearchPanel: React.FC = () => {
             <PanelButton
               onClick={() => void handleIndexDocument()}
               disabled={isIndexing}
-              className="px-3 py-2 text-sm bg-surface-subtle text-secondary rounded-lg hover:bg-surface-hover disabled:bg-surface-hover transition-colors"
+              className="px-3 py-2 text-size-subheading bg-surface-subtle text-secondary rounded-lg hover:bg-surface-hover disabled:bg-surface-hover transition-colors"
             >
               {isIndexing ? t.reindexing : t.rebuildIndex}
             </PanelButton>
@@ -562,11 +562,11 @@ export const SearchPanel: React.FC = () => {
         {searchHistory.length > 0 && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-navigation">{t.searchHistory}</span>
+              <span className="text-size-caption font-medium text-navigation">{t.searchHistory}</span>
               <PanelButton
                 type="button"
                 onClick={() => setSearchHistory([])}
-                className="text-xs text-muted hover:text-secondary"
+                className="text-size-caption text-muted hover:text-secondary"
               >
                 {t.clearHistory}
               </PanelButton>
@@ -577,7 +577,7 @@ export const SearchPanel: React.FC = () => {
                   key={item}
                   type="button"
                   onClick={() => void handleSearch(item)}
-                  className="rounded-full border border-control-border bg-surface px-3 py-1 text-xs text-secondary hover:border-focus-border hover:text-action-text"
+                  className="rounded-full border border-control-border bg-surface px-3 py-1 text-size-caption text-secondary hover:border-focus-border hover:text-action-text"
                 >
                   {item}
                 </PanelButton>
@@ -586,7 +586,7 @@ export const SearchPanel: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-3 text-xs text-navigation space-y-1">
+        <div className="mt-3 text-size-caption text-navigation space-y-1">
           <p>Mode: {searchMode === 'semantic-local'
             ? t.modeSemantic
             : searchMode === 'semantic-remote'
@@ -605,19 +605,19 @@ export const SearchPanel: React.FC = () => {
 
       {error && (
         <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-sm text-danger">{error}</p>
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
       {showModelDownloadHint && (
         <div className="p-4 bg-warning-subtle border-b border-warning/25 space-y-2">
-          <p className="text-sm text-warning">
+          <p className="text-size-subheading text-warning">
             {t.modelHint}
           </p>
           <PanelButton
             onClick={() => void handleUseDefaultModelAndDownload()}
             disabled={isDownloadingModel}
-            className="px-3 py-2 text-sm bg-warning text-on-action rounded hover:bg-warning disabled:bg-control-border"
+            className="px-3 py-2 text-size-subheading bg-warning text-on-action rounded hover:bg-warning disabled:bg-control-border"
           >
             {isDownloadingModel ? t.downloadingModel : t.useDefaultAndDownload}
           </PanelButton>
@@ -630,7 +630,7 @@ export const SearchPanel: React.FC = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="text-sm">
+            <p className="text-size-subheading">
               {query.trim()
                 ? t.noResultHint
                 : t.enterQueryHint}
@@ -646,14 +646,14 @@ export const SearchPanel: React.FC = () => {
               onClick={() => void handleResultClick(result)}
             >
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs text-muted font-mono">
+                <span className="text-size-caption text-muted font-mono">
                   #{idx + 1} • {result.location}
                 </span>
-                <span className="text-xs text-action font-semibold">
+                <span className="text-size-caption text-action font-semibold">
                   {(result.score * 100).toFixed(1)}%
                 </span>
               </div>
-              <p className="text-sm text-foreground leading-relaxed">
+              <p className="text-size-subheading text-foreground leading-relaxed">
                 {result.snippet}
               </p>
             </div>

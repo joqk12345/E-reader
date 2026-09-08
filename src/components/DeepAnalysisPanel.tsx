@@ -56,13 +56,13 @@ export const DeepAnalysisPanel: React.FC = () => {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-navigation">
+          <span className="text-size-subheading text-navigation">
             Target: <span className="font-medium text-heading">{getTargetLabel()}</span>
           </span>
           <PanelButton
             onClick={() => void runAnalysis()}
             disabled={isRunning || !selectedDocumentId}
-            className="px-3 py-1.5 text-sm bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
+            className="px-3 py-1.5 text-size-subheading bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
           >
             {isRunning ? 'Analyzing...' : 'Run Deep Analysis'}
           </PanelButton>
@@ -71,13 +71,13 @@ export const DeepAnalysisPanel: React.FC = () => {
 
       {error && (
         <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-sm text-danger">{error}</p>
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!result && !error && !isRunning && (
-          <div className="flex items-center justify-center h-full text-sm text-muted">
+          <div className="flex items-center justify-center h-full text-size-subheading text-muted">
             Run deep analysis to generate structured concept and logic output.
           </div>
         )}
@@ -95,7 +95,7 @@ export const DeepAnalysisPanel: React.FC = () => {
             >
               {isCopied ? '✓' : '⧉'}
             </PanelButton>
-            <pre className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+            <pre className="whitespace-pre-wrap text-size-subheading text-foreground leading-relaxed">
               {result}
             </pre>
           </div>

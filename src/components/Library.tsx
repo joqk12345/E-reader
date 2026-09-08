@@ -830,21 +830,21 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       {pendingDelete && (
         <div className="fixed inset-0 z-50 bg-foreground bg-opacity-40 flex items-center justify-center">
           <div className="bg-surface rounded-lg shadow-xl w-full max-w-md mx-4 p-5">
-            <h3 className="text-lg font-semibold text-heading">Confirm Delete</h3>
-            <p className="mt-2 text-sm text-navigation">
+            <h3 className="text-size-title font-semibold text-heading">Confirm Delete</h3>
+            <p className="mt-2 text-size-subheading text-navigation">
               Delete document <span className="font-medium text-heading">{pendingDelete.title}</span>?
               This action cannot be undone.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <LibraryButton
                 onClick={() => setPendingDelete(null)}
-                className="px-3 py-2 text-sm text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
+                className="px-3 py-2 text-size-subheading text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
               >
                 Cancel
               </LibraryButton>
               <LibraryButton
                 onClick={() => void handleConfirmDelete()}
-                className="px-3 py-2 text-sm text-on-action bg-danger rounded-md hover:bg-danger"
+                className="px-3 py-2 text-size-subheading text-on-action bg-danger rounded-md hover:bg-danger"
               >
                 Delete
               </LibraryButton>
@@ -856,15 +856,15 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       {showImportDialog && (
         <div className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
           <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-4 shadow-xl">
-            <h3 className="text-base font-semibold text-heading">Import</h3>
-            <p className="mt-1 text-xs text-muted">Choose a local EPUB, PDF, or Markdown file.</p>
+            <h3 className="text-size-body font-semibold text-heading">Import</h3>
+            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB, PDF, or Markdown file.</p>
 
             <div className="mt-3 space-y-2">
               <LibraryButton
                 type="button"
                 onClick={() => void handleImportFile()}
                 disabled={isImportingFile || isImportingUrl}
-                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-action px-3 text-xs font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h7l5 5v13H7z" />
@@ -888,13 +888,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     }
                   }}
                   placeholder="https://example.com/article"
-                  className="w-full rounded border border-warning/25 bg-surface px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-warning"
+                  className="w-full rounded border border-warning/25 bg-surface px-2.5 py-1.5 text-size-caption focus:outline-none focus:ring-2 focus:ring-warning"
                 />
                 <LibraryButton
                   type="button"
                   onClick={() => void handleImportUrlBeta()}
                   disabled={!importUrlDraft.trim() || isImportingUrl || isImportingFile}
-                  className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-warning px-3 text-xs font-medium text-on-action transition-colors hover:bg-warning disabled:bg-muted"
+                  className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-warning px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-warning disabled:bg-muted"
                 >
                   {isImportingUrl ? 'Importing URL...' : 'Import URL (Beta)'}
                 </LibraryButton>
@@ -909,7 +909,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   setImportUrlDraft('');
                   setShowImportDialog(false);
                 }}
-                className="rounded-md border border-control-border bg-surface px-3 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                className="rounded-md border border-control-border bg-surface px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Close
               </LibraryButton>
@@ -923,13 +923,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
           <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-heading">Batch Tags</h3>
-                <p className="text-sm text-muted">Filter by imported time (`created_at`) and apply or review tag operations.</p>
+                <h3 className="text-size-title font-semibold text-heading">Batch Tags</h3>
+                <p className="text-size-subheading text-muted">Filter by imported time (`created_at`) and apply or review tag operations.</p>
               </div>
               <LibraryButton
                 type="button"
                 onClick={() => setShowBatchDialog(false)}
-                className="rounded-md border border-control-border px-3 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Close
               </LibraryButton>
@@ -939,7 +939,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setBatchMode('ai-recommend')}
-                className={`rounded-md px-3 py-2 text-sm font-medium ${
+                className={`rounded-md px-3 py-2 text-size-subheading font-medium ${
                   batchMode === 'ai-recommend' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
                 }`}
               >
@@ -948,7 +948,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setBatchMode('apply-existing')}
-                className={`rounded-md px-3 py-2 text-sm font-medium ${
+                className={`rounded-md px-3 py-2 text-size-subheading font-medium ${
                   batchMode === 'apply-existing' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
                 }`}
               >
@@ -958,7 +958,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             {batchFeedback && (
               <div
-                className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+                className={`mt-4 rounded-lg border px-3 py-2 text-size-subheading ${
                   batchFeedback.tone === 'success'
                     ? 'border-success/25 bg-success/10 text-success'
                     : 'border-danger/25 bg-danger-subtle text-danger'
@@ -969,7 +969,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             )}
 
             <div className="mt-4 rounded-lg border border-border bg-surface-subtle p-3">
-              <label className="inline-flex items-start gap-2 text-sm text-secondary">
+              <label className="inline-flex items-start gap-2 text-size-subheading text-secondary">
                 <Checkbox
                   checked={batchUseCurrentResults}
                   onChange={(event) => setBatchUseCurrentResults(event.target.checked)}
@@ -977,7 +977,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 />
                 <span>
                   <span className="font-medium text-heading">Use current library results</span>
-                  <span className="mt-1 block text-xs text-muted">
+                  <span className="mt-1 block text-size-caption text-muted">
                     Reuse the current Library search, type, category, and tag filters before applying the date range.
                   </span>
                 </span>
@@ -985,7 +985,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             </div>
 
             <div className="mt-4">
-              <label className="text-sm text-secondary">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">Document Search</div>
                 <Input
                   value={batchDocumentSearch}
@@ -997,7 +997,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <label className="text-sm text-secondary">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">Start Date</div>
                 <Input
                   type="date"
@@ -1006,7 +1006,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   className="h-9 w-full rounded-md border border-control-border px-3"
                 />
               </label>
-              <label className="text-sm text-secondary">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">End Date</div>
                 <Input
                   type="date"
@@ -1015,21 +1015,21 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   className="h-9 w-full rounded-md border border-control-border px-3"
                 />
               </label>
-              <div className="rounded-lg border border-border bg-surface-subtle p-3 text-sm text-secondary">
+              <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-subheading text-secondary">
                 <div className="font-medium">Matched Documents</div>
-                <div className="mt-1 text-2xl font-semibold text-heading">{effectiveBatchDocs.length}</div>
-                <div className="mt-1 text-xs text-muted">
+                <div className="mt-1 text-size-hero-sm font-semibold text-heading">{effectiveBatchDocs.length}</div>
+                <div className="mt-1 text-size-caption text-muted">
                   Scope: {batchUseCurrentResults ? 'Current library results + date range' : 'Date range only'}
                 </div>
                 {batchDocumentSearch.trim() && (
-                  <div className="mt-1 text-xs text-muted">Document search: {batchDocumentSearch.trim()}</div>
+                  <div className="mt-1 text-size-caption text-muted">Document search: {batchDocumentSearch.trim()}</div>
                 )}
                 {batchMode === 'apply-existing' && batchDocFilterTagIds.length > 0 && (
-                  <div className="mt-1 text-xs text-muted">
+                  <div className="mt-1 text-size-caption text-muted">
                     Existing tag filter: {batchDocFilterTagMode === 'all' ? 'Match all' : 'Match any'}
                   </div>
                 )}
-                <div className="mt-1 text-xs text-muted">
+                <div className="mt-1 text-size-caption text-muted">
                   {effectiveBatchDocs.slice(0, 3).map((doc) => doc.title).join(' · ') || 'No documents in the current range'}
                 </div>
               </div>
@@ -1040,14 +1040,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-semibold text-heading">Filter Target Documents By Existing Tags</h4>
-                      <p className="text-xs text-muted">Use one or more existing tags to narrow the matched documents before applying new tags.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Filter Target Documents By Existing Tags</h4>
+                      <p className="text-size-caption text-muted">Use one or more existing tags to narrow the matched documents before applying new tags.</p>
                     </div>
                     <div className="flex rounded-md bg-surface-subtle p-1">
                       <LibraryButton
                         type="button"
                         onClick={() => setBatchDocFilterTagMode('any')}
-                        className={`rounded px-2 py-1 text-xs ${
+                        className={`rounded px-2 py-1 text-size-caption ${
                           batchDocFilterTagMode === 'any' ? 'bg-surface text-action-text shadow-sm' : 'text-navigation hover:bg-surface-subtle'
                         }`}
                       >
@@ -1056,7 +1056,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       <LibraryButton
                         type="button"
                         onClick={() => setBatchDocFilterTagMode('all')}
-                        className={`rounded px-2 py-1 text-xs ${
+                        className={`rounded px-2 py-1 text-size-caption ${
                           batchDocFilterTagMode === 'all' ? 'bg-surface text-action-text shadow-sm' : 'text-navigation hover:bg-surface-subtle'
                         }`}
                       >
@@ -1068,7 +1068,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     value={batchDocFilterTagSearch}
                     onChange={(event) => setBatchDocFilterTagSearch(event.target.value)}
                     placeholder="Search tags to filter the target documents..."
-                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-sm"
+                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-size-subheading"
                   />
                   <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto">
                     {filteredBatchDocFilterTags.map((tag) => (
@@ -1076,7 +1076,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={`filter-${tag.id}`}
                         type="button"
                         onClick={() => toggleBatchDocFilterTagId(tag.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs ${
+                        className={`rounded-full border px-2.5 py-1 text-size-caption ${
                           batchDocFilterTagIds.includes(tag.id)
                             ? 'border-focus-border bg-action-subtle text-action-text'
                             : 'border-control-border text-secondary hover:bg-surface-subtle'
@@ -1090,7 +1090,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     <LibraryButton
                       type="button"
                       onClick={() => setBatchDocFilterTagIds([])}
-                      className="mt-3 rounded-md border border-control-border px-3 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                      className="mt-3 rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                     >
                       Clear Existing Tag Filter
                     </LibraryButton>
@@ -1099,19 +1099,19 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
                 <div className="rounded-xl border border-border p-4">
                   <div className="mb-3">
-                    <h4 className="text-sm font-semibold text-heading">Matched Result Preview</h4>
-                    <p className="text-xs text-muted">These are the documents that will be updated. Current tags refresh after batch apply.</p>
+                    <h4 className="text-size-subheading font-semibold text-heading">Matched Result Preview</h4>
+                    <p className="text-size-caption text-muted">These are the documents that will be updated. Current tags refresh after batch apply.</p>
                   </div>
                   <div className="space-y-2">
                     {effectiveBatchDocs.length === 0 ? (
-                      <div className="text-sm text-muted">No documents match the current batch filters.</div>
+                      <div className="text-size-subheading text-muted">No documents match the current batch filters.</div>
                     ) : (
                       effectiveBatchDocs.slice(0, 8).map((doc) => (
                         <div key={`batch-preview-${doc.id}`} className="rounded-lg border border-border p-3">
-                          <div className="text-sm font-medium text-heading">{doc.title}</div>
+                          <div className="text-size-subheading font-medium text-heading">{doc.title}</div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {(documentTagMap[doc.id] || []).length === 0 ? (
-                              <span className="text-xs text-muted">No tags yet</span>
+                              <span className="text-size-caption text-muted">No tags yet</span>
                             ) : (
                               (documentTagMap[doc.id] || []).map((item) => (
                                 <div
@@ -1151,21 +1151,21 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     )}
                   </div>
                   {effectiveBatchDocs.length > 8 && (
-                    <div className="mt-2 text-xs text-muted">Showing 8 of {effectiveBatchDocs.length} matched documents.</div>
+                    <div className="mt-2 text-size-caption text-muted">Showing 8 of {effectiveBatchDocs.length} matched documents.</div>
                   )}
                 </div>
 
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-heading">Tags To Apply</h4>
-                      <p className="text-xs text-muted">Apply the selected tags directly to the currently matched documents.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Tags To Apply</h4>
+                      <p className="text-size-caption text-muted">Apply the selected tags directly to the currently matched documents.</p>
                     </div>
                     <LibraryButton
                       type="button"
                       onClick={() => void handleBatchApplyExisting()}
                       disabled={isBatchRunning || effectiveBatchDocs.length === 0 || batchSelectedTagIds.length === 0}
-                      className="rounded-md bg-action px-3 py-2 text-xs font-medium text-on-action hover:bg-action-text disabled:bg-control-border"
+                      className="rounded-md bg-action px-3 py-2 text-size-caption font-medium text-on-action hover:bg-action-text disabled:bg-control-border"
                     >
                       {isBatchRunning ? 'Applying...' : 'Apply Tags'}
                     </LibraryButton>
@@ -1174,7 +1174,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     value={batchTagSearch}
                     onChange={(event) => setBatchTagSearch(event.target.value)}
                     placeholder="Search tags to apply..."
-                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-sm"
+                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-size-subheading"
                   />
                   <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
                     {filteredBatchTags.map((tag) => (
@@ -1182,7 +1182,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         key={tag.id}
                         type="button"
                         onClick={() => toggleBatchSelectedTagId(tag.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs ${
+                        className={`rounded-full border px-2.5 py-1 text-size-caption ${
                           batchSelectedTagIds.includes(tag.id)
                             ? 'border-focus-border bg-action-subtle text-action-text'
                             : 'border-control-border text-secondary hover:bg-surface-subtle'
@@ -1201,14 +1201,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-heading">Generate Tag Suggestions</h4>
-                      <p className="text-xs text-muted">Suggestions that match existing tags can be accepted directly. New candidates go into the review queue.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Generate Tag Suggestions</h4>
+                      <p className="text-size-caption text-muted">Suggestions that match existing tags can be accepted directly. New candidates go into the review queue.</p>
                     </div>
                     <LibraryButton
                       type="button"
                       onClick={() => void handleBatchSuggest()}
                       disabled={isBatchRunning || selectedBatchDocs.length === 0}
-                      className="rounded-md bg-heading px-3 py-2 text-xs font-medium text-on-action hover:bg-foreground disabled:bg-control-border"
+                      className="rounded-md bg-heading px-3 py-2 text-size-caption font-medium text-on-action hover:bg-foreground disabled:bg-control-border"
                     >
                       {isBatchRunning ? 'Generating...' : 'Run AI Suggestions'}
                     </LibraryButton>
@@ -1218,20 +1218,20 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <div className="rounded-xl border border-border p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-heading">Pending Review</h4>
-                      <p className="text-xs text-muted">Grouped by normalized tag name. Suggestions that match existing tags can be accepted directly.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Pending Review</h4>
+                      <p className="text-size-caption text-muted">Grouped by normalized tag name. Suggestions that match existing tags can be accepted directly.</p>
                     </div>
                     <LibraryButton
                       type="button"
                       onClick={() => void refreshTagData()}
-                      className="rounded-md border border-control-border px-3 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                      className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                     >
                       Reload
                     </LibraryButton>
                   </div>
                   <div className="space-y-3">
                     {pendingReviewItems.length === 0 ? (
-                      <div className="text-sm text-muted">No pending review items.</div>
+                      <div className="text-size-subheading text-muted">No pending review items.</div>
                     ) : (
                       pendingReviewItems.map((item) => (
                         <div key={`${item.normalized_name}:${item.matched_tag_id || 'new'}`} className="rounded-lg border border-border p-3">
@@ -1245,7 +1245,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-sm font-semibold text-heading">#{item.proposed_name}</span>
+                                      <span className="text-size-subheading font-semibold text-heading">#{item.proposed_name}</span>
                                       {item.matched_tag_name ? (
                                         <span className="rounded bg-success/10 px-1.5 py-0.5 text-size-micro text-success">
                                           match: {item.matched_tag_name}
@@ -1256,7 +1256,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                       <span className="text-size-meta text-muted">{item.doc_count} docs</span>
                                     </div>
                                     {item.reasons.length > 0 && (
-                                      <p className="mt-1 text-xs leading-5 text-navigation">{item.reasons.slice(0, 2).join(' / ')}</p>
+                                      <p className="mt-1 text-size-caption leading-5 text-navigation">{item.reasons.slice(0, 2).join(' / ')}</p>
                                     )}
                                   </div>
                                   <div className="flex shrink-0 flex-wrap gap-1">
@@ -1320,7 +1320,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                         key={doc.doc_id}
                                         className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
                                       >
-                                        <div className="min-w-0 flex-1 text-sm text-foreground">
+                                        <div className="min-w-0 flex-1 text-size-subheading text-foreground">
                                           <div className="truncate">{doc.title}</div>
                                         </div>
                                         <LibraryButton
@@ -1356,8 +1356,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
           <div className="max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-heading">Tag Library</h3>
-                <p className="text-sm text-muted">Rename, merge, manage aliases, promote temporary tags, and clean up unused tags.</p>
+                <h3 className="text-size-title font-semibold text-heading">Tag Library</h3>
+                <p className="text-size-subheading text-muted">Rename, merge, manage aliases, promote temporary tags, and clean up unused tags.</p>
               </div>
               <div className="flex gap-2">
                 <LibraryButton
@@ -1366,14 +1366,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     setTagManagerFeedback(null);
                     setShowCleanupUnusedConfirm(true);
                   }}
-                  className="rounded-md border border-danger/25 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger-subtle"
+                  className="rounded-md border border-danger/25 px-3 py-1.5 text-size-caption font-medium text-danger hover:bg-danger-subtle"
                 >
                   Cleanup Unused
                 </LibraryButton>
                 <LibraryButton
                   type="button"
                   onClick={() => setShowTagManager(false)}
-                  className="rounded-md border border-control-border px-3 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                  className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                 >
                   Close
                 </LibraryButton>
@@ -1382,7 +1382,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             {tagManagerFeedback && (
               <div
-                className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+                className={`mt-4 rounded-lg border px-3 py-2 text-size-subheading ${
                   tagManagerFeedback.tone === 'success'
                     ? 'border-success/25 bg-success/10 text-success'
                     : 'border-danger/25 bg-danger-subtle text-danger'
@@ -1397,16 +1397,16 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 value={tagManagerSearch}
                 onChange={(event) => setTagManagerSearch(event.target.value)}
                 placeholder="Search tags or aliases..."
-                className="h-9 min-w-[220px] rounded-md border border-control-border px-3 text-sm"
+                className="h-9 min-w-[220px] rounded-md border border-control-border px-3 text-size-subheading"
               />
-              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-secondary">
+              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-size-caption text-secondary">
                 <Checkbox
                   checked={tagManagerTemporaryOnly}
                   onChange={(event) => setTagManagerTemporaryOnly(event.target.checked)}
                 />
                 Temporary only
               </label>
-              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-secondary">
+              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-size-caption text-secondary">
                 <Checkbox
                   checked={tagManagerUnusedOnly}
                   onChange={(event) => setTagManagerUnusedOnly(event.target.checked)}
@@ -1417,14 +1417,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             <div className="mt-4 space-y-3">
               {filteredTagLibrary.length === 0 ? (
-                <div className="text-sm text-muted">No tags match current filters.</div>
+                <div className="text-size-subheading text-muted">No tags match current filters.</div>
               ) : (
                 filteredTagLibrary.map((tag) => (
                   <div key={tag.id} className="rounded-xl border border-border p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-heading">#{tag.name}</span>
+                          <span className="text-size-subheading font-semibold text-heading">#{tag.name}</span>
                           {tag.is_temporary && (
                             <span className="rounded bg-warning-subtle px-1.5 py-0.5 text-size-micro text-warning">temporary</span>
                           )}
@@ -1481,7 +1481,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   key={item.key}
                   type="button"
                   onClick={() => setTypeFilter(item.key)}
-                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-size-subheading transition-colors ${
                     active ? 'bg-heading text-on-action' : 'text-navigation hover:bg-surface-hover'
                   }`}
                 >
@@ -1498,7 +1498,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(FAVORITES_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
                   categoryFilter === FAVORITES_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
@@ -1508,7 +1508,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(RECENTS_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
                   categoryFilter === RECENTS_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
@@ -1519,7 +1519,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter('all')}
-                className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                className={`w-full rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
                   categoryFilter === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
@@ -1530,7 +1530,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   key={category}
                   type="button"
                   onClick={() => setCategoryFilter(category)}
-                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
                     categoryFilter === category ? 'bg-action-subtle text-action-text' : 'text-secondary hover:bg-surface-hover'
                   }`}
                 >
@@ -1549,27 +1549,27 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               value={tagSearchText}
               onChange={(event) => setTagSearchText(event.target.value)}
               placeholder="Filter tags..."
-              className="mb-2 h-8 w-full rounded-md border border-control-border bg-surface px-2 text-xs text-secondary"
+              className="mb-2 h-8 w-full rounded-md border border-control-border bg-surface px-2 text-size-caption text-secondary"
             />
             <div className="mb-2 flex rounded-md bg-surface p-1">
               <LibraryButton
                 type="button"
                 onClick={() => setTagMatchMode('any')}
-                className={`flex-1 rounded px-2 py-1 text-xs ${tagMatchMode === 'any' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
+                className={`flex-1 rounded px-2 py-1 text-size-caption ${tagMatchMode === 'any' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
               >
                 Any
               </LibraryButton>
               <LibraryButton
                 type="button"
                 onClick={() => setTagMatchMode('all')}
-                className={`flex-1 rounded px-2 py-1 text-xs ${tagMatchMode === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
+                className={`flex-1 rounded px-2 py-1 text-size-caption ${tagMatchMode === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
               >
                 All
               </LibraryButton>
             </div>
             <div className="max-h-56 space-y-1 overflow-y-auto">
               {filteredTagFacets.length === 0 ? (
-                <div className="rounded-md bg-surface px-2.5 py-2 text-xs text-muted">No tags</div>
+                <div className="rounded-md bg-surface px-2.5 py-2 text-size-caption text-muted">No tags</div>
               ) : (
                 filteredTagFacets.slice(0, 24).map((facet) => {
                   const active = selectedTagIds.includes(facet.tag_id);
@@ -1578,7 +1578,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       key={facet.tag_id}
                       type="button"
                       onClick={() => toggleSelectedTagId(facet.tag_id)}
-                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
                         active ? 'bg-action-subtle text-action-text' : 'bg-surface text-secondary hover:bg-surface-hover'
                       }`}
                     >
@@ -1596,7 +1596,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setSelectedTagIds([])}
-                className="mt-2 w-full rounded-md border border-control-border px-2.5 py-1.5 text-xs text-secondary hover:bg-surface-subtle"
+                className="mt-2 w-full rounded-md border border-control-border px-2.5 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Clear Tag Filter
               </LibraryButton>
@@ -1674,7 +1674,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{viewMode === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
                       </LibraryButton>
                     ))}
 
@@ -1695,7 +1695,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{sortBy === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
                       </LibraryButton>
                     ))}
 
@@ -1717,7 +1717,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{typeFilter === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
                       </LibraryButton>
                     ))}
 
@@ -1733,7 +1733,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{categoryFilter === FAVORITES_CATEGORY ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">Favorite</span>
+                        <span className="text-size-body font-medium leading-6">Favorite</span>
                       </LibraryButton>
                       <LibraryButton
                         type="button"
@@ -1744,7 +1744,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{categoryFilter === RECENTS_CATEGORY ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">Recents</span>
+                        <span className="text-size-body font-medium leading-6">Recents</span>
                       </LibraryButton>
                       <div className="my-1 h-px bg-surface-hover" />
                       <LibraryButton
@@ -1756,7 +1756,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
                         <span className="w-4 text-center text-size-title leading-none">{categoryFilter === 'all' ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">All</span>
+                        <span className="text-size-body font-medium leading-6">All</span>
                       </LibraryButton>
                       {regularCategoryOptions.map((category) => (
                         <LibraryButton
@@ -1769,7 +1769,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                         >
                           <span className="w-4 text-center text-size-title leading-none">{categoryFilter === category ? '✓' : ''}</span>
-                          <span className="truncate text-base font-medium leading-6">{category}</span>
+                          <span className="truncate text-size-body font-medium leading-6">{category}</span>
                         </LibraryButton>
                       ))}
                     </div>
@@ -1784,7 +1784,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                     >
                       <span className="w-4 text-center text-size-title leading-none">{shouldGroupDisplayedDocuments ? '✓' : ''}</span>
-                      <span className="text-base font-medium leading-6">Group by category</span>
+                      <span className="text-size-body font-medium leading-6">Group by category</span>
                     </LibraryButton>
                   </div>
                 )}
@@ -1792,14 +1792,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
               <LibraryButton
                 onClick={() => setShowBatchDialog(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-xs font-medium text-secondary hover:bg-surface-subtle"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Batch Tags
               </LibraryButton>
 
               <LibraryButton
                 onClick={() => setShowTagManager(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-xs font-medium text-secondary hover:bg-surface-subtle"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Tag Library
               </LibraryButton>
@@ -1807,7 +1807,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 onClick={handleUnifiedImport}
                 disabled={isImportingFile || isImportingUrl}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-action px-3 text-xs font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1833,13 +1833,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <p className="text-lg">No documents yet</p>
-            <p className="text-sm mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
+            <p className="text-size-title">No documents yet</p>
+            <p className="text-size-subheading mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
           </div>
         ) : displayedDocuments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">
-            <p className="text-base">No documents match current filters</p>
-            <p className="text-sm mt-2">Try clearing search text, tag filters, or switching type/category filters</p>
+            <p className="text-size-body">No documents match current filters</p>
+            <p className="text-size-subheading mt-2">Try clearing search text, tag filters, or switching type/category filters</p>
           </div>
         ) : shouldGroupDisplayedDocuments ? (
           <div className="space-y-6">
@@ -1855,12 +1855,12 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <div className="mb-2 flex items-center justify-between">
                   <LibraryButton
                     onClick={() => toggleCategoryCollapsed(category)}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-heading"
+                    className="inline-flex items-center gap-2 text-size-subheading font-semibold text-foreground hover:text-heading"
                   >
-                    <span className={`text-xs transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
+                    <span className={`text-size-caption transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
                     <span>{category}</span>
                   </LibraryButton>
-                  <span className="text-xs text-muted">{items.length} docs</span>
+                  <span className="text-size-caption text-muted">{items.length} docs</span>
                 </div>
                 {!isCollapsed && (viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1899,7 +1899,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   <div className="mt-2 flex justify-center">
                     <LibraryButton
                       onClick={() => toggleCategoryExpandedItems(category)}
-                      className="text-xs text-action hover:text-action underline"
+                      className="text-size-caption text-action hover:text-action underline"
                     >
                       {showAllItems ? 'Show less' : `Show more (${items.length - DEFAULT_CATEGORY_VISIBLE_COUNT})`}
                     </LibraryButton>

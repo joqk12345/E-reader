@@ -110,7 +110,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
       {/* Options */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-4 mb-3">
-          <span className="text-sm font-medium text-secondary">Target Language:</span>
+          <span className="text-size-subheading font-medium text-secondary">Target Language:</span>
           <div className="flex gap-2">
             {(['en', 'zh'] as TargetLang[]).map((lang) => (
               <Button
@@ -131,7 +131,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
         </div>
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-secondary">
+          <label className="flex items-center gap-2 text-size-subheading text-secondary">
             <Checkbox
               checked={autoDetect}
               onChange={(e) => setAutoDetect(e.target.checked)}
@@ -163,7 +163,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
       {/* Error Message */}
       {error && (
         <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-sm text-danger">{error}</p>
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
@@ -172,7 +172,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
         <div className="space-y-4">
           {/* Input */}
           <div>
-            <label className="block text-sm font-medium text-secondary mb-2">
+            <label className="block text-size-subheading font-medium text-secondary mb-2">
               Original Text
             </label>
             <Textarea
@@ -186,7 +186,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
 
           {/* Output */}
           <div>
-            <label className="block text-sm font-medium text-secondary mb-2">
+            <label className="block text-size-subheading font-medium text-secondary mb-2">
               Translation
             </label>
             {translation ? (
@@ -196,7 +196,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
                     {parsedTranslation.visibleText}
                   </p>
                 ) : (
-                  <p className="text-sm text-faint italic">No translation available</p>
+                  <p className="text-size-subheading text-faint italic">No translation available</p>
                 )}
                 <ThinkingDisclosure
                   thinkingBlocks={parsedTranslation.thinkingBlocks}
@@ -206,7 +206,7 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
               </div>
             ) : (
               <div className="w-full p-3 bg-surface-subtle border border-border rounded-lg min-h-[200px] flex items-center justify-center text-faint">
-                <p className="text-sm">Translation will appear here</p>
+                <p className="text-size-subheading">Translation will appear here</p>
               </div>
             )}
           </div>

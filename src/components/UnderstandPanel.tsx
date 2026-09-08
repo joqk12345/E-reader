@@ -661,13 +661,13 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
     <div className="flex h-full flex-col">
       <div className="border-b border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-navigation">
+          <span className="text-size-subheading text-navigation">
             Target: <span className="font-medium text-heading">{targetLabel}</span>
           </span>
           <PanelButton
             onClick={() => void run()}
             disabled={!canRun || isRunning}
-            className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action transition-colors hover:bg-action disabled:bg-control-border"
+            className="rounded-md bg-action px-3 py-1.5 text-size-subheading text-on-action transition-colors hover:bg-action disabled:bg-control-border"
           >
             {isRunning ? 'Running...' : modeMeta[mode].button}
           </PanelButton>
@@ -681,7 +681,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                 setMode(item);
                 void run(item, selectedText, sentence, paragraphId);
               }}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              className={`rounded-full border px-3 py-1 text-size-caption font-medium transition-colors ${
                 mode === item
                   ? 'border-focus bg-action-subtle text-action-text'
                   : 'border-control-border text-secondary hover:border-control-border hover:bg-surface-subtle'
@@ -694,20 +694,20 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
 
         <div className="rounded-lg border border-border bg-surface-subtle px-3 py-2">
           <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Selection</div>
-          <div className="mt-1 text-sm leading-relaxed text-foreground">{selectedText || 'No selection yet.'}</div>
+          <div className="mt-1 text-size-subheading leading-relaxed text-foreground">{selectedText || 'No selection yet.'}</div>
         </div>
 
         {sentence && sentence.trim() && sentence.trim() !== selectedText.trim() && (
           <div className="rounded-lg border border-border bg-surface px-3 py-2">
             <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Sentence Context</div>
-            <div className="mt-1 text-sm leading-relaxed text-secondary">{sentence}</div>
+            <div className="mt-1 text-size-subheading leading-relaxed text-secondary">{sentence}</div>
           </div>
         )}
 
         {mode === 'context' && sectionContext && (
           <div className="rounded-lg border border-border bg-surface px-3 py-2">
             <div className="text-size-meta font-medium uppercase tracking-wide text-muted">Nearby Section Context</div>
-            <pre className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-secondary font-sans">
+            <pre className="mt-1 whitespace-pre-wrap text-size-subheading leading-relaxed text-secondary font-sans">
               {sectionContext}
             </pre>
           </div>
@@ -715,14 +715,14 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
       </div>
 
       {error && (
-        <div className="border-b border-danger/25 bg-danger-subtle px-4 py-3 text-sm text-danger">
+        <div className="border-b border-danger/25 bg-danger-subtle px-4 py-3 text-size-subheading text-danger">
           {error}
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!result && !error && !isRunning && (
-          <div className="flex h-full items-center justify-center text-center text-sm text-muted">
+          <div className="flex h-full items-center justify-center text-center text-size-subheading text-muted">
             {modeMeta[mode].empty}
           </div>
         )}
@@ -733,7 +733,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
               <div className="absolute right-2 top-2 flex items-center gap-2">
                 <PanelButton
                   onClick={handleAddToNotes}
-                  className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-navigation hover:bg-surface-subtle hover:text-foreground"
+                  className="rounded-md border border-border bg-surface px-2.5 py-1 text-size-caption text-navigation hover:bg-surface-subtle hover:text-foreground"
                 >
                   Add to Notes
                 </PanelButton>
@@ -756,7 +756,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                     <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                       Term Meaning
                     </div>
-                    <div className="mt-1 text-sm leading-relaxed text-foreground">
+                    <div className="mt-1 text-size-subheading leading-relaxed text-foreground">
                       {termInsight.termMeaning}
                     </div>
                   </div>
@@ -764,7 +764,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                     <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                       Why It Matters Here
                     </div>
-                    <div className="mt-1 text-sm leading-relaxed text-foreground">
+                    <div className="mt-1 text-size-subheading leading-relaxed text-foreground">
                       {termInsight.whyItMattersHere}
                     </div>
                   </div>
@@ -775,7 +775,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       </div>
                       <PanelButton
                         onClick={handleOpenGlossary}
-                        className="text-xs text-action hover:underline"
+                        className="text-size-caption text-action hover:underline"
                       >
                         Open Glossary
                       </PanelButton>
@@ -788,7 +788,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                           key={item}
                           onClick={() => handlePinPreferredRendering(item)}
                           disabled={item === '—'}
-                          className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                          className={`rounded-full border px-2.5 py-1 text-size-caption font-medium ${
                             currentGlossaryEntry?.preferredRendering === item
                               ? 'border-success/25 bg-success/15 text-success'
                               : 'border-success/25 bg-success/10 text-success hover:bg-success/10 hover:bg-success/15'
@@ -806,7 +806,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       ))}
                     </div>
                     {currentGlossaryEntry?.preferredRendering && (
-                      <div className="mt-2 text-xs text-success">
+                      <div className="mt-2 text-size-caption text-success">
                         Preferred rendering saved for this document: {currentGlossaryEntry.preferredRendering}
                       </div>
                     )}
@@ -819,7 +819,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                       {(displayConceptTags.length ? displayConceptTags : ['—']).map((item) => (
                         <span
                           key={item}
-                          className="rounded-full border border-action-subtle bg-action-subtle px-2.5 py-1 text-xs font-medium text-action-text"
+                          className="rounded-full border border-action-subtle bg-action-subtle px-2.5 py-1 text-size-caption font-medium text-action-text"
                         >
                           {item}
                         </span>
@@ -836,7 +836,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
 
             {mode === 'term' && relatedPassages.length > 0 && (
               <div className="rounded-lg border border-border bg-surface p-4">
-                <div className="mb-3 text-sm font-semibold text-foreground">Related Passages In This Document</div>
+                <div className="mb-3 text-size-subheading font-semibold text-foreground">Related Passages In This Document</div>
                 <div className="space-y-2">
                   {relatedPassages.map((item) => (
                     <PanelButton
@@ -848,9 +848,9 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                         <div className="text-size-meta font-medium uppercase tracking-wide text-muted">
                           {item.sectionTitle}
                         </div>
-                        <span className="text-xs text-action">Jump</span>
+                        <span className="text-size-caption text-action">Jump</span>
                       </div>
-                      <div className="mt-1 text-sm leading-relaxed text-secondary">
+                      <div className="mt-1 text-size-subheading leading-relaxed text-secondary">
                         {highlightTerm(item.snippet, selectedText)}
                       </div>
                     </PanelButton>

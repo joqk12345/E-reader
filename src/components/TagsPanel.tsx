@@ -268,7 +268,7 @@ export const TagsPanel: React.FC = () => {
 
   if (!selectedDocumentId || !selectedDocument) {
     return (
-      <div className="rounded-lg border border-dashed border-control-border p-4 text-sm text-muted">
+      <div className="rounded-lg border border-dashed border-control-border p-4 text-size-subheading text-muted">
         No document selected.
       </div>
     );
@@ -305,8 +305,8 @@ export const TagsPanel: React.FC = () => {
       <div className="rounded-xl border border-border bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-heading">Applied Tags</h3>
-            <p className="text-xs text-muted">{selectedDocument.title}</p>
+            <h3 className="text-size-subheading font-semibold text-heading">Applied Tags</h3>
+            <p className="text-size-caption text-muted">{selectedDocument.title}</p>
           </div>
           <Button
             variant="secondary"
@@ -344,12 +344,12 @@ export const TagsPanel: React.FC = () => {
 
         <div className="mt-3 flex flex-wrap gap-2">
           {appliedTags.length === 0 ? (
-            <span className="text-xs text-muted">No tags applied yet.</span>
+            <span className="text-size-caption text-muted">No tags applied yet.</span>
           ) : (
             appliedTags.map((tag) => (
               <span
                 key={tag.tag_id}
-                className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2.5 py-1 text-xs text-secondary"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2.5 py-1 text-size-caption text-secondary"
               >
                 #{tag.tag_name}
                 {tag.is_temporary && (
@@ -373,8 +373,8 @@ export const TagsPanel: React.FC = () => {
       <div className="rounded-xl border border-border bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-heading">Recommended Tags</h3>
-            <p className="text-xs text-muted">AI first, heuristic fallback. New candidates require review.</p>
+            <h3 className="text-size-subheading font-semibold text-heading">Recommended Tags</h3>
+            <p className="text-size-caption text-muted">AI first, heuristic fallback. New candidates require review.</p>
           </div>
           <Button
             variant="primary"
@@ -389,7 +389,7 @@ export const TagsPanel: React.FC = () => {
 
         <div className="mt-3 space-y-2">
           {suggestions.length === 0 ? (
-            <div className="text-xs text-muted">{isLoading ? 'Loading...' : 'No pending suggestions.'}</div>
+            <div className="text-size-caption text-muted">{isLoading ? 'Loading...' : 'No pending suggestions.'}</div>
           ) : (
             suggestions.map((suggestion) => {
               const matched = Boolean(suggestion.matched_tag_id);
@@ -398,7 +398,7 @@ export const TagsPanel: React.FC = () => {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="break-words text-sm font-semibold text-heading">
+                        <span className="break-words text-size-subheading font-semibold text-heading">
                           #{suggestion.proposed_name}
                         </span>
                         <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro uppercase tracking-wide text-muted">
@@ -410,7 +410,7 @@ export const TagsPanel: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      {suggestion.reason && <p className="mt-1 text-xs text-navigation">{suggestion.reason}</p>}
+                      {suggestion.reason && <p className="mt-1 text-size-caption text-navigation">{suggestion.reason}</p>}
                       {typeof suggestion.confidence === 'number' && (
                         <p className="mt-1 text-size-meta text-muted">
                           Confidence: {(suggestion.confidence * 100).toFixed(0)}%
@@ -465,7 +465,7 @@ export const TagsPanel: React.FC = () => {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-3">
-        <h3 className="text-sm font-semibold text-heading">Tag Library</h3>
+        <h3 className="text-size-subheading font-semibold text-heading">Tag Library</h3>
         <Input
           value={librarySearch}
           onChange={(event) => setLibrarySearch(event.target.value)}
@@ -474,7 +474,7 @@ export const TagsPanel: React.FC = () => {
         />
         <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
           {filteredLibrary.length === 0 ? (
-            <span className="text-xs text-muted">No matching reusable tags.</span>
+            <span className="text-size-caption text-muted">No matching reusable tags.</span>
           ) : (
             filteredLibrary.slice(0, 40).map((tag) => (
               <Button
@@ -493,13 +493,13 @@ export const TagsPanel: React.FC = () => {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-3">
-        <h3 className="text-sm font-semibold text-heading">Related Articles</h3>
+        <h3 className="text-size-subheading font-semibold text-heading">Related Articles</h3>
         {relatedOriginDoc && selectedDocumentId !== relatedOriginDoc.id && (
           <div className="mt-3 rounded-lg border border-action-subtle bg-action-subtle px-3 py-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-size-meta font-semibold uppercase tracking-wide text-action-text">Original Article</div>
-                <div className="mt-1 truncate text-sm text-action">{relatedOriginDoc.title}</div>
+                <div className="mt-1 truncate text-size-subheading text-action">{relatedOriginDoc.title}</div>
               </div>
               <Button
                 variant="secondary"
@@ -514,7 +514,7 @@ export const TagsPanel: React.FC = () => {
         )}
         <div className="mt-3 space-y-2">
           {relatedDocs.length === 0 ? (
-            <div className="text-xs text-muted">No related documents with shared tags yet.</div>
+            <div className="text-size-caption text-muted">No related documents with shared tags yet.</div>
           ) : (
             relatedDocs.map((doc) => (
               <Button
@@ -526,7 +526,7 @@ export const TagsPanel: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-heading">{doc.title}</div>
+                    <div className="truncate text-size-subheading font-medium text-heading">{doc.title}</div>
                     <div className="mt-1 text-size-meta text-muted">
                       {doc.shared_tag_count} shared tags · {new Date(doc.updated_at * 1000).toLocaleDateString()}
                     </div>

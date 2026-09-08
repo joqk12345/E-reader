@@ -254,12 +254,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-navigation">
+          <span className="text-size-subheading text-navigation">
             Context: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
           <PanelButton
             onClick={clearChat}
-            className="px-2 py-1 text-xs text-navigation border border-control-border rounded hover:bg-surface-subtle"
+            className="px-2 py-1 text-size-caption text-navigation border border-control-border rounded hover:bg-surface-subtle"
           >
             Clear
           </PanelButton>
@@ -267,21 +267,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       </div>
 
       {error && (
-        <div className="px-3 py-2 border-b border-danger/25 bg-danger-subtle text-xs text-danger">
+        <div className="px-3 py-2 border-b border-danger/25 bg-danger-subtle text-size-caption text-danger">
           {error}
         </div>
       )}
 
       <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="h-full flex items-center justify-center text-sm text-muted">
+          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
             Ask directly here, or select text in the reader to trigger a contextual question.
           </div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
             <div
-              className={`max-w-[92%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[92%] rounded-lg px-3 py-2 text-size-subheading whitespace-pre-wrap leading-relaxed ${
                 m.role === 'user'
                   ? 'bg-action text-on-action'
                   : 'bg-surface-subtle text-foreground border border-border'
@@ -293,7 +293,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
         ))}
         {isAsking && (
           <div className="flex justify-start">
-            <div className="bg-surface-subtle text-secondary border border-border rounded-lg px-3 py-2 text-sm">
+            <div className="bg-surface-subtle text-secondary border border-border rounded-lg px-3 py-2 text-size-subheading">
               Thinking...
             </div>
           </div>
@@ -313,7 +313,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
             }}
             disabled={!canAsk || isAsking}
             placeholder={canAsk ? 'Ask anything about current text...' : 'Select a document first'}
-            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-control-border px-3 py-2 text-sm leading-relaxed outline-none focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:bg-surface-subtle"
+            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-control-border px-3 py-2 text-size-subheading leading-relaxed outline-none focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:bg-surface-subtle"
           />
         </div>
       </div>

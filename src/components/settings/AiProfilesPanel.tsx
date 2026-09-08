@@ -874,8 +874,8 @@ export const AiProfilesPanel: React.FC = () => {
         <div className="space-y-3 py-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-foreground">{AGENT_SLOT_LABEL[slot]}</div>
-              <div className="mt-1 text-xs text-muted">
+              <div className="text-size-subheading font-medium text-foreground">{AGENT_SLOT_LABEL[slot]}</div>
+              <div className="mt-1 text-size-caption text-muted">
                 {slot === 'chat'
                   ? 'Pick the model used for interactive chat.'
                   : slot === 'summary'
@@ -888,12 +888,12 @@ export const AiProfilesPanel: React.FC = () => {
             ) : null}
           </div>
           {summary ? (
-            <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+            <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
               Current: {summary.detail}
             </div>
           ) : null}
           {providerOptions.length === 0 ? (
-            <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-sm text-warning">
+            <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-size-subheading text-warning">
               <div>No enabled providers with a compatible model are available for this task yet.</div>
               <Button
                 type="button"
@@ -905,7 +905,7 @@ export const AiProfilesPanel: React.FC = () => {
             </div>
           ) : (
             <>
-              <label className="block text-sm">
+              <label className="block text-size-subheading">
                 <span className="mb-1 block text-navigation">Provider</span>
                 <Select
                   className={`${compactControlClass} w-full`}
@@ -920,7 +920,7 @@ export const AiProfilesPanel: React.FC = () => {
                   ))}
                 </Select>
               </label>
-              <label className="block text-sm">
+              <label className="block text-size-subheading">
                 <span className="mb-1 block text-navigation">Model</span>
                 <Select
                   className={`${compactControlClass} w-full`}
@@ -949,7 +949,7 @@ export const AiProfilesPanel: React.FC = () => {
                 </Select>
               </label>
               {slot === 'translate' && (
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">
                     Parallelism ({Math.min(10, Math.max(1, draft.translation_parallelism ?? 5))})
                   </span>
@@ -973,7 +973,7 @@ export const AiProfilesPanel: React.FC = () => {
                 </label>
               )}
               <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-navigation">Enabled</span>
+                <span className="text-size-subheading text-navigation">Enabled</span>
                 <ToggleSwitch
                   checked={draft.enabled}
                   onChange={(next) =>
@@ -1012,20 +1012,20 @@ export const AiProfilesPanel: React.FC = () => {
                 </Button>
               </div>
               {draft.enabled && !selectedModelId && (
-                <div className="text-xs text-warning">Enabled tasks need a primary model.</div>
+                <div className="text-size-caption text-warning">Enabled tasks need a primary model.</div>
               )}
               {activeProvider?.provider_type === 'local_transformers' ? (
-                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
                   Local Transformers models are validated from the Search flow instead of Model Test.
                 </div>
               ) : null}
               {testResult ? (
-                <div className="rounded-md border border-border bg-surface-subtle p-2 text-sm">
+                <div className="rounded-md border border-border bg-surface-subtle p-2 text-size-subheading">
                   <div className="mb-1 flex items-center gap-2">
                     <StatusDot success={testResult.ok} text={testResult.ok ? 'ok' : 'failed'} />
-                    <span className="text-xs text-muted">{testResult.endpoint}</span>
+                    <span className="text-size-caption text-muted">{testResult.endpoint}</span>
                   </div>
-                  <div className="text-xs text-navigation">{testResult.detail}</div>
+                  <div className="text-size-caption text-navigation">{testResult.detail}</div>
                 </div>
               ) : null}
             </>
@@ -1064,8 +1064,8 @@ export const AiProfilesPanel: React.FC = () => {
         <div className="space-y-4 py-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-foreground">Embedding & Index</div>
-              <div className="mt-1 text-xs text-muted">
+              <div className="text-size-subheading font-medium text-foreground">Embedding & Index</div>
+              <div className="mt-1 text-size-caption text-muted">
                 Semantic search currently runs on Local Transformers. Remote embedding configs stay available in Advanced.
               </div>
             </div>
@@ -1076,12 +1076,12 @@ export const AiProfilesPanel: React.FC = () => {
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
             <div className="space-y-3">
               {summary ? (
-                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
                   Current: {summary.detail}
                 </div>
               ) : null}
               {providerOptions.length === 0 ? (
-                <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-sm text-warning">
+                <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-size-subheading text-warning">
                   <div>No embedding provider with a compatible model is available yet.</div>
                   <Button
                     type="button"
@@ -1093,7 +1093,7 @@ export const AiProfilesPanel: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <label className="block text-sm">
+                  <label className="block text-size-subheading">
                     <span className="mb-1 block text-navigation">Provider</span>
                     <Select
                       className={`${compactControlClass} w-full`}
@@ -1108,7 +1108,7 @@ export const AiProfilesPanel: React.FC = () => {
                       ))}
                     </Select>
                   </label>
-                  <label className="block text-sm">
+                  <label className="block text-size-subheading">
                     <span className="mb-1 block text-navigation">Model</span>
                     <Select
                       className={`${compactControlClass} w-full`}
@@ -1138,20 +1138,20 @@ export const AiProfilesPanel: React.FC = () => {
                   </label>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="rounded-lg border border-border bg-surface-subtle p-3">
-                      <div className="text-xs uppercase tracking-wide text-faint">Dimension</div>
-                      <div className="mt-1 text-sm text-secondary">
+                      <div className="text-size-caption uppercase tracking-wide text-faint">Dimension</div>
+                      <div className="mt-1 text-size-subheading text-secondary">
                         {activeModel?.embedding_dimension || 384}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-surface-subtle p-3">
-                      <div className="text-xs uppercase tracking-wide text-faint">Search Mode</div>
-                      <div className="mt-1 text-sm text-secondary">
+                      <div className="text-size-caption uppercase tracking-wide text-faint">Search Mode</div>
+                      <div className="mt-1 text-size-subheading text-secondary">
                         {isLocalEmbedding ? 'Semantic search + reindex' : 'Keyword fallback today'}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between py-1">
-                    <span className="text-sm text-navigation">Enabled</span>
+                    <span className="text-size-subheading text-navigation">Enabled</span>
                     <ToggleSwitch
                       checked={draft.enabled}
                       onChange={(next) =>
@@ -1190,32 +1190,32 @@ export const AiProfilesPanel: React.FC = () => {
                     </Button>
                   </div>
                   {draft.enabled && !selectedModelId && (
-                    <div className="text-xs text-warning">Enabled tasks need a primary model.</div>
+                    <div className="text-size-caption text-warning">Enabled tasks need a primary model.</div>
                   )}
                   {isLocalEmbedding ? (
-                    <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+                    <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
                       Use Search to validate or download the local embedding model.
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-xs text-warning">
+                    <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-size-caption text-warning">
                       Remote embedding models are stored here, but semantic search still falls back to keywords unless you switch to Local Transformers.
                     </div>
                   )}
                   {testResult ? (
-                    <div className="rounded-md border border-border bg-surface-subtle p-2 text-sm">
+                    <div className="rounded-md border border-border bg-surface-subtle p-2 text-size-subheading">
                       <div className="mb-1 flex items-center gap-2">
                         <StatusDot success={testResult.ok} text={testResult.ok ? 'ok' : 'failed'} />
-                        <span className="text-xs text-muted">{testResult.endpoint}</span>
+                        <span className="text-size-caption text-muted">{testResult.endpoint}</span>
                       </div>
-                      <div className="text-xs text-navigation">{testResult.detail}</div>
+                      <div className="text-size-caption text-navigation">{testResult.detail}</div>
                     </div>
                   ) : null}
                 </>
               )}
             </div>
             <div className="rounded-xl border border-border bg-surface-subtle p-4">
-              <div className="text-xs uppercase tracking-wide text-faint">Index Status</div>
-              <div className="mt-3 space-y-3 text-sm text-secondary">
+              <div className="text-size-caption uppercase tracking-wide text-faint">Index Status</div>
+              <div className="mt-3 space-y-3 text-size-subheading text-secondary">
                 <div className="flex items-center justify-between gap-4">
                   <span>Indexed</span>
                   <span>{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'Unknown'}</span>
@@ -1253,14 +1253,14 @@ export const AiProfilesPanel: React.FC = () => {
         <div className="space-y-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-medium text-foreground">AI & Embedding</div>
-              <div className="text-xs text-muted">
+              <div className="text-size-subheading font-medium text-foreground">AI & Embedding</div>
+              <div className="text-size-caption text-muted">
                 {setupMode === 'quick'
                   ? 'Quick Setup keeps the common task routing on one screen.'
                   : 'Advanced exposes provider, model, fallback, and slot-level controls.'}
               </div>
             </div>
-            <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-sm">
+            <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-size-subheading">
               <Button
                 type="button"
                 className={`rounded-md px-3 py-1.5 ${setupMode === 'quick' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
@@ -1281,7 +1281,7 @@ export const AiProfilesPanel: React.FC = () => {
             <>
               <SettingsDivider />
               <div className="flex items-center justify-between">
-                <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-sm">
+                <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-size-subheading">
                   <Button
                     type="button"
                     className={`rounded-md px-3 py-1.5 ${activeTab === 'providers' ? 'bg-surface shadow-sm' : 'text-navigation'}`}
@@ -1304,16 +1304,16 @@ export const AiProfilesPanel: React.FC = () => {
                     Agents
                   </Button>
                 </div>
-                {loading ? <span className="text-xs text-muted">Loading...</span> : null}
+                {loading ? <span className="text-size-caption text-muted">Loading...</span> : null}
               </div>
             </>
           ) : (
-            <div className="text-xs text-muted">
+            <div className="text-size-caption text-muted">
               Deep Analyze, fallback models, and other low-frequency controls remain under Advanced.
             </div>
           )}
           {setupMode === 'quick' && loading ? (
-            <div className="text-xs text-muted">Loading...</div>
+            <div className="text-size-caption text-muted">Loading...</div>
           ) : null}
         </div>
       </SettingsCard>
@@ -1321,8 +1321,8 @@ export const AiProfilesPanel: React.FC = () => {
       <SettingsCard>
         <div className="space-y-3 py-2">
           <div>
-            <div className="text-sm font-medium text-foreground">Current Effective Setup</div>
-            <div className="text-xs text-muted">Only enabled agent, model, and provider combinations can run.</div>
+            <div className="text-size-subheading font-medium text-foreground">Current Effective Setup</div>
+            <div className="text-size-caption text-muted">Only enabled agent, model, and provider combinations can run.</div>
           </div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {runtimeSummaries.map((summary) => {
@@ -1348,12 +1348,12 @@ export const AiProfilesPanel: React.FC = () => {
                   }`}
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <div className="text-sm font-medium text-foreground">
+                    <div className="text-size-subheading font-medium text-foreground">
                       {AGENT_SLOT_LABEL[summary.slot]}
                     </div>
                     <StatusDot success={isReady} text={chipText} />
                   </div>
-                  <div className="text-xs text-navigation">{summary.detail}</div>
+                  <div className="text-size-caption text-navigation">{summary.detail}</div>
                 </div>
               );
             })}
@@ -1379,14 +1379,14 @@ export const AiProfilesPanel: React.FC = () => {
                   type="button"
                   key={p.id}
                   onClick={() => setSelectedProviderId(p.id)}
-                  className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedProviderId === p.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
+                  className={`w-full rounded-md px-2 py-1.5 text-left text-size-subheading ${selectedProviderId === p.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {p.display_name}
                 </Button>
               ))}
               <Button
                 type="button"
-                className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-sm"
+                className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-size-subheading"
                 onClick={() => {
                   setSelectedProviderId('');
                   const next = defaultProvider();
@@ -1401,11 +1401,11 @@ export const AiProfilesPanel: React.FC = () => {
 
           <SettingsCard>
             <div className="space-y-3 py-2">
-              <label className="block text-sm">
+              <label className="block text-size-subheading">
                 <span className="mb-1 block text-navigation">Display Name</span>
                 <Input className={`${compactControlClass} w-full`} value={providerDraft.display_name} onChange={(e) => setProviderDraft((prev) => ({ ...prev, display_name: e.target.value }))} />
               </label>
-              <label className="block text-sm">
+              <label className="block text-size-subheading">
                 <span className="mb-1 block text-navigation">Provider Type</span>
                 <Select className={`${compactControlClass} w-full`} value={providerDraft.provider_type} onChange={(e) => updateProviderType(e.target.value as ProviderType)}>
                   <option value="lm_studio">LM Studio</option>
@@ -1416,7 +1416,7 @@ export const AiProfilesPanel: React.FC = () => {
                 </Select>
               </label>
               {providerRequiresBaseUrl ? (
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Base URL</span>
                   <Input
                     className={`${compactControlClass} w-full`}
@@ -1425,24 +1425,24 @@ export const AiProfilesPanel: React.FC = () => {
                   />
                 </label>
               ) : (
-                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
                   Local Transformers is frontend-only for embedding. No remote endpoint is needed here.
                 </div>
               )}
               {providerSupportsApiKey && (
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">API Key {showApiKeyRequired ? '(Required)' : '(Optional)'}</span>
                   <Input type="password" className={`${compactControlClass} w-full`} value={providerDraft.api_key || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, api_key: e.target.value }))} />
                 </label>
               )}
               {providerSupportsTestModel && (
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Test Model</span>
                   <Input className={`${compactControlClass} w-full`} value={providerDraft.test_model || ''} onChange={(e) => setProviderDraft((prev) => ({ ...prev, test_model: e.target.value }))} />
                 </label>
               )}
               <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-navigation">Enabled</span>
+                <span className="text-size-subheading text-navigation">Enabled</span>
                 <ToggleSwitch checked={providerDraft.enabled} onChange={(next) => setProviderDraft((prev) => ({ ...prev, enabled: next }))} />
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
@@ -1481,12 +1481,12 @@ export const AiProfilesPanel: React.FC = () => {
                 </CompactIconButton>
               </div>
               {providerTestResult ? (
-                <div className="rounded-md border border-border bg-surface-subtle p-2 text-sm">
+                <div className="rounded-md border border-border bg-surface-subtle p-2 text-size-subheading">
                   <div className="mb-1 flex items-center gap-2">
                     <StatusDot success={providerTestResult.ok} text={providerTestResult.ok ? 'ok' : 'failed'} />
-                    <span className="text-xs text-muted">{providerTestResult.endpoint}</span>
+                    <span className="text-size-caption text-muted">{providerTestResult.endpoint}</span>
                   </div>
-                  <div className="text-xs text-navigation">{providerTestResult.detail}</div>
+                  <div className="text-size-caption text-navigation">{providerTestResult.detail}</div>
                 </div>
               ) : null}
             </div>
@@ -1503,14 +1503,14 @@ export const AiProfilesPanel: React.FC = () => {
                   type="button"
                   key={m.id}
                   onClick={() => setSelectedModelId(m.id)}
-                  className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedModelId === m.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
+                  className={`w-full rounded-md px-2 py-1.5 text-left text-size-subheading ${selectedModelId === m.id ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {m.profile_name}
                 </Button>
               ))}
               <Button
                 type="button"
-                className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-sm"
+                className="w-full rounded-md border border-control-border px-2 py-1.5 text-left text-size-subheading"
                 onClick={() => {
                   setSelectedModelId('');
                   setModelDraft({ ...defaultModel(), provider_profile_id: profiles.providers[0]?.id || '' });
@@ -1524,12 +1524,12 @@ export const AiProfilesPanel: React.FC = () => {
           <SettingsCard>
             {profiles.providers.length === 0 ? (
               <div className="space-y-2 py-2">
-                <p className="text-sm text-navigation">No providers available.</p>
+                <p className="text-size-subheading text-navigation">No providers available.</p>
                 <Button type="button" className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary" onClick={() => setActiveTab('providers')}>Create Provider</Button>
               </div>
             ) : (
               <div className="space-y-3 py-2">
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Provider</span>
                   <Select className={`${compactControlClass} w-full`} value={modelDraft.provider_profile_id} onChange={(e) => setModelDraft((prev) => ({ ...prev, provider_profile_id: e.target.value }))}>
                     {selectableModelProviders.map((p) => (
@@ -1538,19 +1538,19 @@ export const AiProfilesPanel: React.FC = () => {
                   </Select>
                 </label>
                 {modelUsesDisabledProvider && (
-                  <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-xs text-warning">
+                  <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-size-caption text-warning">
                     This model is attached to a disabled provider. Reassign it before using it in an enabled agent.
                   </div>
                 )}
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Profile Name</span>
                   <Input className={`${compactControlClass} w-full`} value={modelDraft.profile_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, profile_name: e.target.value }))} />
                 </label>
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Model Name</span>
                   <Input className={`${compactControlClass} w-full`} value={modelDraft.model_name} onChange={(e) => setModelDraft((prev) => ({ ...prev, model_name: e.target.value }))} />
                 </label>
-                <label className="block text-sm">
+                <label className="block text-size-subheading">
                   <span className="mb-1 block text-navigation">Capability</span>
                   <Select className={`${compactControlClass} w-full`} value={modelDraft.capability} onChange={(e) => setModelDraft((prev) => ({ ...prev, capability: e.target.value as ModelCapability }))}>
                     <option value="chat">Chat</option>
@@ -1559,13 +1559,13 @@ export const AiProfilesPanel: React.FC = () => {
                   </Select>
                 </label>
                 {modelDraft.capability === 'embedding' && (
-                  <label className="block text-sm">
+                  <label className="block text-size-subheading">
                     <span className="mb-1 block text-navigation">Embedding Dimension</span>
                     <Input className={`${compactControlClass} w-full`} placeholder="embedding_dimension" value={modelDraft.embedding_dimension ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, embedding_dimension: e.target.value ? Number(e.target.value) : 384 }))} />
                   </label>
                 )}
                 <div>
-                  <Button type="button" className="text-sm text-action hover:underline" onClick={() => setShowModelAdvanced((prev) => !prev)}>
+                  <Button type="button" className="text-size-subheading text-action hover:underline" onClick={() => setShowModelAdvanced((prev) => !prev)}>
                     {showModelAdvanced ? 'Hide advanced' : 'Show advanced'}
                   </Button>
                   {showModelAdvanced && (
@@ -1574,7 +1574,7 @@ export const AiProfilesPanel: React.FC = () => {
                       <Input className={`${compactControlClass} w-full`} placeholder="max_tokens" value={modelDraft.max_tokens ?? ''} onChange={(e) => setModelDraft((prev) => ({ ...prev, max_tokens: e.target.value ? Number(e.target.value) : undefined }))} />
                       {modelDraft.capability !== 'embedding' && (
                         <div className="col-span-2 flex items-center justify-between rounded-lg border border-control-border bg-surface px-2.5 py-2">
-                          <span className="text-xs text-muted">Enable thinking</span>
+                          <span className="text-size-caption text-muted">Enable thinking</span>
                           <ToggleSwitch checked={!!modelDraft.enable_thinking} onChange={(next) => setModelDraft((prev) => ({ ...prev, enable_thinking: next }))} />
                         </div>
                       )}
@@ -1582,7 +1582,7 @@ export const AiProfilesPanel: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-sm text-navigation">Enabled</span>
+                  <span className="text-size-subheading text-navigation">Enabled</span>
                   <ToggleSwitch checked={modelDraft.enabled} onChange={(next) => setModelDraft((prev) => ({ ...prev, enabled: next }))} />
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -1619,17 +1619,17 @@ export const AiProfilesPanel: React.FC = () => {
                   </CompactIconButton>
                 </div>
                 {currentModelProvider?.provider_type === 'local_transformers' && (
-                  <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-navigation">
+                  <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-caption text-navigation">
                     Local Transformers models are used from the Search flow. Use Search to validate/download the local model instead of Model Test.
                   </div>
                 )}
                 {modelTestResult ? (
-                  <div className="rounded-md border border-border bg-surface-subtle p-2 text-sm">
+                  <div className="rounded-md border border-border bg-surface-subtle p-2 text-size-subheading">
                     <div className="mb-1 flex items-center gap-2">
                       <StatusDot success={modelTestResult.ok} text={modelTestResult.ok ? 'ok' : 'failed'} />
-                      <span className="text-xs text-muted">{modelTestResult.endpoint}</span>
+                      <span className="text-size-caption text-muted">{modelTestResult.endpoint}</span>
                     </div>
-                    <div className="text-xs text-navigation">{modelTestResult.detail}</div>
+                    <div className="text-size-caption text-navigation">{modelTestResult.detail}</div>
                   </div>
                 ) : null}
               </div>
@@ -1647,7 +1647,7 @@ export const AiProfilesPanel: React.FC = () => {
                   type="button"
                   key={slot}
                   onClick={() => setSelectedSlot(slot)}
-                  className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${selectedSlot === slot ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
+                  className={`w-full rounded-md px-2 py-1.5 text-left text-size-subheading ${selectedSlot === slot ? 'bg-action-subtle text-action-text' : 'hover:bg-surface-subtle'}`}
                 >
                   {AGENT_SLOT_LABEL[slot]}
                 </Button>
@@ -1658,11 +1658,11 @@ export const AiProfilesPanel: React.FC = () => {
           <SettingsCard>
             {!agentDraft ? null : (
               <div className="space-y-3 py-2">
-                <div className="text-sm font-medium text-secondary">{AGENT_SLOT_LABEL[selectedSlot]} Agent Config</div>
+                <div className="text-size-subheading font-medium text-secondary">{AGENT_SLOT_LABEL[selectedSlot]} Agent Config</div>
                 {availableAgentCopySources.length > 0 ? (
                   <div className="rounded-lg border border-border bg-surface-subtle p-3">
-                    <div className="text-sm font-medium text-secondary">Copy From Slot</div>
-                    <div className="mt-1 text-xs text-muted">
+                    <div className="text-size-subheading font-medium text-secondary">Copy From Slot</div>
+                    <div className="mt-1 text-size-caption text-muted">
                       Copy another compatible slot as a starting point. Primary and fallback models only carry over if they are still valid here.
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -1691,17 +1691,17 @@ export const AiProfilesPanel: React.FC = () => {
                 ) : null}
                 {candidateModels.length === 0 ? (
                   <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3">
-                    <p className="text-sm text-warning">No models available for this slot capability.</p>
+                    <p className="text-size-subheading text-warning">No models available for this slot capability.</p>
                     <Button type="button" className="mt-2 inline-flex h-8 items-center rounded-lg border border-warning/25 bg-surface px-3 text-size-control text-warning" onClick={() => setActiveTab('models')}>Go to Models</Button>
                   </div>
                 ) : (
                   <>
                     {(invalidPrimarySelection || invalidFallbackSelection) && (
-                      <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-sm text-warning">
+                      <div className="rounded-lg border border-warning/25 bg-warning-subtle p-3 text-size-subheading text-warning">
                         This agent still references a disabled or unavailable model. Choose an enabled model before saving.
                       </div>
                     )}
-                    <label className="block text-sm">
+                    <label className="block text-size-subheading">
                       <span className="mb-1 block text-navigation">Primary Model</span>
                       <Select
                         className={`${compactControlClass} w-full`}
@@ -1714,7 +1714,7 @@ export const AiProfilesPanel: React.FC = () => {
                         ))}
                       </Select>
                     </label>
-                    <label className="block text-sm">
+                    <label className="block text-size-subheading">
                       <span className="mb-1 block text-navigation">Fallback Model (Optional)</span>
                       <Select
                         className={`${compactControlClass} w-full`}
@@ -1730,7 +1730,7 @@ export const AiProfilesPanel: React.FC = () => {
                       </Select>
                     </label>
                     <div>
-                      <Button type="button" className="text-sm text-action hover:underline" onClick={() => setShowAgentAdvanced((prev) => !prev)}>
+                      <Button type="button" className="text-size-subheading text-action hover:underline" onClick={() => setShowAgentAdvanced((prev) => !prev)}>
                         {showAgentAdvanced ? 'Hide advanced' : 'Show advanced'}
                       </Button>
                       {showAgentAdvanced && (
@@ -1742,7 +1742,7 @@ export const AiProfilesPanel: React.FC = () => {
                     </div>
                     {selectedSlot === 'translate' && (
                       <div className="space-y-2">
-                        <label className="block text-sm">
+                        <label className="block text-size-subheading">
                           <span className="mb-1 block text-navigation">
                             Translation Parallelism ({Math.min(10, Math.max(1, agentDraft.translation_parallelism ?? 5))})
                           </span>
@@ -1764,21 +1764,21 @@ export const AiProfilesPanel: React.FC = () => {
                               )
                             }
                           />
-                          <p className="mt-1 text-xs text-muted">Range 1-10, default 5.</p>
+                          <p className="mt-1 text-size-caption text-muted">Range 1-10, default 5.</p>
                         </label>
                       </div>
                     )}
                     <div className="flex items-center justify-between py-1">
-                      <span className="text-sm text-navigation">Enabled</span>
+                      <span className="text-size-subheading text-navigation">Enabled</span>
                       <ToggleSwitch checked={agentDraft.enabled} onChange={(next) => setAgentDraft((prev) => (prev ? { ...prev, enabled: next } : prev))} />
                     </div>
                     <SettingsDivider />
                     <div className="flex items-center justify-between">
                       <Button type="button" onClick={() => void saveAgent()} disabled={saving || !agentCanSave} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
-                      <a href="#" className="text-sm text-action hover:underline">custom prompts</a>
+                      <a href="#" className="text-size-subheading text-action hover:underline">custom prompts</a>
                     </div>
                     {agentDraft.enabled && !agentDraft.primary_model_id && (
-                      <div className="text-xs text-warning">Enabled agents need a primary model.</div>
+                      <div className="text-size-caption text-warning">Enabled agents need a primary model.</div>
                     )}
                   </>
                 )}
@@ -1790,7 +1790,7 @@ export const AiProfilesPanel: React.FC = () => {
 
       {message ? (
         <SettingsCard>
-          <p className="py-2 text-sm text-secondary">{message}</p>
+          <p className="py-2 text-size-subheading text-secondary">{message}</p>
         </SettingsCard>
       ) : null}
     </div>

@@ -254,7 +254,7 @@ export const SummaryPanel: React.FC = () => {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="mb-3">
-          <div className="mb-2 text-sm font-medium text-secondary">Scope:</div>
+          <div className="mb-2 text-size-subheading font-medium text-secondary">Scope:</div>
           <div className="flex flex-wrap gap-2">
             {(['document', 'section', 'paragraph'] as SummaryScope[]).map((item) => {
               const enabled = availableScopes.includes(item);
@@ -263,7 +263,7 @@ export const SummaryPanel: React.FC = () => {
                   key={item}
                   onClick={() => setScope(item)}
                   disabled={!enabled}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  className={`px-3 py-1.5 text-size-subheading rounded-lg transition-colors ${
                     scope === item
                       ? 'bg-action text-on-action'
                       : 'bg-surface-subtle text-secondary hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint'
@@ -277,13 +277,13 @@ export const SummaryPanel: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4 mb-3">
-          <span className="text-sm font-medium text-secondary">Style:</span>
+          <span className="text-size-subheading font-medium text-secondary">Style:</span>
           <div className="flex gap-2">
             {SUMMARY_STYLE_OPTIONS.map((item) => (
               <PanelButton
                 key={item.value}
                 onClick={() => setStyle(item.value)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-size-subheading rounded-lg transition-colors ${
                   style === item.value
                     ? 'bg-action text-on-action'
                     : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
@@ -296,13 +296,13 @@ export const SummaryPanel: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm text-navigation">
+          <span className="text-size-subheading text-navigation">
             Target: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
           <PanelButton
             onClick={() => void handleSummarize()}
             disabled={isSummarizing || !target}
-            className="px-3 py-1.5 text-sm bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
+            className="px-3 py-1.5 text-size-subheading bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
           >
             {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
           </PanelButton>
@@ -311,7 +311,7 @@ export const SummaryPanel: React.FC = () => {
 
       {error && (
         <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-sm text-danger">{error}</p>
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
@@ -321,7 +321,7 @@ export const SummaryPanel: React.FC = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-sm">Click "Generate Summary" to create a summary</p>
+            <p className="text-size-subheading">Click "Generate Summary" to create a summary</p>
           </div>
         )}
 
@@ -329,10 +329,10 @@ export const SummaryPanel: React.FC = () => {
           <div className="prose prose-sm max-w-none">
             <div className="bg-surface border border-border rounded-lg p-4">
               <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3">
-                <div className="text-sm font-medium text-secondary">Generated Summary</div>
+                <div className="text-size-subheading font-medium text-secondary">Generated Summary</div>
                 <PanelButton
                   onClick={() => void handleCopy()}
-                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-size-subheading transition-colors ${
                     isCopied
                       ? 'border-success/25 bg-success/10 text-success'
                       : 'border-border bg-surface text-navigation hover:bg-surface-subtle hover:text-foreground'

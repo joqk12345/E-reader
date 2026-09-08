@@ -1907,7 +1907,7 @@ export function ReaderContent() {
       style={{ backgroundColor: translationCardBg, borderColor: translationCardBorder }}
     >
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-sm leading-none select-none" style={{ color: translationIconColor }}>
+        <span className="mt-0.5 text-size-subheading leading-none select-none" style={{ color: translationIconColor }}>
           🌐
         </span>
         <div className="min-w-0 flex-1">{content}</div>
@@ -2598,7 +2598,7 @@ export function ReaderContent() {
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-action"></div>
-          <p className="mt-2 text-sm" style={{ color: currentTheme.syntax.muted }}>Loading content...</p>
+          <p className="mt-2 text-size-subheading" style={{ color: currentTheme.syntax.muted }}>Loading content...</p>
         </div>
       </div>
     );
@@ -2657,7 +2657,7 @@ export function ReaderContent() {
           <div className="mb-4 flex items-center justify-end gap-2">
             <PanelButton
               onClick={() => setPdfDisplayMode('text')}
-              className="rounded-lg border px-3 py-1.5 text-sm"
+              className="rounded-lg border px-3 py-1.5 text-size-subheading"
               style={
                 pdfDisplayMode === 'text'
                   ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
@@ -2668,7 +2668,7 @@ export function ReaderContent() {
             </PanelButton>
             <PanelButton
               onClick={() => setPdfDisplayMode('original')}
-              className="rounded-lg border px-3 py-1.5 text-sm"
+              className="rounded-lg border px-3 py-1.5 text-size-subheading"
               style={
                 pdfDisplayMode === 'original'
                   ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
@@ -2763,7 +2763,7 @@ export function ReaderContent() {
               >
                 {shouldShowPdfPreview && (
                   <section className="mb-3 rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
-                    <div className="mb-2 text-xs" style={{ color: currentTheme.syntax.comment }}>Page {currentPage}</div>
+                    <div className="mb-2 text-size-caption" style={{ color: currentTheme.syntax.comment }}>Page {currentPage}</div>
                     <iframe
                       title={`PDF Page ${currentPage}`}
                       src={`${convertFileSrc(currentPdfPath)}#page=${currentPage}&zoom=page-width`}
@@ -2791,12 +2791,12 @@ export function ReaderContent() {
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
-                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
-                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
-                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
-                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
-                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
-                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
+                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-size-hero font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
+                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-size-hero-sm font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
+                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-size-heading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
+                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-size-title font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
+                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-size-body font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
+                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-size-subheading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
                             p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
                             ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
@@ -2919,7 +2919,7 @@ export function ReaderContent() {
                               if (!isMultimediaMode && !isArxivHtmlDocument) {
                                 return (
                                   <span
-                                    className="my-2 block text-sm italic"
+                                    className="my-2 block text-size-subheading italic"
                                     style={{ color: currentTheme.syntax.muted }}
                                   >
                                     {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
@@ -2946,7 +2946,7 @@ export function ReaderContent() {
                                       className="h-16 w-24 shrink-0 rounded border object-cover"
                                       style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
                                     />
-                                    <span className="min-w-0 text-sm leading-5" style={{ color: currentTheme.foreground }}>
+                                    <span className="min-w-0 text-size-subheading leading-5" style={{ color: currentTheme.foreground }}>
                                       {alt || 'Open image'}
                                     </span>
                                   </a>
@@ -3008,7 +3008,7 @@ export function ReaderContent() {
                                       ),
                                       img: ({ alt }) => (
                                         <span
-                                          className="my-1 block text-xs italic"
+                                          className="my-1 block text-size-caption italic"
                                           style={{ color: currentTheme.syntax.muted }}
                                         >
                                           {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
@@ -3031,12 +3031,12 @@ export function ReaderContent() {
                                   translatableMarkdownText
                                 )
                               }
-                              className="text-xs text-action hover:text-action underline"
+                              className="text-size-caption text-action hover:text-action underline"
                             >
                               {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
                             </PanelButton>
                             {translationErrors[markdownTranslationKey(paragraph.id)] && (
-                              <span className="text-xs text-danger">
+                              <span className="text-size-caption text-danger">
                                 {translationErrors[markdownTranslationKey(paragraph.id)]}
                               </span>
                             )}
@@ -3051,7 +3051,7 @@ export function ReaderContent() {
                     if (pdfVisualNote) {
                       return (
                         <div
-                          className="my-3 rounded-lg border px-3 py-2 text-sm italic"
+                          className="my-3 rounded-lg border px-3 py-2 text-size-subheading italic"
                           style={{
                             color: currentTheme.syntax.quote,
                             borderColor: currentTheme.border,
@@ -3068,7 +3068,7 @@ export function ReaderContent() {
                         return (
                           <header className="mb-6 text-center">
                             <h1
-                              className="text-3xl font-semibold leading-tight tracking-tight text-heading"
+                              className="text-size-hero font-semibold leading-tight tracking-tight text-heading"
                               style={{ color: currentTheme.foreground }}
                             >
                               {renderWithSearchHighlight(
@@ -3090,10 +3090,10 @@ export function ReaderContent() {
                               : 'h4';
                         const headingClassName =
                           pdfParagraphKind === 'heading1'
-                            ? 'mt-8 mb-3 text-2xl font-semibold'
+                            ? 'mt-8 mb-3 text-size-hero-sm font-semibold'
                             : pdfParagraphKind === 'heading2'
-                              ? 'mt-6 mb-2 text-xl font-semibold'
-                              : 'mt-4 mb-2 text-lg font-semibold';
+                              ? 'mt-6 mb-2 text-size-heading font-semibold'
+                              : 'mt-4 mb-2 text-size-title font-semibold';
                         return (
                           <HeadingTag
                             className={headingClassName}
@@ -3111,7 +3111,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'caption') {
                         return (
                           <p
-                            className="mb-3 text-center text-sm italic text-navigation"
+                            className="mb-3 text-center text-size-subheading italic text-navigation"
                             style={{ color: currentTheme.syntax.quote }}
                           >
                             {renderWithSearchHighlight(
@@ -3126,7 +3126,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'keywords') {
                         return (
                           <p
-                            className="mb-4 rounded-lg border px-3 py-2 text-sm italic"
+                            className="mb-4 rounded-lg border px-3 py-2 text-size-subheading italic"
                             style={{
                               color: currentTheme.syntax.quote,
                               borderColor: currentTheme.border,
@@ -3145,7 +3145,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'metadata') {
                         return (
                           <p
-                            className={`mb-3 text-sm ${currentPage === 1 ? 'text-center' : ''}`}
+                            className={`mb-3 text-size-subheading ${currentPage === 1 ? 'text-center' : ''}`}
                             style={{ color: currentTheme.syntax.comment }}
                           >
                             {renderWithSearchHighlight(
@@ -3160,7 +3160,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'toc') {
                         return (
                           <pre
-                            className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-sm leading-7"
+                            className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-size-subheading leading-7"
                             style={{
                               color: currentTheme.syntax.quote,
                               fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
@@ -3179,7 +3179,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'table') {
                         return (
                           <pre
-                            className="mb-4 overflow-x-auto whitespace-pre rounded-lg border px-3 py-3 text-sm leading-7"
+                            className="mb-4 overflow-x-auto whitespace-pre rounded-lg border px-3 py-3 text-size-subheading leading-7"
                             style={{
                               color: currentTheme.foreground,
                               borderColor: currentTheme.border,
@@ -3201,7 +3201,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'preformatted') {
                         return (
                           <pre
-                            className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-lg border px-3 py-2 text-sm leading-relaxed"
+                            className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-lg border px-3 py-2 text-size-subheading leading-relaxed"
                             style={{
                               color: currentTheme.foreground,
                               borderColor: currentTheme.border,
@@ -3257,7 +3257,7 @@ export function ReaderContent() {
                               <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>
                                 <PanelButton
                                   onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
-                                  className="text-xs text-action hover:text-action underline"
+                                  className="text-size-caption text-action hover:text-action underline"
                                 >
                                   Translate
                                 </PanelButton>
@@ -3401,7 +3401,7 @@ export function ReaderContent() {
                       setIsSelectionReorderMode((prev) => !prev);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-size-caption text-secondary hover:bg-surface-subtle"
                   >
                     {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
                   </PanelButton>
@@ -3411,7 +3411,7 @@ export function ReaderContent() {
                       setIsSelectionReorderMode(false);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-secondary hover:bg-surface-subtle"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-size-caption text-secondary hover:bg-surface-subtle"
                   >
                     Reset to Default
                   </PanelButton>
@@ -3439,7 +3439,7 @@ export function ReaderContent() {
                   <PanelButton
                     key={style}
                     onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
-                    className={`rounded border px-2 py-1 text-xs ${
+                    className={`rounded border px-2 py-1 text-size-caption ${
                       selectionDraft.style === style
                         ? 'border-focus bg-action-subtle text-action-text'
                         : 'border-control-border text-secondary hover:border-control-border'
@@ -3452,13 +3452,13 @@ export function ReaderContent() {
               <div className="mb-2 flex justify-end gap-2">
                 <PanelButton
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
+                  className="rounded border border-control-border px-2 py-1 text-size-caption text-secondary"
                 >
                   Back
                 </PanelButton>
                 <PanelButton
                   onClick={() => void handleCreateHighlightOnly()}
-                  className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
+                  className="rounded bg-action px-2 py-1 text-size-caption text-on-action hover:bg-action-text"
                 >
                   Save Highlight
                 </PanelButton>
@@ -3472,18 +3472,18 @@ export function ReaderContent() {
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
                 placeholder="Enter note content (optional)"
                 rows={3}
-                className="mb-2 w-full resize-none rounded border border-control-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-focus"
+                className="mb-2 w-full resize-none rounded border border-control-border px-2 py-1 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
               />
               <div className="mb-2 flex justify-end gap-2">
                 <PanelButton
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-control-border px-2 py-1 text-xs text-secondary"
+                  className="rounded border border-control-border px-2 py-1 text-size-caption text-secondary"
                 >
                   Back
                 </PanelButton>
                 <PanelButton
                   onClick={handleSaveNoteSelection}
-                  className="rounded bg-action px-2 py-1 text-xs text-on-action hover:bg-action-text"
+                  className="rounded bg-action px-2 py-1 text-size-caption text-on-action hover:bg-action-text"
                 >
                   Save Note
                 </PanelButton>
@@ -3522,18 +3522,18 @@ export function ReaderContent() {
             data-selection-popover="true"
             className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-4 shadow-2xl"
           >
-            <h4 className="text-sm font-semibold text-heading">Start reading from here?</h4>
-            <p className="mt-2 text-xs text-navigation">TTS will start from the paragraph containing the selected text.</p>
+            <h4 className="text-size-subheading font-semibold text-heading">Start reading from here?</h4>
+            <p className="mt-2 text-size-caption text-navigation">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
               <PanelButton
                 onClick={() => setTtsConfirmParagraphId(null)}
-                className="rounded border border-control-border px-3 py-1.5 text-xs text-secondary"
+                className="rounded border border-control-border px-3 py-1.5 text-size-caption text-secondary"
               >
                 Cancel
               </PanelButton>
               <PanelButton
                 onClick={handleConfirmPlayFromSelection}
-                className="rounded bg-action px-3 py-1.5 text-xs text-on-action hover:bg-action-text"
+                className="rounded bg-action px-3 py-1.5 text-size-caption text-on-action hover:bg-action-text"
               >
                 Start Reading
               </PanelButton>

@@ -97,7 +97,7 @@ export function TOCPanel({
         </div>
       ) : (
         <div className="flex items-center justify-between border-b border-border p-4 flex-shrink-0">
-          <h2 className="text-lg font-semibold text-heading">Table of Contents</h2>
+          <h2 className="text-size-title font-semibold text-heading">Table of Contents</h2>
           <PanelButton
             onClick={onToggleCollapse}
             className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
@@ -121,7 +121,7 @@ export function TOCPanel({
       )}
       <nav className={`flex-1 overflow-y-auto ${collapsed ? 'p-1' : 'p-2'}`}>
         {sections.length === 0 ? (
-          <p className={`text-sm text-muted text-center ${collapsed ? 'py-2' : 'py-4'}`}>
+          <p className={`text-size-subheading text-muted text-center ${collapsed ? 'py-2' : 'py-4'}`}>
             No sections
           </p>
         ) : (
@@ -131,7 +131,7 @@ export function TOCPanel({
                 <PanelButton
                   onClick={() => handleSectionClick(section.id)}
                   title={section.title}
-                  className={`w-full rounded-md text-sm transition-colors ${
+                  className={`w-full rounded-md text-size-subheading transition-colors ${
                     collapsed ? 'px-0 py-2 text-center' : 'px-3 py-2 text-left'
                   } ${
                     currentSectionId === section.id

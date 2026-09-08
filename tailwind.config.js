@@ -39,6 +39,7 @@ export default {
         "caption": "var(--font-size-caption)",
         "control": "var(--font-size-control)",
         "label": "var(--font-size-label)",
+        "size-body": "var(--font-size-body)",
         "size-micro": "var(--font-size-micro)",
         "size-meta": "var(--font-size-meta)",
         "size-title": "var(--font-size-title)",
@@ -46,6 +47,7 @@ export default {
         "size-brand": "var(--font-size-brand)",
         "size-heading": "var(--font-size-heading)",
         "size-display": "var(--font-size-display)",
+        "size-hero-sm": "var(--font-size-hero-sm)",
         "size-hero": "var(--font-size-hero)",
         "size-reading-sm": "var(--font-size-reading-sm)",
         "size-reading-md": "var(--font-size-reading-md)"

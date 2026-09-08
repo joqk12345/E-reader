@@ -288,7 +288,7 @@ export function DictPanel({ request }: DictPanelProps) {
               setMode('dict');
               void run('dict', selectedText, sentence, contextParagraphIdRef.current);
             }}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'dict' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
+            className={`rounded-md px-3 py-1.5 text-size-subheading ${mode === 'dict' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Dict
           </PanelButton>
@@ -297,7 +297,7 @@ export function DictPanel({ request }: DictPanelProps) {
               setMode('sentence');
               void run('sentence', selectedText, sentence, contextParagraphIdRef.current);
             }}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode === 'sentence' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
+            className={`rounded-md px-3 py-1.5 text-size-subheading ${mode === 'sentence' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary'}`}
           >
             Sentence
           </PanelButton>
@@ -307,45 +307,45 @@ export function DictPanel({ request }: DictPanelProps) {
             value={selectedText}
             onChange={(e) => setSelectedText(e.target.value)}
             placeholder="Selected word or phrase"
-            className="w-full rounded-md border border-control-border px-2.5 py-1.5 text-sm"
+            className="w-full rounded-md border border-control-border px-2.5 py-1.5 text-size-subheading"
           />
           <Textarea
             value={sentence}
             onChange={(e) => setSentence(e.target.value)}
             placeholder="Sentence context"
             rows={3}
-            className="w-full resize-y rounded-md border border-control-border px-2.5 py-1.5 text-sm"
+            className="w-full resize-y rounded-md border border-control-border px-2.5 py-1.5 text-size-subheading"
           />
           <PanelButton
             onClick={() => void run(mode, selectedText, sentence, contextParagraphIdRef.current)}
             disabled={isLoading}
-            className="rounded-md bg-action px-3 py-1.5 text-sm text-on-action hover:bg-action-text disabled:opacity-50"
+            className="rounded-md bg-action px-3 py-1.5 text-size-subheading text-on-action hover:bg-action-text disabled:opacity-50"
           >
             {isLoading ? 'Running...' : 'Run'}
           </PanelButton>
         </div>
       </div>
 
-      {error && <div className="border-b border-danger/25 bg-danger-subtle px-3 py-2 text-xs text-danger">{error}</div>}
+      {error && <div className="border-b border-danger/25 bg-danger-subtle px-3 py-2 text-size-caption text-danger">{error}</div>}
 
       <div className="flex-1 overflow-y-auto p-3">
         {mode === 'dict' ? (
           <div className="space-y-3">
             <div className="rounded border border-border bg-surface-subtle p-3">
               <div className="mb-1 flex items-center gap-2">
-                <h3 className="text-base font-semibold text-foreground">{dictResult.headword || selectedText || '—'}</h3>
+                <h3 className="text-size-body font-semibold text-foreground">{dictResult.headword || selectedText || '—'}</h3>
                 <PanelButton
                   onClick={() => void playPronunciation()}
                   disabled={isPlaying || !(dictResult.headword || selectedText)}
-                  className="rounded border border-control-border px-2 py-0.5 text-xs text-secondary hover:bg-surface-subtle disabled:opacity-50"
+                  className="rounded border border-control-border px-2 py-0.5 text-size-caption text-secondary hover:bg-surface-subtle disabled:opacity-50"
                 >
                   {isPlaying ? 'Playing...' : '🔊'}
                 </PanelButton>
               </div>
-              <p className="text-sm text-navigation">IPA: {dictResult.ipa || 'N/A'}</p>
+              <p className="text-size-subheading text-navigation">IPA: {dictResult.ipa || 'N/A'}</p>
             </div>
             <div className="rounded border border-border p-3">
-              <h4 className="mb-1 text-sm font-semibold text-foreground">Most Suitable Meaning</h4>
+              <h4 className="mb-1 text-size-subheading font-semibold text-foreground">Most Suitable Meaning</h4>
               <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(dictResult.meaning || '—')}
@@ -353,7 +353,7 @@ export function DictPanel({ request }: DictPanelProps) {
               </div>
             </div>
             <div className="rounded border border-border p-3">
-              <h4 className="mb-1 text-sm font-semibold text-foreground">Why This Meaning</h4>
+              <h4 className="mb-1 text-size-subheading font-semibold text-foreground">Why This Meaning</h4>
               <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(dictResult.usage || '—')}
@@ -361,7 +361,7 @@ export function DictPanel({ request }: DictPanelProps) {
               </div>
             </div>
             <div className="rounded border border-border p-3">
-              <h4 className="mb-1 text-sm font-semibold text-foreground">Sentence Translation</h4>
+              <h4 className="mb-1 text-size-subheading font-semibold text-foreground">Sentence Translation</h4>
               <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(sentenceTranslation || '—')}
@@ -372,7 +372,7 @@ export function DictPanel({ request }: DictPanelProps) {
         ) : (
           <div className="space-y-3">
             <div className="rounded border border-border p-3">
-              <h4 className="mb-2 text-sm font-semibold text-foreground">Sentence Analysis</h4>
+              <h4 className="mb-2 text-size-subheading font-semibold text-foreground">Sentence Analysis</h4>
               {sentenceAnalysis ? (
                 <div className="prose prose-sm max-w-none">
                   <ReactMarkdown
@@ -396,11 +396,11 @@ export function DictPanel({ request }: DictPanelProps) {
                   </ReactMarkdown>
                 </div>
               ) : (
-                <p className="text-sm text-muted">No analysis yet.</p>
+                <p className="text-size-subheading text-muted">No analysis yet.</p>
               )}
             </div>
             <div className="rounded border border-border p-3">
-              <h4 className="mb-1 text-sm font-semibold text-foreground">Sentence Translation</h4>
+              <h4 className="mb-1 text-size-subheading font-semibold text-foreground">Sentence Translation</h4>
               <div className="prose prose-sm max-w-none break-words text-secondary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {normalizeMarkdownForDisplay(sentenceTranslation || '—')}

@@ -330,7 +330,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
         </div>
       ) : (
         <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
-          <span className="text-sm font-semibold text-foreground">Tools</span>
+          <span className="text-size-subheading font-semibold text-foreground">Tools</span>
           <PanelButton
             onClick={onToggleCollapse}
             className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
@@ -363,7 +363,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
                 onToggleCollapse();
               }}
               title={tab.label}
-              className={`mx-auto w-8 h-8 rounded-md flex items-center justify-center text-sm ${
+              className={`mx-auto w-8 h-8 rounded-md flex items-center justify-center text-size-subheading ${
                 activeTab === tab.key
                   ? 'bg-action-subtle text-action-text'
                   : 'text-navigation hover:bg-surface-subtle'
@@ -381,7 +381,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
               <PanelButton
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-r border-b border-border last:border-r-0 ${
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-size-subheading font-medium transition-colors border-r border-b border-border last:border-r-0 ${
                   activeTab === tab.key
                     ? 'bg-action-subtle text-action-text border-b-2 border-action'
                     : 'text-navigation hover:bg-surface-subtle'

@@ -708,7 +708,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             <Button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-lg text-muted transition hover:bg-surface-hover hover:text-heading"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-size-title text-muted transition hover:bg-surface-hover hover:text-heading"
               aria-label="Close settings"
             >
               ×
@@ -723,7 +723,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             </div>
 
             {message && (
-              <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-success/25 bg-success/10 text-success' : 'border-danger/25 bg-danger-subtle text-danger'}`}>
+              <div className={`mb-4 rounded-xl border px-4 py-3 text-size-subheading ${message.type === 'success' ? 'border-success/25 bg-success/10 text-success' : 'border-danger/25 bg-danger-subtle text-danger'}`}>
                 {message.text}
               </div>
             )}
@@ -800,8 +800,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Main reading text size"
                   right={
                     <>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</Button>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.fontSize}px</span>
                     </>
                   }
@@ -811,8 +811,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Vertical rhythm and readability"
                   right={
                     <>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</Button>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
                     </>
                   }
@@ -822,8 +822,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Set line length for focus"
                   right={
                     <>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</Button>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.contentWidth}em</span>
                     </>
                   }
@@ -833,8 +833,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Spacing between CJK characters"
                   right={
                     <>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</Button>
-                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-base text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</Button>
+                      <Button type="button" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</Button>
                       <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
                     </>
                   }

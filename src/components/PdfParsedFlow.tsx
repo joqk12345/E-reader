@@ -233,7 +233,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
               ) : (
                 <PanelButton
                   onClick={() => onTranslateSentence(paragraphId, sentence, index)}
-                  className="text-xs text-action underline hover:text-action"
+                  className="text-size-caption text-action underline hover:text-action"
                 >
                   Translate
                 </PanelButton>
@@ -263,7 +263,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
         const nodes = buildFlowNodes(items, matched);
         return (
           <section key={`page-${page}`} className="rounded-xl border border-border bg-surface px-6 py-5 shadow-sm">
-            <div className="mb-4 border-b border-border pb-2 text-xs font-semibold tracking-wide text-muted">
+            <div className="mb-4 border-b border-border pb-2 text-size-caption font-semibold tracking-wide text-muted">
               PAGE {page}
             </div>
             <div className="space-y-4">
@@ -277,7 +277,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                         className="mx-auto max-h-[32rem] w-auto max-w-full rounded object-contain"
                       />
                       {node.caption && (
-                        <figcaption className="mt-2 text-center text-sm text-navigation">{node.caption}</figcaption>
+                        <figcaption className="mt-2 text-center text-size-subheading text-navigation">{node.caption}</figcaption>
                       )}
                     </figure>
                   );
@@ -359,7 +359,7 @@ export const PdfParsedFlow: React.FC<PdfParsedFlowProps> = ({
                   return (
                     <div key={node.id} className="rounded-lg border border-border bg-surface-subtle p-2">
                       <details>
-                        <summary className="cursor-pointer select-none text-xs font-medium text-secondary">
+                        <summary className="cursor-pointer select-none text-size-caption font-medium text-secondary">
                           {reasonText}
                         </summary>
                         <iframe

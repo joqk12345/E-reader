@@ -59,7 +59,7 @@ export const FloatingAudiobookControl: React.FC = () => {
     return (
       <PanelButton
         onClick={() => setIsClosed(false)}
-        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
+        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-size-title shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Open audio player"
         aria-label="Open audio player"
       >
@@ -72,7 +72,7 @@ export const FloatingAudiobookControl: React.FC = () => {
     return (
       <PanelButton
         onClick={() => setIsMinimized(false)}
-        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-lg shadow-lg backdrop-blur-sm hover:bg-surface"
+        className="fixed right-4 bottom-4 z-50 h-11 w-11 rounded-full border border-border bg-surface/95 text-size-title shadow-lg backdrop-blur-sm hover:bg-surface"
         title="Expand audio player"
         aria-label="Expand audio player"
       >
@@ -85,13 +85,13 @@ export const FloatingAudiobookControl: React.FC = () => {
     <div className="fixed right-4 bottom-4 z-50 w-72 rounded-xl border border-border bg-surface/95 shadow-lg backdrop-blur-sm">
       <div className="px-3 py-2 border-b border-border flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold text-secondary">Audio Player</p>
+          <p className="text-size-caption font-semibold text-secondary">Audio Player</p>
           {state.currentProvider && <p className="text-size-meta text-muted">Provider: {state.currentProvider}</p>}
         </div>
         <div className="flex items-center gap-1">
           <PanelButton
             onClick={() => setIsMinimized((prev) => !prev)}
-            className="h-6 w-6 rounded text-xs text-navigation hover:bg-surface-subtle"
+            className="h-6 w-6 rounded text-size-caption text-navigation hover:bg-surface-subtle"
             title={isMinimized ? 'Expand' : 'Minimize'}
             aria-label={isMinimized ? 'Expand' : 'Minimize'}
           >
@@ -99,7 +99,7 @@ export const FloatingAudiobookControl: React.FC = () => {
           </PanelButton>
           <PanelButton
             onClick={() => setIsClosed(true)}
-            className="h-6 w-6 rounded text-sm text-navigation hover:bg-surface-subtle"
+            className="h-6 w-6 rounded text-size-subheading text-navigation hover:bg-surface-subtle"
             title="Close"
             aria-label="Close"
           >
@@ -110,7 +110,7 @@ export const FloatingAudiobookControl: React.FC = () => {
       {!isMinimized && (
         <>
           <div className="px-3 py-2">
-            <p className="text-xs text-secondary line-clamp-2 min-h-[2rem]">
+            <p className="text-size-caption text-secondary line-clamp-2 min-h-[2rem]">
               {state.currentSentence || (hasQueue ? 'Ready to play' : 'No readable sentence found')}
             </p>
             {state.error && <p className="mt-1 text-size-meta text-danger line-clamp-2">{state.error}</p>}
@@ -119,14 +119,14 @@ export const FloatingAudiobookControl: React.FC = () => {
             <PanelButton
               onClick={handleMainAction}
               disabled={!hasQueue}
-              className="flex-1 px-3 py-2 text-xs text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
+              className="flex-1 px-3 py-2 text-size-caption text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
             >
               {mainLabel}
             </PanelButton>
             <PanelButton
               onClick={() => sendControl('stop')}
               disabled={!state.isPlaying}
-              className="px-3 py-2 text-xs text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:text-faint disabled:bg-surface-subtle"
+              className="px-3 py-2 text-size-caption text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:text-faint disabled:bg-surface-subtle"
             >
               Stop
             </PanelButton>
