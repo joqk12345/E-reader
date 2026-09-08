@@ -12,6 +12,8 @@ import {
   suggestDocumentTags,
 } from '../services/tagService';
 import { TagNameDialog } from './TagNameDialog';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
 
 const findTagByNameOrAlias = (tags: TagRecord[], raw: string) => {
   const normalized = raw.trim().toLowerCase();
@@ -306,17 +308,18 @@ export const TagsPanel: React.FC = () => {
             <h3 className="text-sm font-semibold text-heading">Applied Tags</h3>
             <p className="text-xs text-muted">{selectedDocument.title}</p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => void refresh()}
-            className="rounded-md border border-control-border px-2 py-1 text-xs text-secondary hover:bg-surface-subtle"
+            className="h-7 rounded-md px-2 text-size-meta"
           >
             Refresh
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 flex gap-2">
-          <input
+          <Input
             value={manualTagDraft}
             onChange={(event) => setManualTagDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -326,16 +329,17 @@ export const TagsPanel: React.FC = () => {
               }
             }}
             placeholder="Add manual tag"
-            className="h-9 flex-1 rounded-md border border-control-border px-3 text-sm focus:border-focus focus:outline-none"
+            className="flex-1 rounded-md text-size-control"
           />
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void handleAddManualTag()}
             disabled={!manualTagDraft.trim()}
-            className="rounded-md bg-action px-3 text-xs font-medium text-on-action hover:bg-action-text disabled:bg-control-border"
+            className="rounded-md text-size-meta"
           >
             Add
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -351,14 +355,15 @@ export const TagsPanel: React.FC = () => {
                 {tag.is_temporary && (
                   <span className="rounded bg-warning-subtle px-1 text-size-micro text-warning">temp</span>
                 )}
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => void handleRemoveTag(tag.tag_id)}
-                  className="text-muted hover:text-danger"
+                  className="!h-5 !min-h-0 !w-5 !px-0 text-muted hover:text-danger"
                   aria-label={`Remove ${tag.tag_name}`}
                 >
                   ×
-                </button>
+                </Button>
               </span>
             ))
           )}
@@ -371,14 +376,15 @@ export const TagsPanel: React.FC = () => {
             <h3 className="text-sm font-semibold text-heading">Recommended Tags</h3>
             <p className="text-xs text-muted">AI first, heuristic fallback. New candidates require review.</p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void handleRefreshSuggestions()}
             disabled={isSuggesting}
-            className="rounded-md bg-heading px-3 py-1.5 text-xs font-medium text-on-action hover:bg-foreground disabled:bg-muted"
+            className="rounded-md bg-heading text-size-meta hover:bg-foreground"
           >
             {isSuggesting ? 'Generating...' : 'Refresh Suggestions'}
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 space-y-2">
@@ -413,38 +419,42 @@ export const TagsPanel: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1 sm:max-w-[44%] sm:justify-end">
                       {matched ? (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => void handleAcceptMatchedSuggestion(suggestion.id)}
-                          className="rounded-md bg-success px-2 py-1 text-size-meta font-medium text-on-action hover:bg-success"
+                          className="h-7 rounded-md bg-success px-2 text-size-meta hover:bg-success"
                         >
                           Accept
-                        </button>
+                        </Button>
                       ) : (
                         <>
-                          <button
-                            type="button"
+                          <Button
+                            variant="primary"
+                            size="sm"
                             onClick={() => void handleCreateTemporaryFromSuggestion(suggestion)}
-                            className="rounded-md bg-warning px-2 py-1 text-size-meta font-medium text-on-action hover:bg-warning"
+                            className="h-7 rounded-md bg-warning px-2 text-size-meta hover:bg-warning"
                           >
                             Create Temp
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => void handleMapSuggestion(suggestion)}
-                            className="rounded-md border border-control-border px-2 py-1 text-size-meta font-medium text-secondary hover:bg-surface-subtle"
+                            className="h-7 rounded-md px-2 text-size-meta"
                           >
                             Map
-                          </button>
+                          </Button>
                         </>
                       )}
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => void handleRejectSuggestion(suggestion.id)}
-                        className="rounded-md border border-danger/25 px-2 py-1 text-size-meta font-medium text-danger hover:bg-danger-subtle"
+                        className="h-7 rounded-md border border-danger/25 px-2 text-size-meta text-danger hover:bg-danger-subtle"
                       >
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -456,26 +466,27 @@ export const TagsPanel: React.FC = () => {
 
       <div className="rounded-xl border border-border bg-surface p-3">
         <h3 className="text-sm font-semibold text-heading">Tag Library</h3>
-        <input
+        <Input
           value={librarySearch}
           onChange={(event) => setLibrarySearch(event.target.value)}
           placeholder="Search existing tags..."
-          className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-sm focus:border-focus focus:outline-none"
+          className="mt-3 w-full rounded-md text-size-control"
         />
         <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
           {filteredLibrary.length === 0 ? (
             <span className="text-xs text-muted">No matching reusable tags.</span>
           ) : (
             filteredLibrary.slice(0, 40).map((tag) => (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 key={tag.id}
-                type="button"
                 onClick={() => void handleApplyExistingTag(tag.id)}
-                className="inline-flex items-center gap-1 rounded-full border border-control-border px-2.5 py-1 text-xs text-secondary hover:border-focus-border hover:bg-action-subtle"
+                className="h-7 rounded-full px-2.5 text-size-meta hover:border-focus-border hover:bg-action-subtle"
               >
                 <span>#{tag.name}</span>
                 <span className="text-size-micro text-faint">{tag.usage_count}</span>
-              </button>
+              </Button>
             ))
           )}
         </div>
@@ -490,13 +501,14 @@ export const TagsPanel: React.FC = () => {
                 <div className="text-size-meta font-semibold uppercase tracking-wide text-action-text">Original Article</div>
                 <div className="mt-1 truncate text-sm text-action">{relatedOriginDoc.title}</div>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleReturnToOriginalDocument}
-                className="shrink-0 rounded-md border border-focus-border bg-surface px-2 py-1 text-xs text-action-text hover:bg-action-subtle"
+                className="h-7 shrink-0 rounded-md border-focus-border px-2 text-size-meta text-action-text hover:bg-action-subtle"
               >
                 Back
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -505,11 +517,12 @@ export const TagsPanel: React.FC = () => {
             <div className="text-xs text-muted">No related documents with shared tags yet.</div>
           ) : (
             relatedDocs.map((doc) => (
-              <button
+              <Button
+                variant="ghost"
+                size="md"
                 key={doc.doc_id}
-                type="button"
                 onClick={() => handleOpenRelatedDocument(doc.doc_id)}
-                className="w-full rounded-lg border border-border p-3 text-left hover:border-focus-border hover:bg-action-subtle/30"
+                className="h-auto w-full justify-start rounded-lg border border-border p-3 text-left hover:border-focus-border hover:bg-action-subtle/30"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
@@ -534,7 +547,7 @@ export const TagsPanel: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </button>
+              </Button>
             ))
           )}
         </div>
