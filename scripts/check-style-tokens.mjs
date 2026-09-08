@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // The token source and reader theme palettes are the definitions that consumers reference.
-const definitionFiles = new Set(['src/styles/tokens.css', 'src/components/readerTheme.ts', 'src/App.css']);
+const definitionFiles = new Set(['src/styles/tokens.css', 'src/components/readerTheme.ts']);
 const files = [];
 function collect(directory) {
   for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
