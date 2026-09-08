@@ -15,10 +15,28 @@ import {
   type ReaderSyntaxTokens,
 } from './readerTheme';
 import { useReaderViewSettings } from '../features/reader/useReaderViewSettings';
+import { useReaderTranslation } from '../features/reader/useReaderTranslation';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
 const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
+const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const invokeTranslateWithRetry = async (
+  text: string,
+  targetLang: 'zh' | 'en',
+  attempts = 2,
+): Promise<string> => {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await invoke<string>('translate', { text, targetLang });
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await delay(350 * attempt);
+    }
+  }
+  throw lastError;
+};
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const annotationStyleOrder: AnnotationStyle[] = ['single_underline', 'double_underline', 'wavy_strikethrough'];
 const annotationStyleLabel: Record<AnnotationStyle, string> = {
@@ -1717,8 +1735,6 @@ export function ReaderContent() {
     searchHighlightQuery,
     searchMatchedParagraphIds,
   } = useStore();
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [translationErrors, setTranslationErrors] = useState<Record<string, string>>({});
   const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
   const [selectionAnchor, setSelectionAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -1752,10 +1768,6 @@ export function ReaderContent() {
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [contentViewport, setContentViewport] = useState({ width: 0, height: 0 });
-  const translationsRef = useRef<Record<string, string>>({});
-  const inFlightRef = useRef<Set<string>>(new Set());
-  const pendingPatchRef = useRef<Record<string, string>>({});
-  const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
   const [translationParallelism, setTranslationParallelism] = useState(5);
   const matchedParagraphSet = useRef<Set<string>>(new Set());
@@ -1957,6 +1969,36 @@ export function ReaderContent() {
       supplementalReferences,
     ]
   );
+  const getTranslationItems = useMemo(
+    () => (paragraph: { id: string; text: string }) => {
+      if (currentDocumentType === 'markdown') {
+        const meta = markdownParagraphMeta[paragraph.id];
+        const text = isMultimediaMode
+          ? sanitizeMarkdownForTranslation(paragraph.text, { inMediaLinks: meta?.inMediaLinks })
+          : paragraph.text;
+        return [{ key: markdownTranslationKey(paragraph.id), text }];
+      }
+      return splitIntoSentences(paragraph.text).map((text, index) => ({
+        key: `${paragraph.id}_${index}`,
+        text,
+      }));
+    },
+    [currentDocumentType, isMultimediaMode, markdownParagraphMeta],
+  );
+  const {
+    translations,
+    translationErrors,
+    handleTranslateSentence,
+    handleTranslateMarkdownParagraph,
+  } = useReaderTranslation({
+    translationMode,
+    currentSectionId,
+    visibleParagraphs,
+    translationParallelism,
+    autoTranslate,
+    getTranslationItems,
+    invokeTranslate: invokeTranslateWithRetry,
+  });
   const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
     () =>
       currentDocumentType === 'pdf'
@@ -2033,7 +2075,6 @@ export function ReaderContent() {
     return normalized;
   }, [currentDocumentType, isMultimediaMode, remoteArticleImages, visibleParagraphs]);
 
-  const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
   const openExternalUrl = (url: string) => {
     const normalized = url.trim();
     if (!normalized) return;
@@ -2060,25 +2101,6 @@ export function ReaderContent() {
     if (!raw) return;
     const normalized = /^(https?:|mailto:)/i.test(raw) ? raw : `https://${raw}`;
     openExternalUrl(normalized);
-  };
-
-  const invokeTranslateWithRetry = async (
-    text: string,
-    targetLang: 'zh' | 'en',
-    attempts = 2
-  ): Promise<string> => {
-    let lastError: unknown = null;
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      try {
-        return await invoke<string>('translate', { text, targetLang });
-      } catch (error) {
-        lastError = error;
-        if (attempt < attempts) {
-          await delay(350 * attempt);
-        }
-      }
-    }
-    throw lastError;
   };
 
   useEffect(() => {
@@ -2234,136 +2256,6 @@ export function ReaderContent() {
   const dispatchAudiobookStart = (detail: AudiobookStartEventDetail) => {
     window.dispatchEvent(new CustomEvent<AudiobookStartEventDetail>('reader:audiobook-start', { detail }));
   };
-
-  const clearFlushTimer = () => {
-    if (flushTimerRef.current !== null) {
-      window.clearTimeout(flushTimerRef.current);
-      flushTimerRef.current = null;
-    }
-  };
-
-  const scheduleFlushTranslations = () => {
-    if (flushTimerRef.current !== null) return;
-    flushTimerRef.current = window.setTimeout(() => {
-      flushTimerRef.current = null;
-      const patch = pendingPatchRef.current;
-      pendingPatchRef.current = {};
-      if (Object.keys(patch).length === 0) return;
-      setTranslations((prev) => ({ ...prev, ...patch }));
-    }, 120);
-  };
-
-  // 翻译单个句子
-  const translateSentence = async (key: string, sentence: string) => {
-    if (translationsRef.current[key] || inFlightRef.current.has(key)) return;
-
-    // 根据设置的翻译方向确定目标语言
-    const targetLang = translationMode === 'zh-en' ? 'en' : 'zh';
-    inFlightRef.current.add(key);
-    try {
-      const result = await invokeTranslateWithRetry(sentence, targetLang, 2);
-      translationsRef.current[key] = result;
-      pendingPatchRef.current[key] = result;
-      setTranslationErrors((prev) => {
-        if (!prev[key]) return prev;
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      scheduleFlushTranslations();
-    } catch (error) {
-      console.error('Failed to translate sentence:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      setTranslationErrors((prev) => ({ ...prev, [key]: message }));
-    } finally {
-      inFlightRef.current.delete(key);
-    }
-  };
-
-  // 点击翻译句子
-  const handleTranslateSentence = async (paragraphId: string, sentence: string, index: number) => {
-    const key = `${paragraphId}_${index}`;
-    await translateSentence(key, sentence);
-  };
-
-  const handleTranslateMarkdownParagraph = async (paragraphId: string, text: string) => {
-    if (!text.trim()) return;
-    await translateSentence(markdownTranslationKey(paragraphId), text);
-  };
-
-  // 自动翻译当前章节所有句子（开启双语时）
-  useEffect(() => {
-    if (translationMode === 'off' || !autoTranslate) return;
-
-    let cancelled = false;
-    const pending: Array<{ key: string; text: string }> = [];
-
-    for (const paragraph of visibleParagraphs) {
-      if (currentDocumentType === 'markdown') {
-        const meta = markdownParagraphMeta[paragraph.id];
-        const text =
-          isMultimediaMode
-            ? sanitizeMarkdownForTranslation(paragraph.text, {
-                inMediaLinks: meta?.inMediaLinks,
-              })
-            : paragraph.text;
-        const key = markdownTranslationKey(paragraph.id);
-        if (translationsRef.current[key]) continue;
-        if (inFlightRef.current.has(key)) continue;
-        if (!text.trim()) continue;
-        pending.push({ key, text });
-        continue;
-      }
-
-      const sentences = splitIntoSentences(paragraph.text);
-      sentences.forEach((sentence, index) => {
-        const key = `${paragraph.id}_${index}`;
-        if (translationsRef.current[key]) return;
-        if (inFlightRef.current.has(key)) return;
-        if (!sentence.trim()) return;
-        pending.push({ key, text: sentence });
-      });
-    }
-
-    if (pending.length === 0) return;
-
-    const maxConcurrency = Math.min(
-      Math.max(1, translationParallelism),
-      pending.length
-    );
-    const runWorker = async () => {
-      while (pending.length > 0 && !cancelled) {
-        const item = pending.shift();
-        if (!item) return;
-        await translateSentence(item.key, item.text);
-      }
-    };
-
-    const workers = Array.from(
-      { length: maxConcurrency },
-      () => runWorker()
-    );
-
-    void Promise.all(workers);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [translationMode, autoTranslate, visibleParagraphs, currentDocumentType, translationParallelism, markdownParagraphMeta, isMultimediaMode]);
-
-  // 当章节或翻译方向变化时，清空翻译缓存并重建任务
-  useEffect(() => {
-    clearFlushTimer();
-    pendingPatchRef.current = {};
-    translationsRef.current = {};
-    inFlightRef.current.clear();
-    setTranslations({});
-    setTranslationErrors({});
-  }, [currentSectionId, translationMode]);
-
-  useEffect(() => {
-    return () => clearFlushTimer();
-  }, []);
 
   useEffect(() => {
     const paragraphIds = paragraphs.map((item) => item.id);
