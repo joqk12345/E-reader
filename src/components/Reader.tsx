@@ -9,6 +9,7 @@ import { ReaderContent } from './ReaderContent';
 import { ToolPanel } from './ToolPanel';
 import { FloatingAudiobookControl } from './FloatingAudiobookControl';
 import { loadReaderViewSettings } from './readerTheme';
+import { useReaderPanelLayout } from '../features/reader/useReaderPanelLayout';
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false;
@@ -36,13 +37,7 @@ export function Reader() {
     keymap,
     readerFontSize,
   } = useStore();
-  const [tocCollapsed, setTocCollapsed] = useState(false);
-  const [tocWidth, setTocWidth] = useState(256);
-  const [headerToolsCollapsed, setHeaderToolsCollapsed] = useState(false);
   const [windowMaximized, setWindowMaximized] = useState(false);
-  const [toolCollapsed, setToolCollapsed] = useState(false);
-  const [toolWidth, setToolWidth] = useState(320);
-  const [readingMode, setReadingMode] = useState(false);
   const [contentStats, setContentStats] = useState({
     sourceWords: 0,
     translatedWords: 0,
@@ -61,15 +56,24 @@ export function Reader() {
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const readingViewMenuRef = useRef<HTMLDivElement | null>(null);
   const sourceLinkMenuRef = useRef<HTMLDivElement | null>(null);
-  const readingModeSnapshotRef = useRef<{
-    headerToolsCollapsed: boolean;
-    tocCollapsed: boolean;
-    toolCollapsed: boolean;
-  } | null>(null);
-  const minTocWidth = 200;
-  const maxTocWidth = 420;
-  const minToolWidth = 280;
-  const maxToolWidth = 460;
+  const {
+    tocCollapsed,
+    setTocCollapsed,
+    tocWidth,
+    setTocWidth,
+    headerToolsCollapsed,
+    setHeaderToolsCollapsed,
+    toolCollapsed,
+    setToolCollapsed,
+    toolWidth,
+    setToolWidth,
+    readingMode,
+    toggleReadingMode,
+    minTocWidth,
+    maxTocWidth,
+    minToolWidth,
+    maxToolWidth,
+  } = useReaderPanelLayout();
   const selectedDocument = useMemo(
     () => documents.find((doc) => doc.id === selectedDocumentId) || null,
     [documents, selectedDocumentId]
@@ -158,42 +162,6 @@ export function Reader() {
       setFocusedParagraphId,
     ]
   );
-
-  const applyReadingMode = useCallback(
-    (enabled: boolean) => {
-      if (enabled) {
-        if (!readingModeSnapshotRef.current) {
-          readingModeSnapshotRef.current = {
-            headerToolsCollapsed,
-            tocCollapsed,
-            toolCollapsed,
-          };
-        }
-        setHeaderToolsCollapsed(true);
-        setTocCollapsed(true);
-        setToolCollapsed(true);
-      } else {
-        const snapshot = readingModeSnapshotRef.current;
-        if (snapshot) {
-          setHeaderToolsCollapsed(snapshot.headerToolsCollapsed);
-          setTocCollapsed(snapshot.tocCollapsed);
-          setToolCollapsed(snapshot.toolCollapsed);
-          readingModeSnapshotRef.current = null;
-        }
-      }
-      setReadingMode(enabled);
-      window.dispatchEvent(
-        new CustomEvent('reader:reading-mode-changed', {
-          detail: { enabled },
-        })
-      );
-    },
-    [headerToolsCollapsed, tocCollapsed, toolCollapsed]
-  );
-
-  const toggleReadingMode = useCallback(() => {
-    applyReadingMode(!readingMode);
-  }, [applyReadingMode, readingMode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
