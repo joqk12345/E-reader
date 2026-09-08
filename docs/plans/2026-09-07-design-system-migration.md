@@ -65,3 +65,4 @@
 - 2026-09-08 Settings 收尾：About 子页面已加入侧栏导航，Settings 外壳补齐 `role="dialog"`、初始焦点和 Tab 循环；`App` 的 SettingsSection 类型与全部页面保持一致。
 - 2026-09-08 回归防线：新增 `npm run check:boundaries`，在 CI 中校验 8 个 Settings 子页面、5 个阅读主题、15 个职责边界文件及 Settings dialog 可访问性标记。
 - 2026-09-08 可访问性收尾：Settings 的主题选择、排版调整按钮和侧栏当前项补齐可访问名称、pressed/current 状态，边界检查同步防止这些语义回退。
+- 2026-09-08 开关语义收尾：共享 ToggleSwitch 支持可访问标签，Settings 与 AiProfilesPanel 的所有开关均提供明确名称，边界检查验证基础能力。
