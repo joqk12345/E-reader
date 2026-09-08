@@ -49,4 +49,5 @@
 - P4/P6 进展：Reader 的 TOC/工具面板宽度、折叠和沉浸式阅读模式已抽到 `features/reader/useReaderPanelLayout`；可见段落、PDF 表格分组和 Markdown 多媒体归一化已抽到 `useReaderRenderModel`；动态阅读设置持久化、翻译缓存/重试/并发队列、选区动作排序偏好和批注加载分别抽到 `useReaderViewSettings`、`useReaderTranslation`、`useSelectionActionOrder`、`useReaderAnnotations`；Library 的导入与筛选/分组计算分别抽到 `features/library/useLibraryImport` 和 `useLibraryDocumentFilters`，页面组件只保留组合和展示职责。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 45 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
 - 2026-09-08 验收记录：`check:styles` 当前覆盖 59 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
+- 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode，因此暂时无法启动真实 Tauri 窗口做视觉与交互回归；后端编译和单元测试已完成。
 - 2026-09-08 仍未宣称完成：真实 Tauri 窗口中的五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责和 Reader 的渲染模型、面板、翻译、批注、选区偏好职责已完成首轮拆分。
