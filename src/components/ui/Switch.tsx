@@ -18,4 +18,3 @@ export function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean
     </button>
   );
 }
-
