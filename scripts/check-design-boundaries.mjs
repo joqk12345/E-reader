@@ -54,6 +54,15 @@ expect(settings.includes('aria-label="Decrease font size"'), 'Typography control
 expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
 expect(switchPrimitive.includes('aria-label={label}'), 'Switch primitive is missing accessible label support');
 
+for (const relativePath of ['src/components/Settings.tsx', 'src/components/settings/AiProfilesPanel.tsx']) {
+  const source = read(relativePath);
+  for (const match of source.matchAll(/<ToggleSwitch\b/g)) {
+    const close = source.indexOf('/>', match.index);
+    const usage = source.slice(match.index, close === -1 ? match.index + 240 : close + 2);
+    expect(usage.includes('label='), `${relativePath}:${source.slice(0, match.index).split('\n').length}: ToggleSwitch is missing an accessible label`);
+  }
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
