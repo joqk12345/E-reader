@@ -63,3 +63,4 @@
 - 2026-09-08 代码实现审计：P2–P6 的公共控件、业务页面迁移、主题边界和职责拆分均已落地；阶段勾选仍保留待验收状态，直到可用 Tauri 环境完成视觉与交互回归。
 - 2026-09-08 运行审计：在 worktree 内执行 `npm run tauri dev -- --no-watch --config '{"build":{"devUrl":"http://localhost:1430","beforeDevCommand":"npm run dev -- --host 127.0.0.1 --port 1430"}}'`，Rust 后端成功编译并启动，随后已停止进程；未修改默认 1420 端口，也未影响主工作区服务。
 - 2026-09-08 Settings 收尾：About 子页面已加入侧栏导航，Settings 外壳补齐 `role="dialog"`、初始焦点和 Tab 循环；`App` 的 SettingsSection 类型与全部页面保持一致。
+- 2026-09-08 回归防线：新增 `npm run check:boundaries`，在 CI 中校验 8 个 Settings 子页面、5 个阅读主题、15 个职责边界文件及 Settings dialog 可访问性标记。
