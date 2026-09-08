@@ -25,6 +25,9 @@ for (const file of files) {
     for (const [label, pattern] of rules) {
       if (pattern.test(line)) failures.push(`${file}:${index + 1}: ${label}`);
     }
+    if (!file.startsWith('src/components/ui/') && /<\/?(?:button|input|select|textarea)\b/.test(line)) {
+      failures.push(`${file}:${index + 1}: raw interactive element`);
+    }
   });
 }
 if (failures.length) {
