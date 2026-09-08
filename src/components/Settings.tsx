@@ -11,9 +11,9 @@ import {
 } from '../utils/shortcuts';
 import {  LEGACY_READER_BACKGROUND,
   READER_THEMES,
-  VIEW_SETTINGS_KEY,
   clamp,
   loadReaderViewSettings,
+  persistReaderViewSettings,
   type ReaderThemeId,
   type ReaderViewSettings,
 } from './readerTheme';
@@ -205,6 +205,8 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
 
 export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'reading' }) => {
   const loadAppConfig = useStore((state) => state.loadConfig);
+  const setReaderBackgroundColor = useStore((state) => state.setReaderBackgroundColor);
+  const setReaderFontSize = useStore((state) => state.setReaderFontSize);
   const settingsShellRef = useRef<HTMLDivElement | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [config, setConfig] = useState<Config>({
@@ -332,12 +334,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(readerViewSettings));
-      window.dispatchEvent(new CustomEvent('reader:view-settings-updated'));
-    } catch (error) {
-      console.warn('Failed to persist reader view settings:', error);
-    }
+    persistReaderViewSettings(readerViewSettings);
   }, [readerViewSettings]);
 
   useEffect(() => {
@@ -553,6 +550,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     };
 
     try {
+      persistReaderViewSettings(readerViewSettings);
+      setReaderBackgroundColor(nextConfig.reader_background_color);
+      setReaderFontSize(readerViewSettings.fontSize);
       await invoke('update_config', { config: nextConfig });
       await loadAppConfig();
       setConfig(nextConfig);

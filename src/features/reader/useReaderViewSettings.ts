@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  VIEW_SETTINGS_KEY,
   loadReaderViewSettings,
+  persistReaderViewSettings,
   type ReaderViewSettings,
 } from '../../components/readerTheme';
 
@@ -14,11 +14,7 @@ export function useReaderViewSettings(
   );
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(viewSettings));
-    } catch (error) {
-      console.warn('Failed to persist reader view settings:', error);
-    }
+    persistReaderViewSettings(viewSettings);
   }, [viewSettings]);
 
   useEffect(() => {
