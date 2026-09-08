@@ -12,6 +12,7 @@ const expect = (condition, message) => {
 const settings = read('src/components/Settings.tsx');
 const settingsTypes = read('src/components/settings/settingsTypes.ts');
 const theme = read('src/components/readerTheme.ts');
+const switchPrimitive = read('src/components/ui/Switch.tsx');
 
 const sections = ['reading', 'editor', 'translation', 'ai', 'audio', 'shortcuts', 'integrations', 'about'];
 for (const section of sections) {
@@ -51,6 +52,7 @@ expect(settings.includes("event.key !== 'Tab'"), 'Settings shell is missing Tab 
 expect(settings.includes('aria-pressed={readerViewSettings.theme === id}'), 'Theme controls are missing pressed state');
 expect(settings.includes('aria-label="Decrease font size"'), 'Typography controls are missing accessible labels');
 expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
+expect(switchPrimitive.includes('aria-label={label}'), 'Switch primitive is missing accessible label support');
 
 if (failures.length) {
   console.error(failures.join('\n'));

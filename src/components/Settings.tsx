@@ -894,12 +894,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingRow
                   title="CJK Spacing Toggle"
                   description="Enable/disable CJK spacing effect"
-                  right={<ToggleSwitch checked={readerViewSettings.cjkLetterSpacingEnabled} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, cjkLetterSpacingEnabled: next }))} />}
+                  right={<ToggleSwitch label="Enable CJK letter spacing" checked={readerViewSettings.cjkLetterSpacingEnabled} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, cjkLetterSpacingEnabled: next }))} />}
                 />
                 <SettingRow
                   title="Expand Details"
                   description="Automatically expand all details blocks"
-                  right={<ToggleSwitch checked={readerViewSettings.expandDetails} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, expandDetails: next }))} />}
+                  right={<ToggleSwitch label="Expand details automatically" checked={readerViewSettings.expandDetails} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, expandDetails: next }))} />}
                 />
               </SettingsCard>
             )}
@@ -911,6 +911,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Turn on inline bilingual translation features"
                   right={
                     <ToggleSwitch
+                      label="Enable bilingual translation"
                       checked={config.translation_mode !== 'off'}
                       onChange={(next) =>
                         setConfig((prev) => ({
@@ -1023,6 +1024,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <>
                         <StatusDot success={mcpRunning || mcpEnabled} text={mcpConnectionText} />
                         <ToggleSwitch
+                          label="Enable MCP server"
                           checked={mcpEnabled}
                           disabled={isTogglingMcp}
                           onChange={(next) => void handleToggleMcpEnabled(next)}
@@ -1035,6 +1037,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Auto-load Reader MCP configuration when Reader opens"
                     right={
                       <ToggleSwitch
+                        label="Start MCP on launch"
                         checked={mcpUiPrefs.startOnLaunch}
                         onChange={(next) => updateMcpUiPrefs({ startOnLaunch: next })}
                       />
@@ -1045,6 +1048,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Apply MCP-driven edits without confirmation (use with caution)"
                     right={
                       <ToggleSwitch
+                        label="Auto-approve MCP edits"
                         checked={mcpUiPrefs.autoApproveEdits}
                         onChange={(next) => updateMcpUiPrefs({ autoApproveEdits: next })}
                       />
@@ -1256,7 +1260,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <SettingRow
                         title="Automatic updates"
                         description="Check for updates on startup"
-                        right={<ToggleSwitch checked={autoUpdatesEnabled} onChange={handleToggleAutoUpdates} />}
+                        right={<ToggleSwitch label="Enable automatic updates" checked={autoUpdatesEnabled} onChange={handleToggleAutoUpdates} />}
                       />
                       <SettingsDivider />
                       <div className="flex items-center justify-between gap-4">

@@ -975,6 +975,7 @@ export const AiProfilesPanel: React.FC = () => {
               <div className="flex items-center justify-between py-1">
                 <span className="text-size-subheading text-navigation">Enabled</span>
                 <ToggleSwitch
+                  label={`${slot} profile enabled`}
                   checked={draft.enabled}
                   onChange={(next) =>
                     updateQuickDraft(slot, (current) => ({ ...current, enabled: next }))
@@ -1153,6 +1154,7 @@ export const AiProfilesPanel: React.FC = () => {
                   <div className="flex items-center justify-between py-1">
                     <span className="text-size-subheading text-navigation">Enabled</span>
                     <ToggleSwitch
+                      label="Embedding profile enabled"
                       checked={draft.enabled}
                       onChange={(next) =>
                         updateQuickDraft(slot, (current) => ({ ...current, enabled: next }))
@@ -1443,7 +1445,7 @@ export const AiProfilesPanel: React.FC = () => {
               )}
               <div className="flex items-center justify-between py-1">
                 <span className="text-size-subheading text-navigation">Enabled</span>
-                <ToggleSwitch checked={providerDraft.enabled} onChange={(next) => setProviderDraft((prev) => ({ ...prev, enabled: next }))} />
+                <ToggleSwitch label="Provider enabled" checked={providerDraft.enabled} onChange={(next) => setProviderDraft((prev) => ({ ...prev, enabled: next }))} />
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button type="button" onClick={() => void saveProvider()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
@@ -1575,7 +1577,7 @@ export const AiProfilesPanel: React.FC = () => {
                       {modelDraft.capability !== 'embedding' && (
                         <div className="col-span-2 flex items-center justify-between rounded-lg border border-control-border bg-surface px-2.5 py-2">
                           <span className="text-size-caption text-muted">Enable thinking</span>
-                          <ToggleSwitch checked={!!modelDraft.enable_thinking} onChange={(next) => setModelDraft((prev) => ({ ...prev, enable_thinking: next }))} />
+                          <ToggleSwitch label="Enable model thinking" checked={!!modelDraft.enable_thinking} onChange={(next) => setModelDraft((prev) => ({ ...prev, enable_thinking: next }))} />
                         </div>
                       )}
                     </div>
@@ -1583,7 +1585,7 @@ export const AiProfilesPanel: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-size-subheading text-navigation">Enabled</span>
-                  <ToggleSwitch checked={modelDraft.enabled} onChange={(next) => setModelDraft((prev) => ({ ...prev, enabled: next }))} />
+                  <ToggleSwitch label="Model enabled" checked={modelDraft.enabled} onChange={(next) => setModelDraft((prev) => ({ ...prev, enabled: next }))} />
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button type="button" onClick={() => void saveModel()} disabled={saving} className="inline-flex h-8 items-center rounded-lg border border-control-border bg-surface-subtle px-3 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:opacity-60">Save</Button>
@@ -1770,7 +1772,7 @@ export const AiProfilesPanel: React.FC = () => {
                     )}
                     <div className="flex items-center justify-between py-1">
                       <span className="text-size-subheading text-navigation">Enabled</span>
-                      <ToggleSwitch checked={agentDraft.enabled} onChange={(next) => setAgentDraft((prev) => (prev ? { ...prev, enabled: next } : prev))} />
+                      <ToggleSwitch label="Agent enabled" checked={agentDraft.enabled} onChange={(next) => setAgentDraft((prev) => (prev ? { ...prev, enabled: next } : prev))} />
                     </div>
                     <SettingsDivider />
                     <div className="flex items-center justify-between">
