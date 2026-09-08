@@ -21,6 +21,7 @@ import {
   useSelectionActionOrder,
   type SelectionAction,
 } from '../features/reader/useSelectionActionOrder';
+import { useReaderAnnotations } from '../features/reader/useReaderAnnotations';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -1731,7 +1732,6 @@ export function ReaderContent() {
     searchHighlightQuery,
     searchMatchedParagraphIds,
   } = useStore();
-  const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
   const [selectionAnchor, setSelectionAnchor] = useState<{ x: number; y: number } | null>(null);
   const [selectionActionMode, setSelectionActionMode] = useState<SelectionActionMode>(null);
@@ -1986,6 +1986,10 @@ export function ReaderContent() {
     getTranslationItems,
     invokeTranslate: invokeTranslateWithRetry,
   });
+  const { annotationsByParagraph, setAnnotationsByParagraph } = useReaderAnnotations(
+    paragraphs,
+    annotationRefreshTick,
+  );
   const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
     () =>
       currentDocumentType === 'pdf'
@@ -2243,37 +2247,6 @@ export function ReaderContent() {
   const dispatchAudiobookStart = (detail: AudiobookStartEventDetail) => {
     window.dispatchEvent(new CustomEvent<AudiobookStartEventDetail>('reader:audiobook-start', { detail }));
   };
-
-  useEffect(() => {
-    const paragraphIds = paragraphs.map((item) => item.id);
-    if (paragraphIds.length === 0) {
-      setAnnotationsByParagraph({});
-      return;
-    }
-
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const rows = await invoke<Annotation[]>('list_annotations', { paragraphIds });
-        if (cancelled) return;
-        const grouped: Record<string, Annotation[]> = {};
-        for (const item of rows) {
-          if (!grouped[item.paragraph_id]) {
-            grouped[item.paragraph_id] = [];
-          }
-          grouped[item.paragraph_id].push(item);
-        }
-        setAnnotationsByParagraph(grouped);
-      } catch (err) {
-        console.error('Failed to load annotations:', err);
-      }
-    };
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [paragraphs, annotationRefreshTick]);
 
   const clearSelectionDraft = () => {
     setSelectionDraft(null);
