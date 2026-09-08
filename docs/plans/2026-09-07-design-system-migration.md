@@ -53,6 +53,7 @@
 - P4/P6 进展：Reader 的 TOC/工具面板宽度、折叠和沉浸式阅读模式已抽到 `features/reader/useReaderPanelLayout`；可见段落、PDF 表格分组和 Markdown 多媒体归一化已抽到 `useReaderRenderModel`；动态阅读设置持久化、翻译缓存/重试/并发队列、选区动作排序偏好和批注加载分别抽到 `useReaderViewSettings`、`useReaderTranslation`、`useSelectionActionOrder`、`useReaderAnnotations`；Library 的导入与筛选/分组计算分别抽到 `features/library/useLibraryImport` 和 `useLibraryDocumentFilters`，页面组件只保留组合和展示职责。
 - P4 控件收敛：Reader 顶部工具栏、阅读视图菜单、来源链接菜单和沉浸式阅读按钮已通过页面级入口复用共享 `Button`。
 - P4/P5 控件收敛：TOC、搜索、摘要、笔记、词典、术语、双语、音频、聊天、理解和 PDF/Markdown 辅助操作统一复用 `PanelButton`；文本框、下拉框、文本域和速率滑块分别复用 `Input`、`Select`、`Textarea` 和 `Range`。
+- 全页面控件边界：业务页面不再直接渲染原生 `button`、`input`、`select` 或 `textarea`；原生元素仅保留在 `components/ui` primitive 内，新增 `Checkbox`、`Range`、`Textarea` 统一状态样式。
 - P7 进展：`check:styles` 已扩大到整个 `src` 的 59 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
 - 2026-09-08 验收记录：`check:styles` 当前覆盖 59 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
 - 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode，因此暂时无法启动真实 Tauri 窗口做视觉与交互回归；后端编译和单元测试已完成。

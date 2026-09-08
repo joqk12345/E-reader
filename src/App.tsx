@@ -20,6 +20,7 @@ import {
 } from './services/updater';
 import { matchesAnyShortcut } from './utils/shortcuts';
 import { Tabs } from './components/ui/Tabs';
+import { Button } from './components/ui/Button';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -386,14 +387,15 @@ function App() {
                   />
                 </nav>
 
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => openSettings('reading')}
-                  className="inline-flex items-center gap-2 rounded-full border border-control-border bg-surface px-3 py-1.5 text-size-control font-medium text-secondary transition hover:border-focus-border hover:text-action-text"
+                  className="h-8 rounded-full px-3 text-size-control hover:border-focus-border hover:text-action-text"
                 >
                   <span aria-hidden="true">⚙</span>
                   Preferences
-                </button>
+                </Button>
               </header>
 
               <div className="flex-1 min-h-0">
