@@ -15,7 +15,7 @@ function collect(directory) {
 }
 collect('src');
 const rules = [
-  ['raw color', /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?)\((?!\s*var\(--color-)/i],
+  ['raw color', /#[\da-f]{3,8}\b|(?:rgba?|hsla?)\((?!\s*var\(--color-)[^)]*\)|(?:rgba?|hsla?)_[^\s\]]+/i],
   ['palette utility', /\b(?:bg|text|border|ring|outline|fill|stroke|divide|from|via|to|shadow|decoration|placeholder|accent|caret)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b|\b(?:bg|text|border|ring|fill|stroke)-(?:white|black)\b/],
   ['arbitrary font size', /\btext-\[[^\]]+\]/],
   ['default font size', /\btext-(?:xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/],

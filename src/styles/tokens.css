@@ -43,4 +43,5 @@
   --settings-control-width: 280px;
   --radius-panel: 22px;
   --shadow-panel: 0 24px 70px rgb(37 31 26 / 18%);
+  --shadow-floating: 0 14px 36px rgb(28 27 25 / 16%);
 }

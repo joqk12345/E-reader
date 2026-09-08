@@ -63,7 +63,8 @@ export default {
         "panel": "var(--radius-panel)"
       },
       "boxShadow": {
-        "panel": "var(--shadow-panel)"
+        "panel": "var(--shadow-panel)",
+        "floating": "var(--shadow-floating)"
       },
       "gridTemplateColumns": {
         "setting-row": "minmax(0, 1fr) var(--settings-control-width)"

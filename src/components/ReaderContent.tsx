@@ -3282,7 +3282,7 @@ export function ReaderContent() {
         <div
           ref={selectionPopoverRef}
           data-selection-popover="true"
-          className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
+          className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-floating overflow-y-auto"
           style={{
             left: `${selectionPopoverLeft}px`,
             top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
