@@ -42,7 +42,7 @@
 - 已运行：npm run check:styles、npm run build、git diff --check；已检查生产 CSS 包含 tokens 和语义类、开关尺寸及设置行布局。
 - check:styles 已接入 CI，目前递归覆盖整个 `src` 的 63 个应用文件；它是防回退检查，不是完整 CSS 解析器。
 - 构建使用主工作区现有 node_modules 的父目录解析；未变更依赖。现有构建仍提示 Browserslist 数据、onnxruntime eval 和包体积警告。
-- 待验收：真实 Tauri 设置页的视觉、开关交互和键盘行为；尚未完成全量迁移，P2–P7 保持待办。
+- 待验收：真实 Tauri 设置页的视觉、开关交互和键盘行为，以及主要阅读流程；P2–P7 的代码实现已落地，阶段勾选保留到桌面回归完成。
 - V2 迁移进度：应用内 63 个样式文件已通过语义 token 检查，所有直接 Tailwind 调色板类已清零；Library、Reader、PDF/Markdown、双语、AI 工具和设置子页均完成颜色层迁移。
 - P2 进展：新增 `components/ui/Button.tsx`，ConfirmDialog、TagNameDialog、SettingsUI 的 SecondaryActionButton 和 Settings 侧栏导航已复用 Button。
 - P2 继续：新增 `Dialog`、`Input`、`Select`、`Tabs` 基础组件；Settings 与 AiProfilesPanel 的原生输入/选择控件已统一接入 Input/Select，首页工作区导航已接入 Tabs。
