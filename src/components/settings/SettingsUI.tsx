@@ -61,6 +61,7 @@ export function SidebarNavItem({
       variant="ghost"
       size="sm"
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       className={`h-auto justify-start rounded-full px-3 py-2 text-left text-size-caption ${
         active ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover/70'
       }`}

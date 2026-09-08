@@ -48,6 +48,9 @@ for (const relativePath of [
 expect(settings.includes('role="dialog"'), 'Settings shell is missing dialog semantics');
 expect(settings.includes('aria-modal="true"'), 'Settings shell is missing aria-modal');
 expect(settings.includes("event.key !== 'Tab'"), 'Settings shell is missing Tab focus handling');
+expect(settings.includes('aria-pressed={readerViewSettings.theme === id}'), 'Theme controls are missing pressed state');
+expect(settings.includes('aria-label="Decrease font size"'), 'Typography controls are missing accessible labels');
+expect(settings.includes('aria-label="Increase CJK letter spacing"'), 'CJK controls are missing accessible labels');
 
 if (failures.length) {
   console.error(failures.join('\n'));
