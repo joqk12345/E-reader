@@ -40,10 +40,10 @@
 - 设计语言修订：参考 Claude 公开页面的内容优先和低噪声原则，将设置模态框改为温暖中性色画布、纸张式层级、窄侧栏和珊瑚色强调；不复制 Claude 的品牌资产。
 - 修复试点使用的未定义开关尺寸和禁用透明度。开关尺寸使用专用名称，避免影响旧页面中同名的 4.5 尺度类。
 - 已运行：npm run check:styles、npm run build、git diff --check；已检查生产 CSS 包含 tokens 和语义类、开关尺寸及设置行布局。
-- check:styles 已接入 CI，目前递归覆盖整个 `src` 的 59 个应用文件；它是防回退检查，不是完整 CSS 解析器。
+- check:styles 已接入 CI，目前递归覆盖整个 `src` 的 62 个应用文件；它是防回退检查，不是完整 CSS 解析器。
 - 构建使用主工作区现有 node_modules 的父目录解析；未变更依赖。现有构建仍提示 Browserslist 数据、onnxruntime eval 和包体积警告。
 - 待验收：真实 Tauri 设置页的视觉、开关交互和键盘行为；尚未完成全量迁移，P2–P7 保持待办。
-- V2 迁移进度：应用内 45 个样式文件已通过语义 token 检查，所有直接 Tailwind 调色板类已清零；Library、Reader、PDF/Markdown、双语、AI 工具和设置子页均完成颜色层迁移。
+- V2 迁移进度：应用内 62 个样式文件已通过语义 token 检查，所有直接 Tailwind 调色板类已清零；Library、Reader、PDF/Markdown、双语、AI 工具和设置子页均完成颜色层迁移。
 - P2 进展：新增 `components/ui/Button.tsx`，ConfirmDialog、TagNameDialog、SettingsUI 的 SecondaryActionButton 和 Settings 侧栏导航已复用 Button。
 - P2 继续：新增 `Dialog`、`Input`、`Select`、`Tabs` 基础组件；Settings 与 AiProfilesPanel 的原生输入/选择控件已统一接入 Input/Select，首页工作区导航已接入 Tabs。
 - P2 控件收敛：Settings 与 AiProfilesPanel 的原生按钮已统一接入共享 `Button`，保留页面级 className、事件、禁用和键盘语义。
@@ -56,7 +56,7 @@
 - P4 控件收敛：Reader 顶部工具栏、阅读视图菜单、来源链接菜单和沉浸式阅读按钮已通过页面级入口复用共享 `Button`。
 - P4/P5 控件收敛：TOC、搜索、摘要、笔记、词典、术语、双语、音频、聊天、理解和 PDF/Markdown 辅助操作统一复用 `PanelButton`；文本框、下拉框、文本域和速率滑块分别复用 `Input`、`Select`、`Textarea` 和 `Range`。
 - 全页面控件边界：业务页面不再直接渲染原生 `button`、`input`、`select` 或 `textarea`；原生元素仅保留在 `components/ui` primitive 内，新增 `Checkbox`、`Range`、`Textarea` 统一状态样式。
-- P7 进展：`check:styles` 已扩大到整个 `src` 的 59 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
-- 2026-09-08 验收记录：`check:styles` 当前覆盖 59 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
+- P7 进展：`check:styles` 已扩大到整个 `src` 的 62 个应用文件；构建和样式检查已通过。Tauri 运行时流程和页面视觉仍需实机回归。
+- 2026-09-08 验收记录：`check:styles` 当前覆盖 62 个应用文件（包括全部 Settings、Library、Reader、工具面板、feature hooks 和 UI primitives）；无直接调色板类、默认字号、业务页原生控件或未登记 raw color 命中。`npm run build` 通过，Vite 开发服务器返回 HTTP 200；`cargo test --manifest-path src-tauri/Cargo.toml` 通过，27 个 Rust 单元测试全部通过。
 - 环境记录：`npm run tauri info` 显示当前机器未安装 Xcode，因此暂时无法启动真实 Tauri 窗口做视觉与交互回归；后端编译和单元测试已完成。
 - 2026-09-08 仍未宣称完成：真实 Tauri 窗口中的五种主题和 EPUB/PDF/Markdown 交互回归仍在待办；Library 的筛选/导入职责和 Reader 的渲染模型、面板、翻译、批注、选区偏好职责已完成首轮拆分。
