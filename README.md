@@ -3,6 +3,7 @@
 <div align="center">
   <h3>📚 Local-first EPUB Reader with AI-Powered Features</h3>
   <p>Built with Tauri 2 + React, focused on offline reading, semantic search, summarization, translation, and bilingual mode.</p>
+  <p><strong>Current release: v0.5.0</strong> · Feature release for macOS, Linux, and Windows.</p>
 </div>
 
 ## 🌐 Project Website
@@ -19,6 +20,16 @@
   - Trigger: push to `main` with changes under `website/**` (or manual run)
 
 ## ✨ Features
+
+Reader 0.5.0 consolidates the core reading and AI workflow into a stronger local-first desktop experience:
+
+- **One library, three formats**: import and organize EPUB, PDF, and Markdown documents.
+- **Focused reading**: table of contents navigation, paragraph-level search, reading themes, typography controls, two-column layout, bilingual view, and persistent reading position.
+- **AI-assisted understanding**: summarization, translation, context chat, deep analysis, dictionary lookup, sentence analysis, glossary, notes, and text-to-speech.
+- **Knowledge-oriented library tools**: semantic search, hybrid lexical re-ranking, tags, aliases, related documents, batch tagging, and tag suggestions.
+- **Flexible runtimes**: local LM Studio/Transformers workflows, OpenAI-compatible providers, remote embeddings, Edge TTS, CosyVoice, MCP integration, and `reader-cli`.
+- **Privacy-first storage**: documents, reading state, annotations, notes, glossary entries, tags, and caches remain in the local SQLite-backed application data store.
+- **Consistent desktop UI**: shared design tokens, application and reader themes, stable accessibility labels, and an automated UI smoke path for the main Library-to-Reader flow.
 
 ## 🧭 Backlog Notes
 
@@ -140,7 +151,11 @@
 
 ## 📸 Screenshots
 
-*(Coming soon - add screenshots of the application interface)*
+The Reader desktop interface is optimized for a quiet, dense reading workspace with a Library sidebar, semantic search, configurable reader themes, and contextual AI tools. To view the current interface locally:
+
+```bash
+npm run tauri dev
+```
 
 ## 🚀 Installation
 
@@ -188,6 +203,9 @@ npm run tauri dev
 
 # Build for production
 npm run tauri build
+
+# Run the main UI smoke flow
+npm run test:ui
 ```
 
 The built application will be in `src-tauri/target/release/bundle/`.
@@ -638,6 +656,9 @@ cargo test
 # Linting
 cargo clippy
 cargo fmt --check
+
+# Release version consistency
+./scripts/check-version.sh 0.5.0
 ```
 
 The UI smoke test covers the main desktop interaction path: Library loading,
@@ -658,12 +679,16 @@ See [RELEASE.md](./RELEASE.md) for detailed release instructions.
 Quick version:
 
 ```bash
+# Sync and verify the release version
+./scripts/sync-version.sh 0.5.0
+./scripts/check-version.sh 0.5.0
+
 # Use the release script
-./scripts/release.sh 0.4.1
+./scripts/release.sh 0.5.0
 
 # Or manually
-git tag v0.4.1
-git push origin v0.4.1
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 GitHub Actions will automatically build binaries for all platforms. If Apple signing secrets are not configured yet, macOS release assets will be uploaded as `-unsigned.dmg`.

@@ -2,7 +2,11 @@ import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { spawn } from 'node:child_process';
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const readerVersion = packageJson.version;
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const PORT = Number(process.env.READER_UI_PORT || 1432);
@@ -115,7 +119,7 @@ const mockBackendScript = `
         case 'get_document_paragraphs': return paragraphs;
         case 'get_document_source_url': return null;
         case 'get_update_target': return { os: 'macos', arch: 'aarch64' };
-        case 'plugin:app|version': return '0.4.25';
+        case 'plugin:app|version': return readerVersion;
         default: return null;
       }
     },

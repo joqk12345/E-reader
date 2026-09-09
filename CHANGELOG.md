@@ -2,14 +2,34 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.5.0] - 2026-09-10
 
-- **UI 可测试性与交互回归验证**:
-  - 为 Library、格式筛选、收藏搜索、Preferences、导入弹窗、文档卡片和 Reader 返回操作补充稳定的 `data-testid` / `aria-label` 标识
-  - 新增 `npm run test:ui` Playwright smoke 测试，覆盖 Library 加载、格式筛选、集合搜索、Preferences、导入弹窗、打开文档和返回 Library 的完整流程
-  - UI smoke 测试使用隔离的 Tauri API fixture，不写入本地 Reader 数据库
-  - 补充 Chrome/Chromium 路径检测与 `CHROME_BIN` 环境变量支持，便于在 macOS、Linux 和 CI 环境中运行
-  - 本次验证通过：`check:styles`、`check:boundaries`、`build`、UI smoke 和 `git diff --check`
+- Reader 0.5.0 功能版本，聚焦本地优先阅读、AI 辅助理解和可持续的桌面工作流。
+
+- **阅读与 Library 基础能力**:
+  - 统一管理 EPUB、PDF、Markdown 文档，支持导入、搜索、排序、分类和多种卡片视图
+  - Reader 支持 TOC、section/paragraph 级内容、持久化阅读位置、搜索命中高亮、双栏布局和双语阅读
+  - Markdown/GFM、数学公式、代码块、表格、PDF 页面和 EPUB 定位得到统一的阅读体验
+  - 阅读主题系统提供 White、Paper、Mint、Sepia、Night 主题，以及字体、行高、内容宽度和布局控制
+
+- **AI 辅助理解工具链**:
+  - 提供摘要、翻译、双语模式、Context Chat、Deep Analysis、Understand、Dict、Sentence 和 Term 工作流
+  - 支持 Glossary、Notes、Annotations & Highlights，并支持文档级上下文和选区快速操作
+  - 支持 LM Studio、本地 Transformers、OpenAI、OpenAI-compatible / `lama-swap` 等 provider
+  - 语义检索支持 embedding profile、自动/手动重建、混合词法重排、关键词回退和超时保护
+
+- **Library 知识组织与多媒体**:
+  - 标签、别名、文档绑定、标签建议、批量标签审核、Tag Library 和 Related Documents 工作流完整落地
+  - 新增 Edge TTS、CosyVoice、播放高亮、自动跟随、点击段落起播和浮动播放器
+  - MCP server 与 `reader-cli` 支持文档操作、搜索、导入、摘要、翻译、分析和上下文对话
+
+- **桌面体验与工程质量**:
+  - Tauri 2 + React + SQLite 本地优先架构，支持 macOS、Linux 和 Windows 打包
+  - 应用级 light/dark/system 主题、Reader 主题和共享 design tokens 统一视觉与控件状态
+  - Library、Settings、Reader 关键控件补充稳定的 `data-testid` / `aria-label` 标识
+  - 新增 `npm run test:ui` Playwright smoke 测试，覆盖 Library 加载、格式筛选、集合搜索、Preferences、导入弹窗、打开文档和返回 Library
+  - UI smoke 使用隔离的 Tauri API fixture，不写入本地 Reader 数据库，并支持通过 `CHROME_BIN` 指定浏览器
+  - 0.5.0 发布前验证通过：`check:styles`、`check:boundaries`、UI smoke、前端 build、Rust `cargo check` 和版本一致性检查
 
 ## 🆕 Recent Updates (2026-03)
 

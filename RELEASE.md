@@ -10,25 +10,25 @@ This project uses GitHub Actions for automated building and releasing.
 
 1. **Sync the version across all release files:**
    ```bash
-   ./scripts/sync-version.sh 0.3.1
+   ./scripts/sync-version.sh 0.5.0
    ```
 
 2. **Verify all version sources match:**
    ```bash
-   ./scripts/check-version.sh 0.3.1
+   ./scripts/check-version.sh 0.5.0
    ```
 
 3. **Commit your changes:**
    ```bash
-   git add .
-   git commit -m "chore: bump version to 0.3.1"
+   git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json README.md CHANGELOG.md
+   git commit -m "chore: release v0.5.0"
    git push origin main
    ```
 
 4. **Create and push a version tag:**
    ```bash
-   git tag v0.3.1
-   git push origin v0.3.1
+   git tag v0.5.0
+   git push origin v0.5.0
    ```
 
 5. **GitHub Actions will automatically:**
@@ -84,6 +84,12 @@ Required repository settings:
 Before pushing a release tag, you can test the build locally:
 
 ```bash
+# Validate the source tree and version
+npm run check:styles
+npm run check:boundaries
+npm run test:ui
+./scripts/check-version.sh 0.5.0
+
 # Build for your current platform
 npm run tauri build
 
@@ -102,7 +108,7 @@ open src-tauri/target/release/bundle/macos/reader.app
 
 Follow semantic versioning:
 
-- **Major version** (0.x.x): Breaking changes
+- **Major version** (X.0.0): Breaking changes or a stable product milestone
 - **Minor version** (x.1.x): New features
 - **Patch version** (x.x.1): Bug fixes
 
