@@ -49,6 +49,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   if (variant === 'compact') {
     return (
       <div
+        data-testid="document-card"
+        data-document-id={document.id}
         className="bg-surface rounded border border-border hover:border-focus-border transition-colors cursor-pointer px-2 py-1"
         onClick={onClick}
       >
@@ -94,6 +96,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   if (variant === 'list') {
     return (
       <div
+        data-testid="document-card"
+        data-document-id={document.id}
         className="bg-surface rounded-md border border-border hover:border-focus-border hover:shadow-sm transition-all cursor-pointer px-2.5 py-1.5"
         onClick={onClick}
       >
@@ -154,6 +158,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
 
   return (
     <div
+      data-testid="document-card"
+      data-document-id={document.id}
       className="bg-surface rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-2.5"
       onClick={onClick}
     >

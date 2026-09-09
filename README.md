@@ -628,6 +628,9 @@ reader-cli chat "这篇内容主要观点是什么？" --doc-id <doc_id>
 # Frontend type checking
 npm run build
 
+# UI smoke test (starts Vite and runs the isolated Reader flow in Chromium)
+npm run test:ui
+
 # Backend tests
 cd src-tauri
 cargo test
@@ -636,6 +639,17 @@ cargo test
 cargo clippy
 cargo fmt --check
 ```
+
+The UI smoke test covers the main desktop interaction path: Library loading,
+format filtering, collection search, Preferences, the import dialog, opening a
+document, and returning to the Library. It uses a fixture-backed Tauri API
+mock, so the test does not modify the local Reader database. A local Chrome or
+Chromium installation is required; set `CHROME_BIN` when the browser is not in
+one of the standard macOS/Linux locations.
+
+The test also relies on stable `data-testid` and `aria-label` attributes on key
+Library, Settings, and Reader controls. Keep those selectors stable when
+refactoring the UI so the smoke flow remains useful.
 
 ### Building Releases
 

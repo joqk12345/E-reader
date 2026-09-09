@@ -854,7 +854,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       )}
 
       {showImportDialog && (
-        <div className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
+        <div data-testid="import-dialog" role="dialog" aria-label="Import document" className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
           <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-4 shadow-xl">
             <h3 className="text-size-body font-semibold text-heading">Import</h3>
             <p className="mt-1 text-size-caption text-muted">Choose a local EPUB, PDF, or Markdown file.</p>
@@ -1467,8 +1467,9 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </div>
       )}
 
-      <div className={`h-full flex bg-surface-subtle ${isResizingSidebar ? 'select-none' : ''}`}>
+      <div data-testid="library-page" className={`h-full flex bg-surface-subtle ${isResizingSidebar ? 'select-none' : ''}`}>
         <aside
+          data-testid="library-format-filters"
           className="relative shrink-0 border-r border-border bg-surface px-4 py-5"
           style={{ width: `${sidebarWidth}px` }}
         >
@@ -1481,6 +1482,9 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   key={item.key}
                   type="button"
                   onClick={() => setTypeFilter(item.key)}
+                  data-testid={`format-filter-${item.key}`}
+                  aria-label={`Filter by ${item.label}`}
+                  aria-pressed={active}
                   className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-size-subheading transition-colors ${
                     active ? 'bg-heading text-on-action' : 'text-navigation hover:bg-surface-hover'
                   }`}
@@ -1630,6 +1634,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   placeholder="Search your collection..."
+                  data-testid="library-search-input"
+                  aria-label="Search your collection"
                   className="h-9 w-full rounded-xl border border-control-border bg-surface px-3 text-size-control text-foreground placeholder:text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-action/15"
                 />
               </div>
@@ -1646,6 +1652,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <LibraryButton
                   type="button"
                   onClick={() => setShowDisplayMenu((prev) => !prev)}
+                  data-testid="display-options-button"
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-control-border bg-surface text-secondary hover:bg-surface-subtle"
                   aria-label="Display options"
                   title="Display options"
@@ -1792,6 +1799,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
               <LibraryButton
                 onClick={() => setShowBatchDialog(true)}
+                data-testid="batch-tags-button"
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Batch Tags
@@ -1799,6 +1807,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
               <LibraryButton
                 onClick={() => setShowTagManager(true)}
+                data-testid="tag-library-button"
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Tag Library
@@ -1807,6 +1816,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 onClick={handleUnifiedImport}
                 disabled={isImportingFile || isImportingUrl}
+                data-testid="library-import-button"
+                aria-label="Import document"
                 className="inline-flex h-8 items-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
               >
                 <svg
@@ -1827,7 +1838,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </div>
 
       {/* Documents Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div data-testid="library-document-list" className="flex-1 overflow-y-auto p-6">
         {documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">

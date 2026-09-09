@@ -393,6 +393,8 @@ function App() {
                   variant="secondary"
                   size="sm"
                   onClick={() => openSettings('reading')}
+                  data-testid="preferences-button"
+                  aria-label="Open Preferences"
                   className="h-8 rounded-full px-3 text-size-control hover:border-focus-border hover:text-action-text"
                 >
                   <span aria-hidden="true">⚙</span>
@@ -400,7 +402,7 @@ function App() {
                 </Button>
               </header>
 
-              <div className="flex-1 min-h-0">
+              <div data-testid="workspace-content" className="flex-1 min-h-0">
                 {homeView === 'library' ? (
                   <Library statusBar={runtimeStatusBar} />
                 ) : (

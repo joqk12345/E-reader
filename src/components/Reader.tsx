@@ -416,7 +416,7 @@ export function Reader() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-surface">
+    <div data-testid="reader-page" className="h-screen flex flex-col bg-surface">
       <header
         className={`relative flex items-center border-b ${readingMode ? 'border-transparent bg-surface/95' : 'border-border bg-surface'} transition-all ${headerPaddingClass}`}
       >
@@ -424,6 +424,7 @@ export function Reader() {
           {showCompactHeader && (
             <ReaderButton
               onClick={goBack}
+              data-testid="reader-back-button"
               className={`inline-flex items-center justify-center rounded-md border bg-surface hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus ${
                 readingMode
                   ? 'h-6 w-6 border-border text-size-caption text-muted'
@@ -439,6 +440,7 @@ export function Reader() {
             <>
               <ReaderButton
                 onClick={goBack}
+                data-testid="reader-back-button"
                 className="px-4 py-2 text-size-subheading font-medium text-secondary bg-surface border border-control-border rounded-md hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
               >
                 ← Back to Library

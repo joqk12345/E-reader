@@ -714,6 +714,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
       <div
         ref={settingsShellRef}
         data-settings-shell
+        data-testid="settings-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="reader-settings-title"
@@ -761,6 +762,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             <Button
               type="button"
               onClick={onClose}
+              data-testid="settings-close-button"
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-size-title text-muted transition hover:bg-surface-hover hover:text-heading"
               aria-label="Close settings"
             >
