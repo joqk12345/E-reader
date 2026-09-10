@@ -5,6 +5,7 @@ mod embedding;
 mod import;
 mod index;
 mod mcp;
+mod publication;
 mod search;
 mod tags;
 mod translate;
@@ -30,6 +31,10 @@ pub use import::{
 };
 pub use index::index_document;
 pub use mcp::{get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled};
+pub use publication::{
+    publication_close_v2, publication_get_size_v2, publication_load_blob_v2,
+    publication_load_text_v2, publication_open_v2,
+};
 pub use search::{get_paragraph_context, search};
 pub use tags::{
     add_tag_alias, apply_document_tags, cleanup_unused_tags, get_related_documents_by_tags,

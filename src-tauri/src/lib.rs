@@ -7,7 +7,9 @@ mod logger;
 mod mcp;
 mod models;
 mod parsers;
+pub mod publication;
 mod search;
+mod security;
 
 pub use error::{ReaderError, Result};
 
@@ -22,17 +24,21 @@ use commands::{
     import_epub, import_markdown, import_markdown_content, import_pdf, import_url, index_document,
     install_cli_shell_command, list_annotations, list_batch_tag_review_items, list_document_tags,
     list_documents, list_tag_facets, list_tag_library, list_tag_suggestions, list_tts_voices,
-    mcp_request, merge_tags, promote_temporary_tag, reindex_document_embeddings,
-    remove_document_tag, remove_tag_alias, rename_tag, resolve_agent_runtime,
-    review_tag_suggestions, save_agent_config, save_model_profile, save_provider_profile, search,
-    search_by_embedding, set_mcp_reader_enabled, suggest_document_tags, suggest_tags_for_documents,
-    summarize, test_model_connection, test_model_profile, test_provider_profile, translate,
-    tts_synthesize, update_config, upsert_embeddings_batch, validate_local_embedding_model_path,
+    mcp_request, merge_tags, promote_temporary_tag, publication_close_v2, publication_get_size_v2,
+    publication_load_blob_v2, publication_load_text_v2, publication_open_v2,
+    reindex_document_embeddings, remove_document_tag, remove_tag_alias, rename_tag,
+    resolve_agent_runtime, review_tag_suggestions, save_agent_config, save_model_profile,
+    save_provider_profile, search, search_by_embedding, set_mcp_reader_enabled,
+    suggest_document_tags, suggest_tags_for_documents, summarize, test_model_connection,
+    test_model_profile, test_provider_profile, translate, tts_synthesize, update_config,
+    upsert_embeddings_batch, validate_local_embedding_model_path,
 };
 use tauri::menu::Menu;
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
+
+use publication::sessions::PublicationSessionRegistry;
 
 #[cfg(target_os = "macos")]
 fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
@@ -122,6 +128,7 @@ fn build_app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(PublicationSessionRegistry::default())
         .menu(build_app_menu)
         .on_menu_event(|app, event| {
             if event.id().as_ref() == "reader_open_about_settings" {
@@ -150,10 +157,16 @@ pub fn run() {
         .setup(|app| {
             logger::init_logging();
             database::init_db(app.handle())?;
+            security::restore_asset_protocol_scope(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             import_epub,
+            publication_open_v2,
+            publication_load_text_v2,
+            publication_load_blob_v2,
+            publication_get_size_v2,
+            publication_close_v2,
             import_pdf,
             import_markdown,
             import_url,
