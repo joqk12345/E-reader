@@ -29,7 +29,7 @@ if [[ -z "${TAURI_MAJOR:-}" || -z "${TAURI_MINOR:-}" ]]; then
   exit 1
 fi
 
-TAURI_NPM_RANGE="^${TAURI_MAJOR}.${TAURI_MINOR}.0"
+TAURI_NPM_RANGE="~${TAURI_MAJOR}.${TAURI_MINOR}.0"
 echo "Aligning @tauri-apps/api and @tauri-apps/cli to ${TAURI_NPM_RANGE} (from tauri ${TAURI_VERSION})"
 
 if [[ "${ALIGN_TAURI_NPM_DRY_RUN:-}" == "1" ]]; then
