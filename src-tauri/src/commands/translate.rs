@@ -214,7 +214,7 @@ pub async fn summarize(
 
         // Load paragraph
         let paragraph = get_paragraph(&conn, &target_id)?
-            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", &target_id)))?;
+            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", target_id)))?;
         let content = paragraph.text;
 
         (target_id, target_type, content)
@@ -234,7 +234,7 @@ pub async fn summarize(
         if paragraphs.is_empty() {
             return Err(ReaderError::NotFound(format!(
                 "Section {} has no content",
-                &target_id
+                target_id
             )));
         }
         let content = paragraphs
@@ -260,7 +260,7 @@ pub async fn summarize(
         if paragraphs.is_empty() {
             return Err(ReaderError::NotFound(format!(
                 "Document {} has no content",
-                &target_id
+                target_id
             )));
         }
         let content = paragraphs
@@ -426,7 +426,7 @@ pub async fn deep_analyze(
             return Ok(cached.summary);
         }
         let paragraph = get_paragraph(&conn, &target_id)?
-            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", &target_id)))?;
+            .ok_or_else(|| ReaderError::NotFound(format!("Paragraph {} not found", target_id)))?;
         (target_id, target_type, paragraph.text)
     } else if let Some(sid) = &section_id {
         let target_id = sid.clone();
@@ -440,7 +440,7 @@ pub async fn deep_analyze(
         if paragraphs.is_empty() {
             return Err(ReaderError::NotFound(format!(
                 "Section {} has no content",
-                &target_id
+                target_id
             )));
         }
         let content = paragraphs
@@ -461,7 +461,7 @@ pub async fn deep_analyze(
         if paragraphs.is_empty() {
             return Err(ReaderError::NotFound(format!(
                 "Document {} has no content",
-                &target_id
+                target_id
             )));
         }
         let content = paragraphs
