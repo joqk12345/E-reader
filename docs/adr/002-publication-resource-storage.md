@@ -175,6 +175,7 @@ Already implemented:
 - container/OPF preparation for EPUB 2/3 metadata, manifest resources, per-resource hash/size, canonical hrefs, and spine order/properties;
 - EPUB 3 nav.xhtml and EPUB 2 NCX preparation preserving nested author navigation, short TOCs, canonical targets, and fragments independently from spine;
 - existing-document V2 import orchestration from backend database identity through ingest, package/navigation preparation, idempotency/source-change checks, and atomic metadata commit;
+- feature-gated `publication_import_existing_v2` command accepting only `documentId`; runtime open prefers the committed canonical archive and uses the V1 source path only when no V2 publication exists;
 - ZIP path, symlink, duplicate, entry-count, size, total-size, and compression-ratio validation;
 - publication-scoped canonical href resolution and external-resource blocking;
 - bounded on-demand ZIP text/Blob reads and size checks;
@@ -183,7 +184,7 @@ Already implemented:
 
 Still required for this ADR to be fully realized:
 
-- feature-flagged production command/UI wiring for the existing-document V2 import orchestrator;
+- frontend/import-center UI wiring for the feature-gated existing-document V2 import command;
 - reference-aware deletion and garbage collection;
 - backup, recovery, and V1 migration behavior;
 - WebView performance evidence and final Blob transport choice.

@@ -376,19 +376,22 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       ) : (
         <>
           {/* Tabs */}
-          <div className="grid grid-cols-3 border-b border-border">
+          <div role="tablist" aria-label="Reader tools" className="flex flex-col gap-px border-b border-border bg-border">
             {tabs.map((tab) => (
               <PanelButton
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-size-subheading font-medium transition-colors border-r border-b border-border last:border-r-0 ${
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                title={tab.label}
+                className={`flex min-w-0 items-center justify-start gap-2 bg-surface px-3 py-2 text-size-subheading font-medium transition-colors focus:z-10 ${
                   activeTab === tab.key
-                    ? 'bg-action-subtle text-action-text border-b-2 border-action'
+                    ? 'bg-action-subtle text-action-text reader-tab-active'
                     : 'text-navigation hover:bg-surface-subtle'
                 }`}
               >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
+                <span className="shrink-0" aria-hidden="true">{tab.icon}</span>
+                <span className="min-w-0 truncate">{tab.label}</span>
               </PanelButton>
             ))}
           </div>

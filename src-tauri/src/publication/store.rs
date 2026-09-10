@@ -137,13 +137,20 @@ impl ZipPublicationStore {
         reference: &str,
     ) -> Result<Vec<u8>, PublicationStoreError> {
         let resolved = self.resolve(base_href, reference)?;
-        let index = self.entry_index(&resolved.path)?;
+        self.load_resolved_blob(&resolved.path)
+    }
+
+    pub(crate) fn load_resolved_blob(
+        &mut self,
+        path: &str,
+    ) -> Result<Vec<u8>, PublicationStoreError> {
+        let index = self.entry_index(path)?;
         let mut entry = self
             .archive
             .by_index(index)
             .map_err(|error| PublicationStoreError::Io(error.to_string()))?;
         let declared_size = entry.size();
-        read_bounded_resource(&mut entry, &resolved.path, declared_size)
+        read_bounded_resource(&mut entry, path, declared_size)
     }
 
     pub fn load_text(

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from './ui/Textarea';
 import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useStore } from '../store/useStore';
 
 type ChatRole = 'user' | 'assistant';
@@ -267,34 +269,44 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
       </div>
 
       {error && (
-        <div className="px-3 py-2 border-b border-danger/25 bg-danger-subtle text-size-caption text-danger">
+        <div role="alert" className="reader-ai-error px-3 py-2 text-size-caption">
           {error}
         </div>
       )}
 
       <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
+          <div className="reader-ai-empty h-full flex items-center justify-center text-size-subheading">
             Ask directly here, or select text in the reader to trigger a contextual question.
           </div>
         )}
         {messages.map((m) => (
           <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
             <div
-              className={`max-w-[92%] rounded-lg px-3 py-2 text-size-subheading whitespace-pre-wrap leading-relaxed ${
+              className={`reader-chat-message text-size-subheading leading-relaxed ${
                 m.role === 'user'
                   ? 'bg-action text-on-action'
                   : 'bg-surface-subtle text-foreground border border-border'
               }`}
             >
-              {m.content}
+              <div className={`reader-meta-label mb-1 text-size-meta font-medium uppercase ${m.role === 'user' ? 'text-on-action/75' : 'text-muted'}`}>
+                {m.role === 'user' ? 'You' : 'Reader'}
+              </div>
+              {m.role === 'user' ? (
+                <div className="whitespace-pre-wrap">{m.content}</div>
+              ) : (
+                <div className="reader-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         ))}
         {isAsking && (
-          <div className="flex justify-start">
-            <div className="bg-surface-subtle text-secondary border border-border rounded-lg px-3 py-2 text-size-subheading">
-              Thinking...
+          <div role="status" aria-live="polite" className="reader-ai-loading flex justify-start">
+            <div className="reader-chat-message border border-border bg-surface-subtle text-size-subheading text-secondary">
+              <div className="reader-meta-label mb-1 text-size-meta font-medium uppercase text-muted">Reader</div>
+              <div>Thinking...</div>
             </div>
           </div>
         )}
@@ -313,7 +325,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ request }) => {
             }}
             disabled={!canAsk || isAsking}
             placeholder={canAsk ? 'Ask anything about current text...' : 'Select a document first'}
-            className="min-h-[96px] max-h-56 w-full resize-y rounded-md border border-control-border px-3 py-2 text-size-subheading leading-relaxed outline-none focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:bg-surface-subtle"
+            className="reader-chat-input w-full resize-y border border-control-border px-3 py-2 text-size-subheading leading-relaxed outline-none focus:border-focus focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:bg-surface-subtle"
           />
         </div>
       </div>

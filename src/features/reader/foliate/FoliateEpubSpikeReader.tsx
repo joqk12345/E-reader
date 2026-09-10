@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
 import 'foliate-js/view.js';
 import { useStore } from '../../../store/useStore';
+import { PanelButton } from '../../../components/ui/Button';
+import { DEFAULT_VIEW_SETTINGS, READER_THEMES } from '../../../components/readerTheme';
 import {
   openTauriEpubBookSession,
   type TauriEpubBookSession,
@@ -14,16 +16,23 @@ import {
 import {
   foliatePositionKey,
   formatFoliateLocation,
+  getFoliateLocatorQuote,
   getTocSubitems,
   isAllowedExternalLink,
   type FoliateRelocation,
   type FoliateTocItem,
 } from './foliateModel';
+import {
+  getPublicationPositionV2,
+  savePublicationPositionV2,
+} from '../locator/publicationPosition';
+import type { PublicationLocatorV1 } from '../locator/publicationLocator';
 
 type FoliateBook = {
   toc?: FoliateTocItem[];
   dir?: 'ltr' | 'rtl';
   rendition?: { layout?: string };
+  sections?: Array<{ id?: string }>;
 };
 
 type FoliateRenderer = HTMLElement & {
@@ -48,6 +57,13 @@ type FoliateRelocateEvent = CustomEvent<FoliateRelocation>;
 type FoliateExternalLinkEvent = CustomEvent<{ href_?: string }>;
 
 const FOLIATE_PERF_PROBE_ENABLED = import.meta.env.VITE_EPUB_PERF_PROBE === '1';
+const FOLIATE_THEME = READER_THEMES.sepia;
+const FOLIATE_RENDERER_PREFERENCES = {
+  gap: '5%',
+  margin: '48px',
+  maxInlineSize: '720px',
+  maxColumnCount: '2',
+} as const;
 
 const applyRendererPreferences = (
   view: FoliateViewElement,
@@ -56,10 +72,10 @@ const applyRendererPreferences = (
   const renderer = view.renderer;
   if (!renderer) return;
   renderer.setAttribute('flow', flow);
-  renderer.setAttribute('gap', '5%');
-  renderer.setAttribute('margin', '48px');
-  renderer.setAttribute('max-inline-size', '720px');
-  renderer.setAttribute('max-column-count', '2');
+  renderer.setAttribute('gap', FOLIATE_RENDERER_PREFERENCES.gap);
+  renderer.setAttribute('margin', FOLIATE_RENDERER_PREFERENCES.margin);
+  renderer.setAttribute('max-inline-size', FOLIATE_RENDERER_PREFERENCES.maxInlineSize);
+  renderer.setAttribute('max-column-count', FOLIATE_RENDERER_PREFERENCES.maxColumnCount);
 };
 
 function TocBranch({
@@ -78,15 +94,15 @@ function TocBranch({
         const key = `${item.href || item.label || 'item'}-${depth}-${index}`;
         return (
           <li key={key}>
-            <button
+            <PanelButton
               type="button"
               disabled={!item.href}
               onClick={() => item.href && onNavigate(item.href)}
-              className="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-default disabled:text-slate-400"
-              style={{ paddingInlineStart: `${8 + depth * 14}px` }}
+              className="w-full rounded-md px-2 py-1.5 text-left text-size-subheading text-secondary hover:bg-surface-subtle disabled:cursor-default disabled:text-faint"
+              style={{ paddingInlineStart: `calc(var(--toc-indent) + ${depth} * var(--toc-indent-step))` }}
             >
               {item.label?.trim() || 'Untitled'}
-            </button>
+            </PanelButton>
             {children.length > 0 && (
               <TocBranch items={children} depth={depth + 1} onNavigate={onNavigate} />
             )}
@@ -126,9 +142,11 @@ export function FoliateEpubSpikeReader() {
 
     let disposed = false;
     let bookSession: TauriEpubBookSession | null = null;
+    let currentHref: string | null = null;
+    let lastPositionUpdatedAt = 0;
     const securityProbeTimers = new Set<number>();
     const view = window.document.createElement('foliate-view') as FoliateViewElement;
-    view.className = 'block h-full w-full bg-[#f9f0db]';
+    view.className = 'block h-full w-full bg-surface-subtle';
     view.setAttribute('aria-label', `EPUB reader: ${selectedDocument.title}`);
     host.replaceChildren(view);
     viewRef.current = view;
@@ -156,21 +174,23 @@ export function FoliateEpubSpikeReader() {
     };
 
     const onLoad = (event: Event) => {
-      const { doc } = (event as FoliateLoadEvent).detail;
+      const { doc, index } = (event as FoliateLoadEvent).detail;
+      const sectionHref = view.book?.sections?.[index]?.id;
+      if (sectionHref) currentHref = sectionHref.split(/[?#]/u, 1)[0];
       const style = doc.createElement('style');
       style.dataset.readerSpike = 'foliate';
       style.textContent = `
         :root { color-scheme: light; }
         body {
-          background: #f9f0db;
-          color: #392f25;
+          background: ${FOLIATE_THEME.background};
+          color: ${FOLIATE_THEME.foreground};
           font-family: Charter, "Source Serif 4", Georgia, serif;
-          font-size: 18px;
-          line-height: 1.75;
+          font-size: ${DEFAULT_VIEW_SETTINGS.fontSize}px;
+          line-height: ${DEFAULT_VIEW_SETTINGS.lineHeight};
         }
-        a { color: #7c4a21; }
+        a { color: ${FOLIATE_THEME.link}; }
         img, svg, video { max-inline-size: 100%; block-size: auto; }
-        ::selection { background: #e7c995; color: #241c15; }
+        ::selection { background: ${FOLIATE_THEME.secondary}; color: ${FOLIATE_THEME.foreground}; }
       `;
       doc.head.append(style);
 
@@ -198,6 +218,39 @@ export function FoliateEpubSpikeReader() {
       if (detail.cfi) {
         localStorage.setItem(foliatePositionKey(selectedDocument.id), detail.cfi);
       }
+      const session = bookSession;
+      const href = currentHref || detail.tocItem?.href?.split(/[?#]/u, 1)[0] || null;
+      if (session?.publicationId && session.sourceHash && href && detail.cfi) {
+        const updatedAt = Math.max(Date.now(), lastPositionUpdatedAt + 1);
+        lastPositionUpdatedAt = updatedAt;
+        const locator: PublicationLocatorV1 = {
+          schemaVersion: 1,
+          publicationId: session.publicationId,
+          sourceHash: session.sourceHash,
+          href,
+          locations: {
+            cfi: detail.cfi,
+            totalProgression:
+              typeof detail.fraction === 'number' && Number.isFinite(detail.fraction)
+                ? detail.fraction
+                : undefined,
+          },
+          text: detail.range ? getFoliateLocatorQuote(detail.range) : undefined,
+        };
+        void savePublicationPositionV2(
+          selectedDocument.id,
+          locator,
+          {
+            progression:
+              typeof detail.fraction === 'number' && Number.isFinite(detail.fraction)
+                ? detail.fraction
+                : null,
+            updatedAt,
+          }
+        ).catch((cause: unknown) => {
+          if (!disposed) console.warn('Failed to persist EPUB reading position:', cause);
+        });
+      }
       setLocationLabel(formatFoliateLocation(detail));
     };
 
@@ -224,7 +277,12 @@ export function FoliateEpubSpikeReader() {
         if (disposed) return;
         applyRendererPreferences(view, 'paginated');
         setToc(Array.isArray(view.book?.toc) ? view.book.toc : []);
-        const lastLocation = localStorage.getItem(foliatePositionKey(selectedDocument.id)) || undefined;
+        let lastLocation = localStorage.getItem(foliatePositionKey(selectedDocument.id)) || undefined;
+        if (openedSession.publicationId && openedSession.sourceHash) {
+          const persistedPosition = await getPublicationPositionV2(selectedDocument.id);
+          lastLocation = persistedPosition?.locator.locations.cfi || lastLocation;
+          if (persistedPosition) lastPositionUpdatedAt = persistedPosition.updatedAt;
+        }
         await view.init({ lastLocation, showTextStart: !lastLocation });
         persistLoadMetrics(openedSession, 'initialized');
         if (!disposed) setLoading(false);
@@ -276,80 +334,80 @@ export function FoliateEpubSpikeReader() {
   if (!selectedDocument) return null;
 
   return (
-    <div className="flex h-screen min-h-0 flex-col bg-slate-50 text-slate-900">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3">
-        <button
+    <div className="flex h-screen min-h-0 flex-col bg-surface-subtle text-foreground">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface px-3">
+        <PanelButton
           type="button"
           onClick={goBack}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="rounded-md border border-control-border px-2.5 py-1.5 text-size-subheading hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           ← Library
-        </button>
+        </PanelButton>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{selectedDocument.title}</div>
-          <div className="truncate text-xs text-slate-500">
+          <div className="truncate text-size-subheading font-semibold text-heading">{selectedDocument.title}</div>
+          <div className="truncate text-size-caption text-muted">
             foliate-js spike{locationLabel ? ` · ${locationLabel}` : ''}
             {securityProbe
               ? ` · security probe ${securityProbe.passed ? 'PASS' : 'FAIL'}`
               : ''}
           </div>
         </div>
-        <div className="inline-flex rounded-md border border-slate-300 p-0.5">
+        <div className="inline-flex rounded-md border border-control-border p-0.5">
           {(['paginated', 'scrolled'] as const).map((value) => (
-            <button
+            <PanelButton
               key={value}
               type="button"
               onClick={() => setFlow(value)}
-              className={`rounded px-2 py-1 text-xs ${
-                flow === value ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'
+              className={`rounded px-2 py-1 text-size-caption ${
+                flow === value ? 'bg-action text-on-action' : 'text-navigation hover:bg-surface-subtle'
               }`}
             >
               {value === 'paginated' ? 'Pages' : 'Scroll'}
-            </button>
+            </PanelButton>
           ))}
         </div>
-        <button
+        <PanelButton
           type="button"
           onClick={() => void viewRef.current?.prev()}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm hover:bg-slate-50"
+          className="rounded-md border border-control-border px-2.5 py-1.5 text-size-subheading hover:bg-surface-subtle"
           aria-label="Previous page"
         >
           ←
-        </button>
-        <button
+        </PanelButton>
+        <PanelButton
           type="button"
           onClick={() => void viewRef.current?.next()}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm hover:bg-slate-50"
+          className="rounded-md border border-control-border px-2.5 py-1.5 text-size-subheading hover:bg-surface-subtle"
           aria-label="Next page"
         >
           →
-        </button>
+        </PanelButton>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-2" aria-label="Table of contents">
-          <div className="px-2 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <aside className="w-64 shrink-0 overflow-y-auto border-r border-border bg-surface p-2" aria-label="Table of contents">
+          <div className="reader-meta-label px-2 py-2 text-size-caption font-semibold uppercase text-muted">
             Contents
           </div>
           {toc.length > 0 ? (
             <TocBranch items={toc} onNavigate={navigate} />
           ) : (
-            <p className="px-2 py-3 text-sm text-slate-500">
+            <p className="px-2 py-3 text-size-subheading text-muted">
               {loading ? 'Loading contents…' : 'No table of contents'}
             </p>
           )}
         </aside>
 
-        <main className="relative min-w-0 flex-1 overflow-hidden bg-[#f9f0db]">
+        <main className="relative min-w-0 flex-1 overflow-hidden bg-surface-subtle">
           <div ref={hostRef} className="h-full w-full" />
           {loading && (
-            <div className="absolute inset-0 grid place-items-center bg-[#f9f0db]/90 text-sm text-slate-600">
+            <div className="absolute inset-0 grid place-items-center bg-surface-subtle/90 text-size-subheading text-secondary">
               Opening EPUB with foliate-js…
             </div>
           )}
           {error && (
-            <div className="absolute inset-0 grid place-items-center bg-[#f9f0db] p-8">
-              <div className="max-w-lg rounded-lg border border-rose-200 bg-white p-4 text-sm text-rose-800 shadow-sm">
+            <div className="absolute inset-0 grid place-items-center bg-surface-subtle p-8">
+              <div className="reader-ai-card max-w-lg border border-danger/25 bg-danger-subtle text-size-subheading text-danger">
                 <div className="font-semibold">foliate-js could not open this EPUB</div>
                 <p className="mt-2 break-words">{error}</p>
               </div>

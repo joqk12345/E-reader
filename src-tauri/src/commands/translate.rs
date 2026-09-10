@@ -9,15 +9,223 @@ use crate::error::{ReaderError, Result};
 use crate::llm::ChatMessage;
 use sha2::{Digest, Sha256};
 use tauri::AppHandle;
+use tokio::time::sleep;
 use tokio::time::{timeout, Duration};
 
 const TRANSLATE_TIMEOUT_SECS: u64 = 30;
 const CHAT_TIMEOUT_SECS: u64 = 45;
+const TRANSLATE_CHUNK_SOFT_LIMIT: usize = 600;
+const TRANSLATE_CHUNK_MIN_LIMIT: usize = 180;
+const TRANSLATE_RETRY_ATTEMPTS: usize = 4;
 
 fn hash_text(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+fn should_chunk_translation(text: &str) -> bool {
+    text.chars().count() > TRANSLATE_CHUNK_SOFT_LIMIT
+}
+
+fn split_translation_chunks(text: &str, max_chars: usize) -> Vec<String> {
+    let normalized = text.replace("\r\n", "\n");
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    let mut current_chars = 0usize;
+
+    let push_current = |chunks: &mut Vec<String>, current: &mut String, current_chars: &mut usize| {
+        let trimmed = current.trim();
+        if !trimmed.is_empty() {
+            chunks.push(trimmed.to_string());
+        }
+        current.clear();
+        *current_chars = 0;
+    };
+
+    for segment in normalized.split_inclusive('\n') {
+        let segment_chars = segment.chars().count();
+        if segment_chars > max_chars {
+            if !current.trim().is_empty() {
+                push_current(&mut chunks, &mut current, &mut current_chars);
+            }
+
+            let mut piece = String::new();
+            let mut piece_chars = 0usize;
+            for ch in segment.chars() {
+                piece.push(ch);
+                piece_chars += 1;
+                if piece_chars >= max_chars {
+                    let trimmed = piece.trim();
+                    if !trimmed.is_empty() {
+                        chunks.push(trimmed.to_string());
+                    }
+                    piece.clear();
+                    piece_chars = 0;
+                }
+            }
+            let trimmed = piece.trim();
+            if !trimmed.is_empty() {
+                chunks.push(trimmed.to_string());
+            }
+            continue;
+        }
+
+        if current_chars + segment_chars > max_chars && !current.trim().is_empty() {
+            push_current(&mut chunks, &mut current, &mut current_chars);
+        }
+
+        current.push_str(segment);
+        current_chars += segment_chars;
+    }
+
+    if !current.trim().is_empty() {
+        push_current(&mut chunks, &mut current, &mut current_chars);
+    }
+
+    if chunks.is_empty() {
+        vec![text.trim().to_string()]
+    } else {
+        chunks
+    }
+}
+
+async fn request_translation(
+    config: &crate::config::Config,
+    text: &str,
+    target_lang_name: &str,
+) -> Result<String> {
+    let system_prompt = format!(
+        "You are a professional translator. Translate the following text to {}. \
+        If the input contains Markdown, preserve the original Markdown structure and syntax \
+        (headings, lists, links, code blocks, tables) while translating natural language text. \
+        Provide only the translation without any additional commentary or explanation.",
+        target_lang_name
+    );
+
+    let messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: system_prompt,
+        },
+        ChatMessage {
+            role: "user".to_string(),
+            content: text.to_string(),
+        },
+    ];
+
+    let mut last_error = None;
+    for attempt in 1..=TRANSLATE_RETRY_ATTEMPTS {
+        let result = timeout(
+            Duration::from_secs(TRANSLATE_TIMEOUT_SECS),
+            chat_with_agent_slot(config, AgentSlot::Translate, messages.clone(), 0.3, 2000),
+        )
+        .await
+        .map_err(|_| {
+            ReaderError::ModelApi(format!(
+                "Translation request timed out after {} seconds",
+                TRANSLATE_TIMEOUT_SECS
+            ))
+        })?;
+
+        match result {
+            Ok(output) => return Ok(output),
+            Err(err) => {
+                let retryable = is_retryable_translation_error(&err);
+                last_error = Some(err);
+                if !retryable || attempt == TRANSLATE_RETRY_ATTEMPTS {
+                    break;
+                }
+                let delay_ms = 250_u64.saturating_mul(attempt as u64);
+                tracing::warn!(
+                    "Retryable translation failure on attempt {}/{}; waiting {}ms before retry",
+                    attempt,
+                    TRANSLATE_RETRY_ATTEMPTS,
+                    delay_ms
+                );
+                sleep(Duration::from_millis(delay_ms)).await;
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| {
+        ReaderError::Internal("Translation request failed without concrete error".to_string())
+    }))
+}
+
+fn is_retryable_translation_error(err: &ReaderError) -> bool {
+    let message = err.to_string();
+    message.contains("502 Bad Gateway")
+        || message.contains("timed out")
+        || message.contains("upstream")
+        || message.contains("Failed to send request")
+}
+
+async fn translate_with_chunk_fallback(
+    config: &crate::config::Config,
+    text: &str,
+    target_lang_name: &str,
+) -> Result<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    if !should_chunk_translation(trimmed) {
+        return request_translation(config, trimmed, target_lang_name).await;
+    }
+
+    translate_chunk_recursive(config, trimmed, target_lang_name, TRANSLATE_CHUNK_SOFT_LIMIT).await
+}
+
+async fn translate_chunk_recursive(
+    config: &crate::config::Config,
+    text: &str,
+    target_lang_name: &str,
+    max_chars: usize,
+) -> Result<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    tracing::warn!(
+        "Translation chunking {} chars with max chunk {}",
+        trimmed.chars().count(),
+        max_chars
+    );
+
+    let chunks = split_translation_chunks(trimmed, max_chars);
+    let mut translated = Vec::with_capacity(chunks.len());
+    for chunk in chunks {
+        match request_translation(config, &chunk, target_lang_name).await {
+            Ok(result) => translated.push(result),
+            Err(err) => {
+                let chunk_chars = chunk.chars().count();
+                if chunk_chars <= TRANSLATE_CHUNK_MIN_LIMIT {
+                    return Err(err);
+                }
+
+                let next_limit = (chunk_chars / 2).max(TRANSLATE_CHUNK_MIN_LIMIT);
+                tracing::warn!(
+                    "Translation chunk failed at {} chars, retrying recursively with max chunk {}: {}",
+                    chunk_chars,
+                    next_limit,
+                    err
+                );
+                translated.push(
+                    Box::pin(translate_chunk_recursive(
+                        config,
+                        &chunk,
+                        target_lang_name,
+                        next_limit,
+                    ))
+                    .await?,
+                );
+            }
+        }
+    }
+    Ok(translated.join("\n"))
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -83,44 +291,18 @@ pub async fn translate(
         raw_text
     };
 
-    // Build translation prompt
     let target_lang_name = match target_lang.as_str() {
         "zh" => "Chinese",
         "en" => "English",
         _ => &target_lang,
     };
-
-    let system_prompt = format!(
-        "You are a professional translator. Translate the following text to {}. \
-        If the input contains Markdown, preserve the original Markdown structure and syntax \
-        (headings, lists, links, code blocks, tables) while translating natural language text. \
-        Provide only the translation without any additional commentary or explanation.",
-        target_lang_name
-    );
-
-    let messages = vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: system_prompt,
-        },
-        ChatMessage {
-            role: "user".to_string(),
-            content: text_to_translate.clone(),
-        },
-    ];
-
-    // Call LLM with timeout to avoid endless "translating" state in UI
-    let translation = timeout(
-        Duration::from_secs(TRANSLATE_TIMEOUT_SECS),
-        chat_with_agent_slot(&config, AgentSlot::Translate, messages, 0.3, 2000),
-    )
-    .await
-    .map_err(|_| {
-        ReaderError::ModelApi(format!(
-            "Translation request timed out after {} seconds",
-            TRANSLATE_TIMEOUT_SECS
-        ))
-    })??;
+    let translation = match request_translation(&config, &text_to_translate, target_lang_name).await {
+        Ok(result) => result,
+        Err(err) => {
+            tracing::warn!("Single-shot translation failed, retrying with chunk fallback: {}", err);
+            translate_with_chunk_fallback(&config, &text_to_translate, target_lang_name).await?
+        }
+    };
 
     // Cache result if we have a paragraph_id
     if let Some(pid) = &paragraph_id {

@@ -313,11 +313,17 @@ Already implemented:
 - foliate manifest script denial;
 - HTTP(S)/mailto external-link allowlist;
 - active-content fixture and runtime execution/resource-timing probe;
-- stable resource/security error codes for the current command boundary.
+- stable resource/security error codes for the current command boundary;
+- initial policy-v1 XHTML sanitizer foundation using an HTML5 DOM parser: deterministic recovery diagnostics, byte/node limits, active element/event removal, form disabling, contextual URL classification through the publication allowlist, inline SVG restrictions, grouped diagnostics, and typed fail-closed refusal;
+- initial policy-v1 CSS sanitizer using `cssparser`: byte/token/nesting limits, deterministic malformed-token degradation, removal of all P0 `@import` rules and legacy executable constructs, and publication-allowlist validation for local URLs. Remote and unsafe URL tokens are replaced with inert fragments;
+- standalone SVG policy-v1 sanitizer producing exactly one SVG root: it shares the XHTML DOM boundary, validates SVG presentation URLs with `cssparser`, removes script/events/foreignObject/navigation/SMIL animation, enforces byte/node/root boundaries, and directly covers the corpus SVG fixture. XHTML and CSS paths directly cover the registered active-content EPUB fixture;
+- canonical V2 sessions now load the committed policy version and manifest media map from SQLite, sanitize XHTML/CSS/SVG for both text and blob requests, cache derived bytes per session, deny scripts and unclassified active extensions, and return `publication.content_refused` without raw fallback. Open responses distinguish `sanitized` from transitional `legacyRaw`; synchronous sizes are explicitly labeled `archiveUncompressed`, not sanitized byte lengths;
+- V2 import now runs the same centralized media classification and XHTML/CSS/SVG policies before metadata commit. Diagnostics are grouped by resource/code/count and committed atomically to `import_reports`; scripted resources are reported without being read as render content, malformed recovery is visible, and sanitizer refusal leaves no ready publication metadata.
 
 Still required:
 
-- parser-based, policy-versioned XHTML/CSS/SVG sanitizer;
+- selector/rule/font/SVG-reference budgets and an explicitly bounded local-`@import` expansion strategy (P0 currently removes every import);
+- persistent/versioned derived render cache and user-visible grouped diagnostic UI (canonical sessions currently sanitize lazily into a session-local cache, while import diagnostics are persisted);
 - formal manifest media classification/import diagnostics;
 - safe degraded rendering and user-visible import report;
 - local network request collector evidence;

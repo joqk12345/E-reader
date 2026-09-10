@@ -8,7 +8,45 @@ export type FoliateRelocation = {
   cfi?: string;
   fraction?: number;
   location?: { current?: number; total?: number };
-  tocItem?: { label?: string };
+  tocItem?: { label?: string; href?: string };
+  range?: Range;
+};
+
+export type FoliateLocatorQuote = {
+  before?: string;
+  highlight: string;
+  after?: string;
+};
+
+const takeLastCharacters = (value: string, count: number): string =>
+  Array.from(value).slice(-count).join('');
+
+const takeFirstCharacters = (value: string, count: number): string =>
+  Array.from(value).slice(0, count).join('');
+
+/** Extract bounded text evidence from a foliate DOM range without persisting DOM objects. */
+export const getFoliateLocatorQuote = (
+  range: Range,
+  contextCharacters = 48
+): FoliateLocatorQuote | undefined => {
+  const highlight = range.toString();
+  if (!highlight.trim()) return undefined;
+  const document = range.startContainer.ownerDocument;
+  if (!document) return { highlight };
+  const body = document.body;
+  if (!body) return { highlight };
+
+  const beforeRange = document.createRange();
+  beforeRange.selectNodeContents(body);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
+  const afterRange = document.createRange();
+  afterRange.selectNodeContents(body);
+  afterRange.setStart(range.endContainer, range.endOffset);
+  return {
+    before: takeLastCharacters(beforeRange.toString(), contextCharacters) || undefined,
+    highlight,
+    after: takeFirstCharacters(afterRange.toString(), contextCharacters) || undefined,
+  };
 };
 
 export const getTocSubitems = (item: FoliateTocItem): FoliateTocItem[] =>

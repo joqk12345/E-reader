@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useStore } from '../store/useStore';
 
 export const DeepAnalysisPanel: React.FC = () => {
@@ -70,35 +72,46 @@ export const DeepAnalysisPanel: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-size-subheading text-danger">{error}</p>
+        <div role="alert" className="reader-ai-error p-4">
+          <p className="text-size-subheading">{error}</p>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!result && !error && !isRunning && (
-          <div className="flex items-center justify-center h-full text-size-subheading text-muted">
+          <div className="reader-ai-empty flex items-center justify-center h-full text-size-subheading">
             Run deep analysis to generate structured concept and logic output.
           </div>
         )}
         {result && (
-          <div className="relative bg-surface border border-border rounded-lg p-4">
-            <PanelButton
-              onClick={() => void handleCopy()}
-              className={`absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
+          <article className="reader-ai-card border border-border bg-surface">
+            <div className="mb-4 flex items-start justify-between gap-3 border-b border-border pb-3">
+              <div className="min-w-0">
+                <div className="reader-kicker text-size-meta font-medium uppercase text-muted">
+                  Deep Analysis
+                </div>
+                <div className="mt-1 truncate text-size-subheading font-medium text-heading">
+                  {getTargetLabel()}
+                </div>
+              </div>
+              <PanelButton
+                onClick={() => void handleCopy()}
+                className={`reader-ai-action inline-flex shrink-0 items-center gap-2 border text-size-caption transition-colors ${
                 isCopied
                   ? 'border-success/25 bg-success/10 text-success'
                   : 'border-border bg-surface text-muted hover:bg-surface-subtle hover:text-secondary'
               }`}
-              title={isCopied ? 'Copied' : 'Copy analysis'}
-              aria-label={isCopied ? 'Copied' : 'Copy analysis'}
-            >
-              {isCopied ? '✓' : '⧉'}
-            </PanelButton>
-            <pre className="whitespace-pre-wrap text-size-subheading text-foreground leading-relaxed">
-              {result}
-            </pre>
-          </div>
+                title={isCopied ? 'Copied' : 'Copy analysis'}
+                aria-label={isCopied ? 'Copied' : 'Copy analysis'}
+              >
+                <span aria-hidden="true">{isCopied ? '✓' : '⧉'}</span>
+                <span>{isCopied ? 'Copied' : 'Copy'}</span>
+              </PanelButton>
+            </div>
+            <div className="reader-markdown break-words">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{result}</ReactMarkdown>
+            </div>
+          </article>
         )}
       </div>
     </div>

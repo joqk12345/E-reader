@@ -23,3 +23,175 @@ body {
   background: rgb(var(--color-action-subtle));
   color: rgb(var(--color-heading));
 }
+
+/* Shared hierarchy for AI-generated Markdown in narrow tool panels. */
+.reader-markdown {
+  color: rgb(var(--color-foreground));
+  font-size: var(--font-size-subheading);
+  line-height: var(--line-height-markdown);
+  overflow-wrap: anywhere;
+}
+
+.reader-markdown > :first-child {
+  margin-top: 0;
+}
+
+.reader-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.reader-markdown h1,
+.reader-markdown h2,
+.reader-markdown h3,
+.reader-markdown h4,
+.reader-markdown h5,
+.reader-markdown h6 {
+  color: rgb(var(--color-heading));
+  font-weight: 650;
+  line-height: var(--line-height-markdown-heading);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.reader-markdown h1 {
+  margin: var(--space-markdown-xs) 0 var(--space-markdown-md);
+  padding-bottom: var(--space-markdown-md);
+  border-bottom: var(--border-thin) solid rgb(var(--color-border));
+  font-size: var(--font-size-title);
+}
+
+.reader-markdown h2 {
+  margin: var(--space-markdown-2xl) 0 var(--space-markdown-md);
+  padding-left: var(--space-markdown-lg);
+  border-left: var(--border-accent) solid rgb(var(--color-action));
+  font-size: var(--font-size-label);
+}
+
+.reader-markdown h3,
+.reader-markdown h4,
+.reader-markdown h5,
+.reader-markdown h6 {
+  margin: var(--space-markdown-2xl) 0 var(--space-markdown-sm);
+  font-size: var(--font-size-subheading);
+}
+
+.reader-markdown p {
+  margin: var(--space-markdown-md) 0;
+}
+
+.reader-markdown ul,
+.reader-markdown ol {
+  margin: var(--space-markdown-md) 0;
+  padding-left: var(--space-markdown-indent);
+}
+
+.reader-markdown li {
+  margin: var(--space-markdown-sm) 0;
+  padding-left: var(--space-markdown-xs);
+}
+
+.reader-markdown li::marker {
+  color: rgb(var(--color-action));
+}
+
+.reader-markdown blockquote {
+  margin: var(--space-markdown-xl) 0;
+  padding: var(--space-markdown-md) var(--space-markdown-xl);
+  border-left: var(--border-accent) solid rgb(var(--color-focus-border));
+  background: rgb(var(--color-action-subtle) / 0.45);
+  color: rgb(var(--color-secondary));
+}
+
+.reader-markdown a {
+  color: rgb(var(--color-action-text));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.reader-markdown strong {
+  color: rgb(var(--color-heading));
+  font-weight: 650;
+}
+
+.reader-markdown code {
+  border-radius: 0.35rem;
+  background: rgb(var(--color-surface-subtle));
+  padding: var(--space-markdown-xs) var(--space-markdown-sm);
+  color: rgb(var(--color-action-text));
+  font-size: var(--font-size-code-scale);
+}
+
+.reader-markdown pre {
+  overflow-x: auto;
+  margin: var(--space-markdown-xl) 0;
+  border: var(--border-thin) solid rgb(var(--color-border));
+  border-radius: var(--radius-markdown-block);
+  background: rgb(var(--color-surface-subtle));
+  padding: var(--space-markdown-lg);
+}
+
+.reader-markdown pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  white-space: pre;
+}
+
+.reader-markdown hr {
+  margin: var(--space-markdown-2xl) 0;
+  border: 0;
+  border-top: var(--border-thin) solid rgb(var(--color-border));
+}
+
+.reader-kicker {
+  letter-spacing: var(--letter-spacing-kicker);
+}
+
+.reader-meta-label {
+  letter-spacing: var(--letter-spacing-meta);
+}
+
+.reader-ai-card {
+  border-radius: var(--radius-card);
+  padding: var(--space-card);
+  box-shadow: var(--shadow-card);
+}
+
+.reader-ai-action {
+  border-radius: var(--radius-control);
+  padding: var(--space-action-y) var(--space-action-x);
+}
+
+.reader-ai-error {
+  border-bottom: var(--border-thin) solid rgb(var(--color-danger) / 0.25);
+  background: rgb(var(--color-danger-subtle));
+  color: rgb(var(--color-danger));
+}
+
+.reader-ai-empty {
+  color: rgb(var(--color-muted));
+}
+
+.reader-ai-loading {
+  color: rgb(var(--color-secondary));
+}
+
+.reader-chat-message {
+  max-width: var(--message-max-width);
+  border-radius: var(--radius-card);
+  padding: var(--space-message-y) var(--space-message-x);
+}
+
+.reader-chat-input {
+  min-height: var(--chat-input-min-height);
+  max-height: var(--chat-input-max-height);
+  border-radius: var(--radius-control);
+}
+
+.reader-tab-active {
+  box-shadow: var(--shadow-tab-active);
+}
+
+.reader-home-header {
+  height: var(--home-header-height);
+}

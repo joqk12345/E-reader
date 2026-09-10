@@ -1,14 +1,23 @@
 use super::archive::ArchiveLimits;
+use super::blocks::{extract_semantic_blocks, BlockExtractionError, BlockExtractionLimits};
+use super::content_policy::{classify_render_resource, RenderResourceKind};
+use super::css_sanitizer::{sanitize_css, CssSanitizationLimits};
 use super::ingest::{ingest_epub_archive, ArchiveIngestError, ArchiveIngestLimits};
 use super::navigation::{prepare_navigation, NavigationPrepareError};
-use super::package::{prepare_package, PackagePrepareError};
+use super::package::{prepare_package, PackagePrepareError, PreparedPackage};
+use super::resources::PublicationResourceIndex;
+use super::sanitizer::{
+    sanitize_xhtml, SanitizationDiagnostic, SanitizationLimits, CONTENT_POLICY_VERSION,
+};
+use super::store::ZipPublicationStore;
+use super::svg_sanitizer::sanitize_svg;
 use crate::database::publications::{
     commit_publication_import, PreparedContentBlock, PreparedImportReport,
     PreparedNavigationNode as DatabaseNavigationNode, PreparedPublicationImport, PreparedResource,
     PreparedSpineItem, PublicationCommitError,
 };
 use rusqlite::{Connection, OptionalExtension};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +54,10 @@ pub(crate) enum PublicationImportError {
     SourceChanged,
     #[error("prepared publication is inconsistent: {0}")]
     InvalidPrepared(String),
+    #[error("publication content was refused for {href}: {reason}")]
+    ContentRefused { href: String, reason: String },
+    #[error(transparent)]
+    Blocks(#[from] BlockExtractionError),
     #[error(transparent)]
     Archive(#[from] ArchiveIngestError),
     #[error(transparent)]
@@ -55,6 +68,155 @@ pub(crate) enum PublicationImportError {
     Commit(#[from] PublicationCommitError),
     #[error("publication import database error: {0}")]
     Database(#[from] rusqlite::Error),
+}
+
+fn record_diagnostics(
+    grouped: &mut BTreeMap<(String, String), u32>,
+    href: &str,
+    diagnostics: &[SanitizationDiagnostic],
+) {
+    for diagnostic in diagnostics {
+        *grouped
+            .entry((href.to_string(), diagnostic.code.clone()))
+            .or_default() += diagnostic.count;
+    }
+}
+
+struct PreparedContentPolicy {
+    reports: Vec<PreparedImportReport>,
+    sanitized_xhtml: HashMap<String, Vec<u8>>,
+}
+
+fn prepare_content_policy_reports(
+    archive_path: &Path,
+    package: &PreparedPackage,
+    limits: ArchiveLimits,
+    imported_at: i64,
+) -> Result<PreparedContentPolicy, PublicationImportError> {
+    let resources = PublicationResourceIndex::new(
+        package
+            .resources
+            .iter()
+            .map(|resource| resource.href.clone()),
+    )
+    .map_err(|error| PublicationImportError::ContentRefused {
+        href: "<manifest>".into(),
+        reason: error.to_string(),
+    })?;
+    let mut store = ZipPublicationStore::open(archive_path, limits).map_err(|error| {
+        PublicationImportError::ContentRefused {
+            href: "<publication>".into(),
+            reason: error.to_string(),
+        }
+    })?;
+    let mut grouped = BTreeMap::<(String, String), u32>::new();
+    let mut sanitized_xhtml = HashMap::new();
+
+    for resource in &package.resources {
+        let kind = classify_render_resource(&resource.href, Some(&resource.media_type)).map_err(
+            |error| PublicationImportError::ContentRefused {
+                href: resource.href.clone(),
+                reason: error.to_string(),
+            },
+        )?;
+        if resource
+            .properties
+            .iter()
+            .any(|property| property == "scripted")
+        {
+            *grouped
+                .entry((
+                    resource.href.clone(),
+                    "publication.active_content_removed".into(),
+                ))
+                .or_default() += 1;
+        }
+        if kind == RenderResourceKind::Script {
+            *grouped
+                .entry((
+                    resource.href.clone(),
+                    "publication.active_content_removed".into(),
+                ))
+                .or_default() += 1;
+            continue;
+        }
+        if kind == RenderResourceKind::Raw {
+            continue;
+        }
+
+        let source = store.load_blob("", &resource.href).map_err(|error| {
+            PublicationImportError::ContentRefused {
+                href: resource.href.clone(),
+                reason: error.to_string(),
+            }
+        })?;
+        let diagnostics = match kind {
+            RenderResourceKind::Xhtml => {
+                let sanitized = sanitize_xhtml(
+                    &source,
+                    &resource.href,
+                    &resources,
+                    CONTENT_POLICY_VERSION,
+                    SanitizationLimits::default(),
+                )
+                .map_err(|error| PublicationImportError::ContentRefused {
+                    href: resource.href.clone(),
+                    reason: error.to_string(),
+                })?;
+                let diagnostics = sanitized.diagnostics;
+                sanitized_xhtml.insert(resource.href.clone(), sanitized.bytes);
+                diagnostics
+            }
+            RenderResourceKind::Css => {
+                sanitize_css(
+                    &source,
+                    &resource.href,
+                    &resources,
+                    CONTENT_POLICY_VERSION,
+                    CssSanitizationLimits::default(),
+                )
+                .map_err(|error| PublicationImportError::ContentRefused {
+                    href: resource.href.clone(),
+                    reason: error.to_string(),
+                })?
+                .diagnostics
+            }
+            RenderResourceKind::Svg => {
+                sanitize_svg(
+                    &source,
+                    &resource.href,
+                    &resources,
+                    CONTENT_POLICY_VERSION,
+                    SanitizationLimits::default(),
+                )
+                .map_err(|error| PublicationImportError::ContentRefused {
+                    href: resource.href.clone(),
+                    reason: error.to_string(),
+                })?
+                .diagnostics
+            }
+            RenderResourceKind::Raw | RenderResourceKind::Script => unreachable!(),
+        };
+        record_diagnostics(&mut grouped, &resource.href, &diagnostics);
+    }
+
+    let reports = grouped
+        .into_iter()
+        .map(|((href, code), count)| PreparedImportReport {
+            id: uuid::Uuid::new_v4().to_string(),
+            severity: "warning".into(),
+            code,
+            resource_href: Some(href),
+            message: format!(
+                "Content policy v{CONTENT_POLICY_VERSION} handled {count} occurrence(s)"
+            ),
+            created_at: imported_at,
+        })
+        .collect();
+    Ok(PreparedContentPolicy {
+        reports,
+        sanitized_xhtml,
+    })
 }
 
 pub(crate) fn import_existing_document_v2(
@@ -114,6 +276,13 @@ pub(crate) fn import_existing_document_v2(
             ),
             Err(error) => return Err(error.into()),
         };
+
+    let content_policy = prepare_content_policy_reports(
+        &archive.path,
+        &package,
+        limits.archive.archive,
+        imported_at,
+    )?;
 
     let publication_id = uuid::Uuid::new_v4().to_string();
     let mut resource_ids = HashMap::new();
@@ -185,6 +354,70 @@ pub(crate) fn import_existing_document_v2(
         })
         .collect::<Result<Vec<_>, PublicationImportError>>()?;
 
+    let mut content_blocks = Vec::new();
+    for (package_spine_item, prepared_spine_item) in package.spine.iter().zip(&spine) {
+        let resource = package
+            .resources
+            .iter()
+            .find(|resource| resource.manifest_id == package_spine_item.manifest_id)
+            .ok_or_else(|| {
+                PublicationImportError::InvalidPrepared(format!(
+                    "unknown spine resource during block extraction: {}",
+                    package_spine_item.manifest_id
+                ))
+            })?;
+        let kind = classify_render_resource(&resource.href, Some(&resource.media_type)).map_err(
+            |error| PublicationImportError::ContentRefused {
+                href: resource.href.clone(),
+                reason: error.to_string(),
+            },
+        )?;
+        if kind != RenderResourceKind::Xhtml {
+            continue;
+        }
+        let sanitized = content_policy
+            .sanitized_xhtml
+            .get(&resource.href)
+            .ok_or_else(|| {
+                PublicationImportError::InvalidPrepared(format!(
+                    "missing sanitized spine resource: {}",
+                    resource.href
+                ))
+            })?;
+        let remaining_blocks = BlockExtractionLimits::default()
+            .max_blocks
+            .saturating_sub(content_blocks.len());
+        for block in extract_semantic_blocks(
+            sanitized,
+            &publication_id,
+            &archive.sha256,
+            &resource.href,
+            BlockExtractionLimits {
+                max_blocks: remaining_blocks,
+            },
+        )? {
+            content_blocks.push(PreparedContentBlock {
+                id: uuid::Uuid::new_v4().to_string(),
+                spine_item_id: prepared_spine_item.id.clone(),
+                block_index: block.block_index,
+                kind: block.kind,
+                plain_text: block.plain_text,
+                language: block.language,
+                direction: block.direction,
+                locator: serde_json::to_value(&block.locator).map_err(|error| {
+                    PublicationImportError::InvalidPrepared(format!(
+                        "semantic block locator serialization failed: {error}"
+                    ))
+                })?,
+                cfi: None,
+                css_selector: Some(block.css_selector),
+                text_quote_prefix: block.text_quote_prefix,
+                text_quote_exact: Some(block.text_quote_exact),
+                text_quote_suffix: block.text_quote_suffix,
+            });
+        }
+    }
+
     let navigation_ids = navigation
         .iter()
         .map(|_| uuid::Uuid::new_v4().to_string())
@@ -221,7 +454,7 @@ pub(crate) fn import_existing_document_v2(
         severity: "info".into(),
         code: "publication.imported".into(),
         resource_href: None,
-        message: "Publication archive, package, and navigation prepared".into(),
+        message: "Publication archive, package, navigation, and semantic blocks prepared".into(),
         created_at: imported_at,
     }];
     if let Some(message) = navigation_warning {
@@ -234,6 +467,7 @@ pub(crate) fn import_existing_document_v2(
             created_at: imported_at,
         });
     }
+    reports.extend(content_policy.reports);
 
     let prepared = PreparedPublicationImport {
         id: publication_id.clone(),
@@ -244,7 +478,7 @@ pub(crate) fn import_existing_document_v2(
         resources,
         spine,
         navigation,
-        content_blocks: Vec::<PreparedContentBlock>::new(),
+        content_blocks,
         reports,
     };
     commit_publication_import(conn, &archive, &prepared)?;
@@ -263,6 +497,9 @@ mod tests {
     use crate::database::{create_tables, v2_schema::migrate_v2_database};
     use crate::publication::{archive::ArchiveLimits, store::ZipPublicationStore};
     use std::fs;
+    use std::io::{Read, Write};
+    use zip::write::SimpleFileOptions;
+    use zip::{ZipArchive, ZipWriter};
 
     struct Workspace(PathBuf);
 
@@ -315,6 +552,20 @@ mod tests {
         .unwrap()
     }
 
+    fn report_codes(conn: &Connection) -> Vec<(String, Option<String>)> {
+        let mut statement = conn
+            .prepare(
+                "SELECT code, resource_href FROM import_reports
+                 ORDER BY code, resource_href",
+            )
+            .unwrap();
+        statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
     #[test]
     fn imports_an_existing_document_from_database_identity_through_every_v2_layer() {
         let workspace = Workspace::new("complete");
@@ -337,8 +588,47 @@ mod tests {
         assert_eq!(count(&conn, "publication_resources"), 4);
         assert_eq!(count(&conn, "publication_spine"), 1);
         assert_eq!(count(&conn, "navigation_nodes"), 2);
-        assert_eq!(count(&conn, "content_blocks"), 0);
-        assert_eq!(count(&conn, "import_reports"), 1);
+        assert_eq!(count(&conn, "content_blocks"), 5);
+        assert_eq!(
+            count(&conn, "import_reports"),
+            1,
+            "unexpected reports: {:?}",
+            report_codes(&conn)
+        );
+
+        let (kind, text, locator_json, cfi, selector, exact): (
+            String,
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ) = conn
+            .query_row(
+                "SELECT kind, plain_text, locator_json, cfi, css_selector, text_quote_exact
+                 FROM content_blocks ORDER BY block_index LIMIT 1",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                    ))
+                },
+            )
+            .unwrap();
+        assert_eq!((kind.as_str(), text.as_str()), ("heading-1", "Chapter One"));
+        assert_eq!(cfi, None);
+        assert_eq!(selector.as_deref(), Some("body > h1:nth-of-type(1)"));
+        assert_eq!(exact.as_deref(), Some("Chapter One"));
+        let locator: serde_json::Value = serde_json::from_str(&locator_json).unwrap();
+        assert_eq!(locator["publicationId"], outcome.publication_id);
+        assert_eq!(locator["sourceHash"], outcome.source_hash);
+        assert_eq!(locator["href"], "EPUB/chapter.xhtml");
+        assert!(locator["locations"].get("cfi").is_none());
 
         fs::remove_file(source).unwrap();
         let mut store =
@@ -347,6 +637,183 @@ mod tests {
             .load_text("EPUB/nav.xhtml", "chapter.xhtml")
             .unwrap()
             .contains("Chapter One"));
+    }
+
+    #[test]
+    fn imports_table_math_and_footnote_semantics_from_sanitized_spine_dom() {
+        let workspace = Workspace::new("structured-blocks");
+        let source = fixture("table-footnote-mathml-epub3.epub");
+        let conn = database(&workspace.path("reader.db"), &source, "epub");
+
+        import_existing_document_v2(
+            &conn,
+            "document-1",
+            &workspace.path("appdata/publications"),
+            PublicationImportLimits::default(),
+            100,
+        )
+        .unwrap();
+
+        let mut statement = conn
+            .prepare(
+                "SELECT kind, plain_text, cfi, css_selector
+                 FROM content_blocks ORDER BY block_index",
+            )
+            .unwrap();
+        let blocks = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            })
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert_eq!(blocks.len(), 7);
+        assert!(blocks.contains(&(
+            "table-caption".into(),
+            "Sample values".into(),
+            None,
+            Some("body > table:nth-of-type(1) > caption:nth-of-type(1)".into()),
+        )));
+        assert!(blocks
+            .iter()
+            .any(|(kind, text, _, _)| kind == "table-row" && text == "Alpha 1"));
+        assert!(blocks.iter().any(|(kind, text, cfi, _)| {
+            kind == "paragraph"
+                && text.contains("x 2 = 4")
+                && text.contains("has two roots")
+                && cfi.is_none()
+        }));
+        assert!(blocks.iter().any(|(kind, text, _, _)| {
+            kind == "footnote" && text.contains("positive and negative roots")
+        }));
+    }
+
+    #[test]
+    fn persists_grouped_active_content_diagnostics_during_import() {
+        let workspace = Workspace::new("active-content-reports");
+        let source = fixture("active-content-epub3.epub");
+        let conn = database(&workspace.path("reader.db"), &source, "epub");
+
+        import_existing_document_v2(
+            &conn,
+            "document-1",
+            &workspace.path("appdata/publications"),
+            PublicationImportLimits::default(),
+            100,
+        )
+        .unwrap();
+
+        let reports = report_codes(&conn);
+        let unsafe_block_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM content_blocks
+                 WHERE plain_text LIKE '%pwn%' OR plain_text LIKE '%fetch(%'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(unsafe_block_count, 0);
+        assert!(count(&conn, "content_blocks") > 0);
+        for (code, href) in [
+            ("publication.active_content_removed", "EPUB/chapter.xhtml"),
+            ("publication.frame_content_removed", "EPUB/chapter.xhtml"),
+            ("publication.form_disabled", "EPUB/chapter.xhtml"),
+            ("publication.remote_resource_blocked", "EPUB/style.css"),
+            ("publication.unsafe_url_removed", "EPUB/chapter.xhtml"),
+        ] {
+            assert!(
+                reports.contains(&(code.into(), Some(href.into()))),
+                "missing import diagnostic {code} for {href}: {reports:?}"
+            );
+        }
+        for href in ["EPUB/chapter.xhtml", "EPUB/payload.js"] {
+            assert_eq!(
+                reports
+                    .iter()
+                    .filter(|(code, resource_href)| {
+                        code == "publication.active_content_removed"
+                            && resource_href.as_deref() == Some(href)
+                    })
+                    .count(),
+                1,
+                "diagnostics were not grouped for {href}"
+            );
+        }
+    }
+
+    #[test]
+    fn sanitizer_refusal_leaves_no_ready_publication_metadata() {
+        let workspace = Workspace::new("refused-content");
+        let source = workspace.path("invalid-content.epub");
+        let mut input =
+            ZipArchive::new(fs::File::open(fixture("minimal-epub3.epub")).unwrap()).unwrap();
+        let mut output = ZipWriter::new(fs::File::create(&source).unwrap());
+        for index in 0..input.len() {
+            let mut entry = input.by_index(index).unwrap();
+            output
+                .start_file(entry.name(), SimpleFileOptions::default())
+                .unwrap();
+            if entry.name() == "EPUB/chapter.xhtml" {
+                output.write_all(&[0xff, 0xfe, b'<', b'p', b'>']).unwrap();
+            } else {
+                let mut bytes = Vec::new();
+                entry.read_to_end(&mut bytes).unwrap();
+                output.write_all(&bytes).unwrap();
+            }
+        }
+        output.finish().unwrap();
+        let conn = database(&workspace.path("reader.db"), &source, "epub");
+
+        let error = import_existing_document_v2(
+            &conn,
+            "document-1",
+            &workspace.path("appdata/publications"),
+            PublicationImportLimits::default(),
+            100,
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            PublicationImportError::ContentRefused { .. }
+        ));
+        for table in [
+            "publications",
+            "publication_resources",
+            "publication_spine",
+            "navigation_nodes",
+            "content_blocks",
+            "import_reports",
+        ] {
+            assert_eq!(count(&conn, table), 0, "partial rows survived in {table}");
+        }
+    }
+
+    #[test]
+    fn records_deterministic_markup_recovery_for_malformed_xhtml() {
+        let workspace = Workspace::new("malformed-content-report");
+        let source = fixture("malformed-xhtml-epub3.epub");
+        let conn = database(&workspace.path("reader.db"), &source, "epub");
+
+        import_existing_document_v2(
+            &conn,
+            "document-1",
+            &workspace.path("appdata/publications"),
+            PublicationImportLimits::default(),
+            100,
+        )
+        .unwrap();
+
+        assert!(report_codes(&conn).contains(&(
+            "publication.markup_recovered".into(),
+            Some("EPUB/chapter.xhtml".into()),
+        )));
     }
 
     #[test]
@@ -364,6 +831,8 @@ mod tests {
             100,
         )
         .unwrap();
+        let first_block_count = count(&conn, "content_blocks");
+        assert!(first_block_count > 0);
         let second = import_existing_document_v2(
             &conn,
             "document-1",
@@ -378,6 +847,7 @@ mod tests {
         assert_eq!(second.source_hash, first.source_hash);
         assert_eq!(count(&conn, "publications"), 1);
         assert_eq!(count(&conn, "navigation_nodes"), 2);
+        assert_eq!(count(&conn, "content_blocks"), first_block_count);
     }
 
     #[test]

@@ -715,21 +715,21 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
       </div>
 
       {error && (
-        <div className="border-b border-danger/25 bg-danger-subtle px-4 py-3 text-size-subheading text-danger">
+        <div role="alert" className="reader-ai-error px-4 py-3 text-size-subheading">
           {error}
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!result && !error && !isRunning && (
-          <div className="flex h-full items-center justify-center text-center text-size-subheading text-muted">
+          <div className="reader-ai-empty flex h-full items-center justify-center text-center text-size-subheading">
             {modeMeta[mode].empty}
           </div>
         )}
 
         {(result || termInsight) && (
           <div className="space-y-3">
-            <div className="relative rounded-lg border border-border bg-surface p-4">
+            <article className="reader-ai-card relative border border-border bg-surface">
               <div className="absolute right-2 top-2 flex items-center gap-2">
                 <PanelButton
                   onClick={handleAddToNotes}
@@ -828,11 +828,11 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
                   </div>
                 </div>
               ) : (
-                <div className="prose prose-sm max-w-none pr-20">
+                <div className="reader-markdown max-w-none pr-20">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{result}</ReactMarkdown>
                 </div>
               )}
-            </div>
+            </article>
 
             {mode === 'term' && relatedPassages.length > 0 && (
               <div className="rounded-lg border border-border bg-surface p-4">

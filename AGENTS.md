@@ -31,3 +31,10 @@ Useful Pi commands: `/tdd-plan`, `/tdd-design`, `/tdd-implement`, `/tdd-review`,
 - Preserve local-first and offline core reading.
 - For React + Tauri changes, verify both sides with contract/integration coverage.
 - Do not initialize a repository above this project or modify source material outside it.
+
+## Design system and token policy
+
+- UI design values are 100% tokenized for every new or modified surface: color, typography, spacing, radius, border width, shadow, control height, and letter spacing must come from `src/styles/tokens.css`.
+- Consume tokens through semantic utility classes or component styles. Do not add raw colors, arbitrary Tailwind values, one-off shadows, or magic numbers directly in application components.
+- When a needed value does not exist, add a named light/dark-aware token first, then consume it. Keep reading-theme tokens separate from application-shell tokens.
+- Run `npm run check:styles` after UI changes and keep the token rule enforceable in the touched surface.

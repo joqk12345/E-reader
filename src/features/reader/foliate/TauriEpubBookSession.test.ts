@@ -6,6 +6,8 @@ import {
 } from './TauriEpubBookSession';
 
 const makeLoader = () => ({
+  publicationId: 'publication-1',
+  sourceHash: 'a'.repeat(64),
   loadText: vi.fn(async () => '<xml />'),
   loadBlob: vi.fn(async () => new Blob()),
   getSize: vi.fn(() => 12),
@@ -26,6 +28,8 @@ describe('openTauriEpubBookSession', () => {
     expect(openLoader).toHaveBeenCalledWith('document-1');
     expect(initializeBook).toHaveBeenCalledWith(loader);
     expect(session.book).toBe(book);
+    expect(session.publicationId).toBe('publication-1');
+    expect(session.sourceHash).toBe('a'.repeat(64));
 
     await Promise.all([session.close(), session.close()]);
     expect(book.destroy).toHaveBeenCalledTimes(1);

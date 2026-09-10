@@ -259,21 +259,24 @@ Sensitive to normalization and publication updates, and expensive to maintain ac
 
 ## Implementation status
 
-Already available in the Phase 0 spike:
+Already available in the Phase 0 spike/import foundation:
 
 - foliate relocation events and CFI strings;
 - href navigation and nested TOC;
 - per-document localStorage CFI as temporary evidence;
 - immutable-source decision in ADR-002;
-- publication-scoped href/resource resolver.
+- publication-scoped href/resource resolver;
+- import-time semantic blocks extracted only from policy-v1 sanitized spine DOM, with normalized text, semantic kind, inherited language/direction, deterministic ID/structural selector, bounded 48-character neighbor quotes, and identity-bound Locator V1;
+- matching Rust/TypeScript `PublicationLocatorV1` DTOs and validators: strict unknown-field rejection, schema/publication/source/href identity checks, canonical local href constraints, finite progression and positive position bounds, required anchors, and 48-character quote-context limits. Semantic blocks serialize the validated Rust DTO rather than constructing free-form JSON. CFI is intentionally absent until the EPUB adapter can generate a real DOM range anchor;
+- `publication_get_blocks_v2`, an identity-only, bounded (`limit <= 200`, `offset <= 50,000`) canonical-order query for ready V2 publications. Rust reparses and revalidates stored Locator JSON and its denormalized CFI/selector/quote/media fields before serving; malformed persistence returns `publication.locator_invalid`. The TypeScript client independently validates response identity, pagination, ordering, text and every Locator.
+- `publication_get_position_v2` and `publication_save_position_v2` persist one identity-bound reading Locator per publication. Saves validate the ready publication/resource identity and reject stale `updatedAt` values atomically, returning the current server position when an older async write loses the race;
+- the foliate reader now restores canonical V2 CFI positions before the transitional localStorage fallback and saves relocation CFI plus bounded DOM-range text quote context on each position update;
+- the frontend store preloads and validates the complete bounded semantic-block collection page by page for the selected EPUB, with collection identity checks and stale-request protection for downstream search/TTS/translation consumers;
 
 Still required:
-
-- shared TypeScript/Rust Locator DTO and validation;
-- locator database schema and versioned commands;
-- CFI plus text-quote creation;
-- deterministic resolver/re-anchor engine;
-- semantic-block mapping;
+- annotation/selection range CFI and text-quote creation;
+- renderer-bound CFI resolution and deterministic cross-language re-anchor integration;
+- CFI enrichment and automated cross-language fixture conformance for the shared DTO;
 - migration and integration/E2E coverage.
 
 ## Acceptance criteria

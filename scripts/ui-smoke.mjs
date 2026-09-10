@@ -99,8 +99,10 @@ const mockBackendScript = `
   const paragraphs = [{ id: 'ui-smoke-paragraph', doc_id: 'ui-smoke-epub', section_id: 'ui-smoke-section', order_index: 0, text: 'Smoke reading content.', location: 'chapter.xhtml#p0' }];
 
   window.localStorage.setItem('reader:auto-update-enabled', '0');
+  window.localStorage.setItem('reader-app-theme', 'dark');
+  window.localStorage.setItem('vmark-reader-settings', JSON.stringify({ theme: 'night' }));
   window.__TAURI_INTERNALS__ = {
-    invoke: async (command) => {
+    invoke: async (command, args) => {
       switch (command) {
         case 'get_config': return config;
         case 'list_documents': return documents;
@@ -118,6 +120,22 @@ const mockBackendScript = `
         case 'get_section_paragraphs': return paragraphs;
         case 'get_document_paragraphs': return paragraphs;
         case 'get_document_source_url': return null;
+        case 'publication_get_blocks_v2': {
+          const documentId = args?.request?.documentId || 'ui-smoke-epub';
+          const offset = args?.request?.offset || 0;
+          const limit = args?.request?.limit || 100;
+          return {
+            schemaVersion: 1,
+            publicationId: 'ui-smoke-publication',
+            documentId,
+            sourceHash: '0000000000000000000000000000000000000000000000000000000000000000',
+            offset,
+            limit,
+            total: 0,
+            hasMore: false,
+            blocks: [],
+          };
+        }
         case 'get_update_target': return { os: 'macos', arch: 'aarch64' };
         case 'plugin:app|version': return readerVersion;
         default: return null;
@@ -193,14 +211,28 @@ const main = async () => {
     const importButton = page.getByTestId('library-import-button');
     await importButton.click();
     await expectVisible(page.getByTestId('import-dialog'), 'Import dialog');
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByTestId('import-dialog').waitFor({ state: 'hidden', timeout: 5_000 });
+    const importDialog = page.getByTestId('import-dialog');
+    await importDialog.getByRole('button', { name: 'Close', exact: true }).click();
+    await importDialog.waitFor({ state: 'hidden', timeout: 5_000 });
 
     const epubCard = page.locator('[data-testid="document-card"][data-document-id="ui-smoke-epub"]');
     await countExactlyOne(epubCard, 'EPUB document card');
+    await page.evaluate(() => {
+      window.localStorage.setItem('reader-app-theme', 'dark');
+      window.localStorage.setItem('vmark-reader-settings', JSON.stringify({ theme: 'night' }));
+    });
+    await page.setViewportSize({ width: 1024, height: 900 });
     await epubCard.click();
     try {
       await expectVisible(page.getByTestId('reader-page'), 'Reader page after opening document');
+      const expandTools = page.getByRole('button', { name: 'Expand tools', exact: true });
+      await expectVisible(expandTools, 'Collapsed tool rail');
+      await expectVisible(page.getByTitle('Smoke EPUB'), 'Reader document title');
+      await page.waitForFunction(() => document.documentElement.dataset.appTheme === 'dark');
+      await expectVisible(page.locator('[data-reader-theme="night"]'), 'Night reading theme');
+      await expandTools.click();
+      await expectVisible(page.getByRole('button', { name: 'Collapse tools', exact: true }), 'Expanded tool workspace');
+      await expectVisible(page.getByRole('button', { name: 'Expand sidebar', exact: true }), 'Collapsed TOC after opening tools');
     } catch (error) {
       await page.screenshot({ path: '/private/tmp/reader-ui-smoke-open-failure.png', fullPage: false });
       throw error;

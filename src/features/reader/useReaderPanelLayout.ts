@@ -3,8 +3,10 @@ import { useCallback, useRef, useState } from 'react';
 export function useReaderPanelLayout() {
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [tocWidth, setTocWidth] = useState(256);
-  const [headerToolsCollapsed, setHeaderToolsCollapsed] = useState(false);
-  const [toolCollapsed, setToolCollapsed] = useState(false);
+  const [headerToolsCollapsed, setHeaderToolsCollapsed] = useState(true);
+  // Keep the reading viewport primary on a fresh reader session. The tool workspace
+  // remains available through its compact rail without competing with the TOC.
+  const [toolCollapsed, setToolCollapsed] = useState(true);
   const [toolWidth, setToolWidth] = useState(320);
   const [readingMode, setReadingMode] = useState(false);
   const readingModeSnapshotRef = useRef<{

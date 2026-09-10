@@ -5,6 +5,9 @@ const openResponse = {
   schemaVersion: 1,
   sessionId: 'session-1',
   documentId: 'document-1',
+  renderMode: 'sanitized' as const,
+  contentPolicyVersion: 1,
+  resourceSizeBasis: 'archiveUncompressed' as const,
   resourceSizes: {
     'META-INF/container.xml': 240,
     'EPUB/chapter.xhtml': 1024,
@@ -22,6 +25,8 @@ describe('TauriPublicationLoader', () => {
     });
     expect(loader.sessionId).toBe('session-1');
     expect(loader.documentId).toBe('document-1');
+    expect(loader.renderMode).toBe('sanitized');
+    expect(loader.contentPolicyVersion).toBe(1);
     expect(loader.getSize('EPUB/chapter.xhtml')).toBe(1024);
     expect(loader.getSize('EPUB/missing.xhtml')).toBe(0);
   });
@@ -160,5 +165,30 @@ describe('TauriPublicationLoader', () => {
     expect(wrongDocument).toHaveBeenCalledWith('publication_close_v2', {
       request: { sessionId: 'session-1' },
     });
+
+    const wrongSizeBasis = vi.fn<PublicationInvoke>().mockResolvedValue({
+      ...openResponse,
+      resourceSizeBasis: 'renderBytes',
+    });
+    await expect(TauriPublicationLoader.open('document-1', wrongSizeBasis)).rejects.toThrow(
+      'resource size basis'
+    );
+
+    const wrongPolicy = vi.fn<PublicationInvoke>().mockResolvedValue({
+      ...openResponse,
+      contentPolicyVersion: 2,
+    });
+    await expect(TauriPublicationLoader.open('document-1', wrongPolicy)).rejects.toThrow(
+      'content policy version'
+    );
+
+    const legacyWithPolicy = vi.fn<PublicationInvoke>().mockResolvedValue({
+      ...openResponse,
+      renderMode: 'legacyRaw',
+      contentPolicyVersion: 1,
+    });
+    await expect(TauriPublicationLoader.open('document-1', legacyWithPolicy)).rejects.toThrow(
+      'render mode'
+    );
   });
 });

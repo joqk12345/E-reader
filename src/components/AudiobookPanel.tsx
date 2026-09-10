@@ -43,7 +43,14 @@ type AudiobookStateEventDetail = {
 };
 
 export const AudiobookPanel: React.FC = () => {
-  const { paragraphs, translationMode, currentDocumentType, setCurrentReadingSentenceKey } = useStore();
+  const {
+    paragraphs,
+    publicationBlocks,
+    publicationBlocksDocumentId,
+    translationMode,
+    currentDocumentType,
+    setCurrentReadingSentenceKey,
+  } = useStore();
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>('auto');
   const [readTarget, setReadTarget] = useState<ReadTarget>('source');
   const [voice, setVoice] = useState('');
@@ -69,8 +76,12 @@ export const AudiobookPanel: React.FC = () => {
       return /[A-Za-z0-9\u4e00-\u9fff]/.test(t);
     };
 
+    const sourceParagraphs =
+      currentDocumentType === 'epub' && publicationBlocksDocumentId && publicationBlocks.length > 0
+        ? publicationBlocks.map((block) => ({ id: block.id, text: block.plainText }))
+        : paragraphs;
     const list: Array<{ key: string; sourceText: string }> = [];
-    for (const paragraph of paragraphs) {
+    for (const paragraph of sourceParagraphs) {
       const sourceText = toSpeakableText(paragraph.text, {
         markdown: currentDocumentType === 'markdown',
       });
@@ -83,7 +94,7 @@ export const AudiobookPanel: React.FC = () => {
       });
     }
     return list;
-  }, [currentDocumentType, paragraphs]);
+  }, [currentDocumentType, paragraphs, publicationBlocks, publicationBlocksDocumentId]);
 
   const sentenceIndexByKey = useMemo(() => {
     const map = new Map<string, number>();

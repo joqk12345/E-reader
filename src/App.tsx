@@ -82,6 +82,7 @@ function App() {
   const {
     selectedDocumentId,
     currentDocumentType,
+    loadPublicationBlocks,
     loadConfig,
     readerFontSize,
     persistReaderFontSize,
@@ -102,6 +103,11 @@ function App() {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    if (!selectedDocumentId || currentDocumentType !== 'epub') return;
+    void loadPublicationBlocks(selectedDocumentId);
+  }, [currentDocumentType, loadPublicationBlocks, selectedDocumentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -377,7 +383,7 @@ function App() {
         <div className="flex-1 min-h-0">
           {selectedDocumentId ? (
             FOLIATE_EPUB_SPIKE_ENABLED && currentDocumentType === 'epub' ? (
-              <Suspense fallback={<div className="grid h-full place-items-center text-sm text-slate-600">Loading foliate-js spike…</div>}>
+              <Suspense fallback={<div className="grid h-full place-items-center text-size-subheading text-secondary">Loading foliate-js spike…</div>}>
                 <FoliateEpubSpikeReader />
               </Suspense>
             ) : (
@@ -385,7 +391,7 @@ function App() {
             )
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-border bg-surface px-5">
+              <header className="reader-home-header flex shrink-0 items-center justify-between border-b border-border bg-surface px-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-action text-size-subheading font-semibold text-on-action shadow-sm">R</div>
                   <div className="leading-none">

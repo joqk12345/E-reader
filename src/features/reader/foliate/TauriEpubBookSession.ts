@@ -7,11 +7,16 @@ export type FoliatePublicationBook = {
   toc?: unknown[];
   dir?: 'ltr' | 'rtl';
   rendition?: { layout?: string };
+  sections?: Array<{ id?: string }>;
   transformTarget?: EventTarget;
   destroy?: () => void;
 };
 
-type FoliateLoader = Pick<TauriPublicationLoader, 'loadText' | 'loadBlob' | 'getSize' | 'close'> &
+type FoliateLoader = Pick<
+  TauriPublicationLoader,
+  'loadText' | 'loadBlob' | 'getSize' | 'close'
+> &
+  Partial<Pick<TauriPublicationLoader, 'publicationId' | 'sourceHash'>> &
   Partial<Pick<TauriPublicationLoader, 'getMetrics'>>;
 
 export type TauriEpubBookSessionDependencies = {
@@ -21,6 +26,8 @@ export type TauriEpubBookSessionDependencies = {
 
 export type TauriEpubBookSession = {
   book: FoliatePublicationBook;
+  publicationId: string | null;
+  sourceHash: string | null;
   getMetrics: () => PublicationLoadMetrics | null;
   close: () => Promise<void>;
 };
@@ -110,6 +117,8 @@ export async function openTauriEpubBookSession(
 
   return {
     book,
+    publicationId: loader.publicationId ?? null,
+    sourceHash: loader.sourceHash ?? null,
     getMetrics: () => loader.getMetrics?.() ?? null,
     close,
   };

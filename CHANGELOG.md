@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.2] - 2026-09-11
+
+- **Quiet Reader 视觉方向**：默认正文优先，顶部工具和 AI 工作区按需展开。
+- 工具面板改为垂直工具轨道，TOC 与工具展开互斥，并改善窄窗口可用性。
+- 选区操作补充明确的 ARIA 对话框、动作名称和关闭语义。
+- Chat、Summary、Understand、Deep Analysis 统一 AI 卡片、错误态和空状态基础样式。
+- UI smoke 增加 1024px、深色应用主题、Night 阅读主题和工具展开回归。
+- 修复导入弹窗 smoke 测试误点击同名 Close 按钮的问题。
+
 ## [0.5.0] - 2026-09-10
 
 - Reader 0.5.0 功能版本，聚焦本地优先阅读、AI 辅助理解和可持续的桌面工作流。

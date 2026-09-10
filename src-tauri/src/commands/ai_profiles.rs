@@ -7,7 +7,10 @@ use crate::llm::{create_client_for_profile, ChatMessage};
 use reqwest::Client;
 use serde::Serialize;
 use std::time::{Duration, Instant};
+use tokio::time::sleep;
 use uuid::Uuid;
+
+const MODEL_TEST_RETRY_ATTEMPTS: usize = 3;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AiProfilesPayload {
@@ -116,6 +119,14 @@ fn validate_provider(profile: &ProviderProfile) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn is_retryable_model_error(err: &ReaderError) -> bool {
+    let message = err.to_string();
+    message.contains("502 Bad Gateway")
+        || message.contains("timed out")
+        || message.contains("upstream")
+        || message.contains("Failed to send request")
 }
 
 fn validate_model(config: &Config, model: &ModelProfile) -> Result<()> {
@@ -498,29 +509,73 @@ pub async fn test_model_profile(
 
     let result_detail = match model.capability {
         ModelCapability::Embedding => {
-            let _ = client
-                .generate_embedding(prompt.as_deref().unwrap_or("ping"))
-                .await?;
+            let mut last_error = None;
+            for attempt in 1..=MODEL_TEST_RETRY_ATTEMPTS {
+                match client
+                    .generate_embedding(prompt.as_deref().unwrap_or("ping"))
+                    .await
+                {
+                    Ok(_) => {
+                        last_error = None;
+                        break;
+                    }
+                    Err(err) => {
+                        let retryable = is_retryable_model_error(&err);
+                        last_error = Some(err);
+                        if !retryable || attempt == MODEL_TEST_RETRY_ATTEMPTS {
+                            break;
+                        }
+                        sleep(Duration::from_millis(200 * attempt as u64)).await;
+                    }
+                }
+            }
+            if let Some(err) = last_error {
+                return Err(err);
+            }
             "Embedding call succeeded".to_string()
         }
         ModelCapability::Chat | ModelCapability::Multimodal => {
-            let reply = client
-                .chat(
-                    vec![
-                        ChatMessage {
-                            role: "system".to_string(),
-                            content: "You are a connectivity probe. Reply with exactly: OK"
-                                .to_string(),
-                        },
-                        ChatMessage {
-                            role: "user".to_string(),
-                            content: prompt.unwrap_or_else(|| "Ping".to_string()),
-                        },
-                    ],
-                    model.temperature.unwrap_or(0.0),
-                    model.max_tokens.unwrap_or(32),
-                )
-                .await?;
+            let messages = vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: "You are a connectivity probe. Reply with exactly: OK".to_string(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: prompt.unwrap_or_else(|| "Ping".to_string()),
+                },
+            ];
+            let mut reply = None;
+            let mut last_error = None;
+            for attempt in 1..=MODEL_TEST_RETRY_ATTEMPTS {
+                match client
+                    .chat(
+                        messages.clone(),
+                        model.temperature.unwrap_or(0.0),
+                        model.max_tokens.unwrap_or(32),
+                    )
+                    .await
+                {
+                    Ok(output) => {
+                        reply = Some(output);
+                        last_error = None;
+                        break;
+                    }
+                    Err(err) => {
+                        let retryable = is_retryable_model_error(&err);
+                        last_error = Some(err);
+                        if !retryable || attempt == MODEL_TEST_RETRY_ATTEMPTS {
+                            break;
+                        }
+                        sleep(Duration::from_millis(200 * attempt as u64)).await;
+                    }
+                }
+            }
+            let reply = reply.ok_or_else(|| {
+                last_error.unwrap_or_else(|| {
+                    ReaderError::Internal("Model test failed without concrete error".to_string())
+                })
+            })?;
             format!("Model reply: {}", reply.trim())
         }
     };

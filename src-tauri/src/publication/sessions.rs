@@ -1,5 +1,10 @@
 use super::archive::ArchiveLimits;
+use super::content_policy::{classify_render_resource, RenderResourceKind};
+use super::css_sanitizer::{sanitize_css, CssSanitizationLimits};
+use super::resources::PublicationResourceIndex;
+use super::sanitizer::{sanitize_xhtml, SanitizationLimits, CONTENT_POLICY_VERSION};
 use super::store::{PublicationStoreError, ZipPublicationStore};
+use super::svg_sanitizer::sanitize_svg;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -10,6 +15,8 @@ pub enum PublicationSessionError {
     SessionNotFound(String),
     #[error("publication session state is unavailable")]
     StateUnavailable,
+    #[error("publication render content was refused for {path}: {reason}")]
+    ContentRefused { path: String, reason: String },
     #[error(transparent)]
     Store(#[from] PublicationStoreError),
 }
@@ -17,9 +24,96 @@ pub enum PublicationSessionError {
 struct PublicationSession {
     document_id: String,
     store: ZipPublicationStore,
+    content_policy: Option<PublicationContentPolicy>,
+    sanitized_resources: Option<PublicationResourceIndex>,
+    sanitized_cache: HashMap<String, Vec<u8>>,
+}
+
+fn content_refused(path: &str, reason: impl Into<String>) -> PublicationSessionError {
+    PublicationSessionError::ContentRefused {
+        path: path.into(),
+        reason: reason.into(),
+    }
+}
+
+impl PublicationSession {
+    fn load_render_blob(
+        &mut self,
+        base_href: &str,
+        href: &str,
+    ) -> Result<Vec<u8>, PublicationSessionError> {
+        let resolved = self.store.resolve(base_href, href)?;
+        let Some(policy) = &self.content_policy else {
+            return self
+                .store
+                .load_resolved_blob(&resolved.path)
+                .map_err(Into::into);
+        };
+        let kind = classify_render_resource(
+            &resolved.path,
+            policy.media_types.get(&resolved.path).map(String::as_str),
+        )
+        .map_err(|error| content_refused(&resolved.path, error.to_string()))?;
+        if kind == RenderResourceKind::Script {
+            return Err(content_refused(
+                &resolved.path,
+                "script resources are not renderable",
+            ));
+        }
+        if kind == RenderResourceKind::Raw {
+            return self
+                .store
+                .load_resolved_blob(&resolved.path)
+                .map_err(Into::into);
+        }
+        if let Some(bytes) = self.sanitized_cache.get(&resolved.path) {
+            return Ok(bytes.clone());
+        }
+        let source = self.store.load_resolved_blob(&resolved.path)?;
+        let resources = self
+            .sanitized_resources
+            .as_ref()
+            .ok_or_else(|| content_refused(&resolved.path, "sanitizer allowlist is unavailable"))?;
+        let sanitized = match kind {
+            RenderResourceKind::Xhtml => sanitize_xhtml(
+                &source,
+                &resolved.path,
+                resources,
+                policy.version,
+                SanitizationLimits::default(),
+            )
+            .map_err(|error| content_refused(&resolved.path, error.to_string()))?,
+            RenderResourceKind::Css => sanitize_css(
+                &source,
+                &resolved.path,
+                resources,
+                policy.version,
+                CssSanitizationLimits::default(),
+            )
+            .map_err(|error| content_refused(&resolved.path, error.to_string()))?,
+            RenderResourceKind::Svg => sanitize_svg(
+                &source,
+                &resolved.path,
+                resources,
+                policy.version,
+                SanitizationLimits::default(),
+            )
+            .map_err(|error| content_refused(&resolved.path, error.to_string()))?,
+            RenderResourceKind::Raw | RenderResourceKind::Script => unreachable!(),
+        };
+        self.sanitized_cache
+            .insert(resolved.path, sanitized.bytes.clone());
+        Ok(sanitized.bytes)
+    }
 }
 
 type SharedSession = Arc<Mutex<PublicationSession>>;
+
+#[derive(Debug, Clone)]
+pub struct PublicationContentPolicy {
+    pub version: u32,
+    pub media_types: HashMap<String, String>,
+}
 
 #[derive(Default)]
 pub struct PublicationSessionRegistry {
@@ -33,10 +127,39 @@ impl PublicationSessionRegistry {
         source_path: impl AsRef<Path>,
         limits: ArchiveLimits,
     ) -> Result<String, PublicationSessionError> {
+        self.open_with_policy(document_id, source_path, limits, None)
+    }
+
+    fn open_with_policy(
+        &self,
+        document_id: impl Into<String>,
+        source_path: impl AsRef<Path>,
+        limits: ArchiveLimits,
+        content_policy: Option<PublicationContentPolicy>,
+    ) -> Result<String, PublicationSessionError> {
         let store = ZipPublicationStore::open(source_path, limits)?;
+        let sanitized_resources = content_policy
+            .as_ref()
+            .map(|policy| PublicationResourceIndex::new(policy.media_types.keys().cloned()))
+            .transpose()
+            .map_err(PublicationStoreError::Resolve)?;
+        if let Some(policy) = &content_policy {
+            if policy.version != CONTENT_POLICY_VERSION {
+                return Err(PublicationSessionError::ContentRefused {
+                    path: "<publication>".into(),
+                    reason: format!("unsupported content policy version: {}", policy.version),
+                });
+            }
+            for href in policy.media_types.keys() {
+                store.resolve("", href)?;
+            }
+        }
         let session = Arc::new(Mutex::new(PublicationSession {
             document_id: document_id.into(),
             store,
+            content_policy,
+            sanitized_resources,
+            sanitized_cache: HashMap::new(),
         }));
         let mut sessions = self
             .sessions
@@ -49,6 +172,16 @@ impl PublicationSessionRegistry {
                 return Ok(session_id);
             }
         }
+    }
+
+    pub fn open_sanitized(
+        &self,
+        document_id: impl Into<String>,
+        source_path: impl AsRef<Path>,
+        limits: ArchiveLimits,
+        policy: PublicationContentPolicy,
+    ) -> Result<String, PublicationSessionError> {
+        self.open_with_policy(document_id, source_path, limits, Some(policy))
     }
 
     pub fn document_id(&self, session_id: &str) -> Result<String, PublicationSessionError> {
@@ -81,12 +214,13 @@ impl PublicationSessionRegistry {
         href: &str,
     ) -> Result<String, PublicationSessionError> {
         let session = self.session(session_id)?;
-        let result = session
+        let bytes = session
             .lock()
             .map_err(|_| PublicationSessionError::StateUnavailable)?
-            .store
-            .load_text(base_href, href)?;
-        Ok(result)
+            .load_render_blob(base_href, href)?;
+        String::from_utf8(bytes).map_err(|_| {
+            PublicationSessionError::Store(PublicationStoreError::InvalidText(href.into()))
+        })
     }
 
     pub fn load_blob(
@@ -99,9 +233,8 @@ impl PublicationSessionRegistry {
         let result = session
             .lock()
             .map_err(|_| PublicationSessionError::StateUnavailable)?
-            .store
-            .load_blob(base_href, href)?;
-        Ok(result)
+            .load_render_blob(base_href, href);
+        result
     }
 
     pub fn get_size(
@@ -144,7 +277,10 @@ impl PublicationSessionRegistry {
 mod tests {
     use super::*;
     use crate::publication::resources::ResourceResolveError;
+    use std::io::Write;
     use std::path::PathBuf;
+    use zip::write::SimpleFileOptions;
+    use zip::ZipWriter;
 
     fn fixture(name: &str) -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -211,6 +347,163 @@ mod tests {
                 .unwrap()
                 > 0
         );
+    }
+
+    #[test]
+    fn canonical_sessions_sanitize_active_fixture_resources_and_refuse_scripts() {
+        let registry = PublicationSessionRegistry::default();
+        let session_id = registry
+            .open_sanitized(
+                "active-document",
+                fixture("active-content-epub3.epub"),
+                ArchiveLimits::default(),
+                PublicationContentPolicy {
+                    version: 1,
+                    media_types: HashMap::from([
+                        ("EPUB/chapter.xhtml".into(), "application/xhtml+xml".into()),
+                        ("EPUB/style.css".into(), "text/css".into()),
+                        ("EPUB/payload.js".into(), "application/javascript".into()),
+                    ]),
+                },
+            )
+            .unwrap();
+
+        let chapter = registry
+            .load_text(&session_id, "", "EPUB/chapter.xhtml")
+            .unwrap();
+        assert!(chapter.contains("Active content must remain inert"));
+        for removed in [
+            "<script",
+            "onload=",
+            "example.invalid/reader-epub-image-probe",
+            "example.invalid/reader-epub-frame-probe",
+            "example.invalid/reader-epub-form-probe",
+            "<iframe",
+            "<form",
+            "javascript:",
+        ] {
+            assert!(
+                !chapter.contains(removed),
+                "active XHTML survived: {removed}"
+            );
+        }
+        let css = String::from_utf8(
+            registry
+                .load_blob(&session_id, "", "EPUB/style.css")
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(!css.contains("example.invalid"));
+        assert!(matches!(
+            registry.load_blob(&session_id, "", "EPUB/payload.js"),
+            Err(PublicationSessionError::ContentRefused { .. })
+        ));
+    }
+
+    #[test]
+    fn canonical_sessions_preserve_safe_xhtml_svg_and_cache_identical_render_bytes() {
+        let registry = PublicationSessionRegistry::default();
+        let session_id = registry
+            .open_sanitized(
+                "safe-document",
+                fixture("minimal-epub3.epub"),
+                ArchiveLimits::default(),
+                PublicationContentPolicy {
+                    version: 1,
+                    media_types: HashMap::from([
+                        ("EPUB/chapter.xhtml".into(), "application/xhtml+xml".into()),
+                        ("EPUB/image.svg".into(), "image/svg+xml".into()),
+                    ]),
+                },
+            )
+            .unwrap();
+
+        let chapter = registry
+            .load_text(&session_id, "", "EPUB/chapter.xhtml")
+            .unwrap();
+        assert!(chapter.contains("<em>structured text</em>"));
+        let first = registry
+            .load_blob(&session_id, "EPUB/chapter.xhtml", "image.svg")
+            .unwrap();
+        let second = registry
+            .load_blob(&session_id, "", "EPUB/image.svg")
+            .unwrap();
+        assert_eq!(first, second);
+        assert!(first.starts_with(b"<svg"));
+        assert!(!first.windows(5).any(|window| window == b"<html"));
+    }
+
+    #[test]
+    fn sanitizer_failures_never_fall_back_to_raw_resource_bytes() {
+        let path = std::env::temp_dir().join(format!(
+            "reader-invalid-render-resource-{}.epub",
+            uuid::Uuid::new_v4()
+        ));
+        let file = std::fs::File::create(&path).unwrap();
+        let mut writer = ZipWriter::new(file);
+        writer
+            .start_file("EPUB/invalid.xhtml", SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(&[0xff, 0xfe, b'<', b'p', b'>']).unwrap();
+        writer.finish().unwrap();
+
+        let registry = PublicationSessionRegistry::default();
+        let session_id = registry
+            .open_sanitized(
+                "invalid-content",
+                &path,
+                ArchiveLimits::default(),
+                PublicationContentPolicy {
+                    version: 1,
+                    media_types: HashMap::from([(
+                        "EPUB/invalid.xhtml".into(),
+                        "application/xhtml+xml".into(),
+                    )]),
+                },
+            )
+            .unwrap();
+        let error = registry
+            .load_blob(&session_id, "", "EPUB/invalid.xhtml")
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            PublicationSessionError::ContentRefused { .. }
+        ));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn canonical_sessions_refuse_unknown_active_extensions_and_policy_versions() {
+        let registry = PublicationSessionRegistry::default();
+        let unsupported = registry.open_sanitized(
+            "unsupported-policy",
+            fixture("minimal-epub3.epub"),
+            ArchiveLimits::default(),
+            PublicationContentPolicy {
+                version: 999,
+                media_types: HashMap::new(),
+            },
+        );
+        assert!(matches!(
+            unsupported,
+            Err(PublicationSessionError::ContentRefused { .. })
+        ));
+
+        let session_id = registry
+            .open_sanitized(
+                "missing-manifest-media",
+                fixture("minimal-epub3.epub"),
+                ArchiveLimits::default(),
+                PublicationContentPolicy {
+                    version: 1,
+                    media_types: HashMap::new(),
+                },
+            )
+            .unwrap();
+        assert!(matches!(
+            registry.load_text(&session_id, "", "EPUB/chapter.xhtml"),
+            Err(PublicationSessionError::ContentRefused { .. })
+        ));
     }
 
     #[test]

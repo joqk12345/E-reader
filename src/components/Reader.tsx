@@ -95,10 +95,16 @@ export function Reader() {
       width: tocWidth,
       minWidth: minTocWidth,
       maxWidth: maxTocWidth,
-      onToggleCollapse: () => setTocCollapsed((prev) => !prev),
+      onToggleCollapse: () => {
+        setTocCollapsed((prev) => {
+          const next = !prev;
+          if (!next) setToolCollapsed(true);
+          return next;
+        });
+      },
       onWidthChange: handleTocWidthChange,
     }),
-    [tocCollapsed, tocWidth]
+    [setTocCollapsed, setToolCollapsed, tocCollapsed, tocWidth]
   );
 
   const toolPanelProps = useMemo(
@@ -107,10 +113,16 @@ export function Reader() {
       width: toolWidth,
       minWidth: minToolWidth,
       maxWidth: maxToolWidth,
-      onToggleCollapse: () => setToolCollapsed((prev) => !prev),
+      onToggleCollapse: () => {
+        setToolCollapsed((prev) => {
+          const next = !prev;
+          if (!next) setTocCollapsed(true);
+          return next;
+        });
+      },
       onWidthChange: (width: number) => setToolWidth(width),
     }),
-    [toolCollapsed, toolWidth]
+    [setTocCollapsed, setToolCollapsed, toolCollapsed, toolWidth]
   );
 
   useEffect(() => {
@@ -416,7 +428,11 @@ export function Reader() {
   };
 
   return (
-    <div data-testid="reader-page" className="h-screen flex flex-col bg-surface">
+    <div
+      data-testid="reader-page"
+      data-reader-theme={loadReaderViewSettings(readerFontSize).theme}
+      className="h-screen flex flex-col bg-surface"
+    >
       <header
         className={`relative flex items-center border-b ${readingMode ? 'border-transparent bg-surface/95' : 'border-border bg-surface'} transition-all ${headerPaddingClass}`}
       >
@@ -561,7 +577,9 @@ export function Reader() {
               alt="Reader Logo"
               className="h-5 w-5 rounded-md border border-border bg-surface p-0.5"
             />
-            <span>Reader</span>
+            <span className="max-w-[var(--reader-title-max-width)] truncate" title={selectedDocument?.title || 'Reader'}>
+              {selectedDocument?.title || 'Reader'}
+            </span>
           </h1>
         )}
 
@@ -626,7 +644,7 @@ export function Reader() {
               title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
               aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
             >
-              {headerToolsCollapsed ? 'Tools: Show' : 'Tools: Hide'}
+              {headerToolsCollapsed ? 'More' : 'Less'}
             </ReaderButton>
           )}
         </div>

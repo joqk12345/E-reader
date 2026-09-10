@@ -40,10 +40,43 @@
   --font-size-hero: 29px;
   --font-size-reading-sm: 0.9em;
   --font-size-reading-md: 0.92em;
+  --font-size-code-scale: 0.92em;
+  --line-height-markdown: 1.75;
+  --line-height-markdown-heading: 1.35;
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-meta: 0.1em;
+  --letter-spacing-kicker: 0.12em;
+  --space-markdown-xs: 0.25rem;
+  --space-markdown-sm: 0.35rem;
+  --space-markdown-md: 0.5rem;
+  --space-markdown-lg: 0.65rem;
+  --space-markdown-xl: 0.85rem;
+  --space-markdown-2xl: 1rem;
+  --space-markdown-indent: 1.35rem;
+  --space-card: 1rem;
+  --space-message-x: 0.875rem;
+  --space-message-y: 0.75rem;
+  --space-action-x: 0.625rem;
+  --space-action-y: 0.375rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-markdown-inline: 0.35rem;
+  --radius-markdown-block: 0.65rem;
+  --border-thin: 1px;
+  --border-accent: 3px;
+  --message-max-width: 94%;
+  --chat-input-min-height: 6rem;
+  --chat-input-max-height: 14rem;
+  --home-header-height: 58px;
+  --toc-indent: 0.5rem;
+  --toc-indent-step: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(37 31 26 / 6%);
+  --shadow-tab-active: inset 0 -2px 0 rgb(var(--color-action));
   --settings-control-width: 280px;
   --radius-panel: 22px;
   --shadow-panel: 0 24px 70px rgb(37 31 26 / 18%);
   --shadow-floating: 0 14px 36px rgb(28 27 25 / 16%);
+  --reader-title-max-width: min(42vw, 28rem);
 }
 
 /* The application shell follows the selected app theme; reader palettes stay independent. */
@@ -73,4 +106,5 @@
   --color-on-action: 255 255 255;
   --shadow-panel: 0 24px 70px rgb(0 0 0 / 40%);
   --shadow-floating: 0 14px 36px rgb(0 0 0 / 34%);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 18%);
 }

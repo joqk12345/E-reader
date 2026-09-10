@@ -310,14 +310,14 @@ export const SummaryPanel: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-danger-subtle border-b border-danger/25">
-          <p className="text-size-subheading text-danger">{error}</p>
+        <div role="alert" className="reader-ai-error p-4">
+          <p className="text-size-subheading">{error}</p>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!summary && !error && !isSummarizing && (
-          <div className="flex flex-col items-center justify-center h-full text-muted">
+          <div className="reader-ai-empty flex flex-col items-center justify-center h-full">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -327,9 +327,12 @@ export const SummaryPanel: React.FC = () => {
 
         {summary && (
           <div className="prose prose-sm max-w-none">
-            <div className="bg-surface border border-border rounded-lg p-4">
+            <article className="reader-ai-card border border-border bg-surface">
               <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3">
-                <div className="text-size-subheading font-medium text-secondary">Generated Summary</div>
+                <div className="min-w-0">
+                  <div className="reader-kicker text-size-meta font-medium uppercase text-muted">Summary</div>
+                  <div className="mt-1 text-size-subheading font-medium text-heading">Generated Summary</div>
+                </div>
                 <PanelButton
                   onClick={() => void handleCopy()}
                   className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-size-subheading transition-colors ${
@@ -359,7 +362,7 @@ export const SummaryPanel: React.FC = () => {
               ) : (
                 <p className="text-foreground leading-relaxed whitespace-pre-wrap">{summary}</p>
               )}
-            </div>
+            </article>
           </div>
         )}
       </div>

@@ -2645,6 +2645,7 @@ export function ReaderContent() {
   return (
     <div
       ref={contentRef}
+      data-reader-theme={viewSettings.theme}
       className="relative flex-1 overflow-y-auto"
       style={{ backgroundColor: currentTheme.background, color: currentTheme.foreground }}
       onMouseUp={handleSelectionEnd}
@@ -3282,6 +3283,8 @@ export function ReaderContent() {
         <div
           ref={selectionPopoverRef}
           data-selection-popover="true"
+          role="dialog"
+          aria-label="Selection actions"
           className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-floating overflow-y-auto"
           style={{
             left: `${selectionPopoverLeft}px`,
@@ -3368,6 +3371,7 @@ export function ReaderContent() {
                       if (isSelectionReorderMode) return;
                       handleSelectionAction(action);
                     }}
+                    aria-label={selectionActionLabel[action]}
                     className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-size-caption font-medium transition ${
                       isSelectionReorderMode
                         ? pointerSortAction === action
@@ -3390,6 +3394,8 @@ export function ReaderContent() {
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
                 className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                 title="More actions"
+                aria-label="More selection actions"
+                aria-expanded={isSelectionMenuOpen}
               >
                 ▾
               </PanelButton>
@@ -3421,7 +3427,8 @@ export function ReaderContent() {
             <PanelButton
               onClick={clearSelectionDraft}
               className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
-              title="Close"
+              title="Close selection actions"
+              aria-label="Close selection actions"
             >
               ×
             </PanelButton>

@@ -32,8 +32,9 @@ pub use import::{
 pub use index::index_document;
 pub use mcp::{get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled};
 pub use publication::{
-    publication_close_v2, publication_get_size_v2, publication_load_blob_v2,
-    publication_load_text_v2, publication_open_v2,
+    publication_close_v2, publication_get_blocks_v2, publication_get_size_v2,
+    publication_get_position_v2, publication_import_existing_v2, publication_load_blob_v2,
+    publication_load_text_v2, publication_open_v2, publication_save_position_v2,
 };
 pub use search::{get_paragraph_context, search};
 pub use tags::{

@@ -3,6 +3,11 @@ import { invoke } from '@tauri-apps/api/core';
 import type { Document, Section, Paragraph } from '../types';
 import { defaultKeymap, normalizeKeymap, type Keymap } from '../utils/shortcuts';
 import { LEGACY_READER_BACKGROUND } from '../components/readerTheme';
+import {
+  loadPublicationBlocksV2,
+  type PublicationBlockV2,
+  type PublicationBlocksInvoke,
+} from '../features/reader/locator/publicationBlocks';
 
 export type TranslationMode = 'off' | 'en-zh' | 'zh-en';
 
@@ -45,6 +50,10 @@ interface ReaderState {
   paragraphs: Paragraph[];
   currentParagraph: Paragraph | null;
   visibleParagraphs: Paragraph[];
+  publicationBlocks: PublicationBlockV2[];
+  publicationBlocksDocumentId: string | null;
+  publicationBlocksLoading: boolean;
+  publicationBlocksError: string | null;
 
   // Translation mode state
   translationMode: TranslationMode;
@@ -72,6 +81,7 @@ interface ReaderState {
   loadSections: (docId: string) => Promise<void>;
   loadParagraphs: (sectionId: string) => Promise<void>;
   loadDocumentParagraphs: (docId: string) => Promise<void>;
+  loadPublicationBlocks: (docId: string, invoke?: PublicationBlocksInvoke) => Promise<void>;
   selectSection: (sectionId: string) => void;
   goBack: () => void;
 
@@ -99,6 +109,8 @@ interface ReaderState {
   setVisibleParagraphs: (paragraphs: Paragraph[]) => void;
 }
 
+let publicationBlocksRequestId = 0;
+
 export const useStore = create<ReaderState>((set, get) => ({
   documents: [],
   selectedDocumentId: null,
@@ -111,6 +123,10 @@ export const useStore = create<ReaderState>((set, get) => ({
   paragraphs: [],
   currentParagraph: null,
   visibleParagraphs: [],
+  publicationBlocks: [],
+  publicationBlocksDocumentId: null,
+  publicationBlocksLoading: false,
+  publicationBlocksError: null,
 
   // Translation mode state
   translationMode: 'off',
@@ -153,11 +169,16 @@ export const useStore = create<ReaderState>((set, get) => ({
   },
 
   selectDocument: (id: string) => {
+    publicationBlocksRequestId += 1;
     const doc = get().documents.find((item) => item.id === id);
     set({
       selectedDocumentId: id,
       currentDocumentType: doc?.file_type || null,
       visibleParagraphs: [],
+      publicationBlocks: [],
+      publicationBlocksDocumentId: null,
+      publicationBlocksLoading: false,
+      publicationBlocksError: null,
     });
   },
 
@@ -256,11 +277,37 @@ export const useStore = create<ReaderState>((set, get) => ({
     }
   },
 
+  loadPublicationBlocks: async (docId: string, invoke?: PublicationBlocksInvoke) => {
+    const requestId = ++publicationBlocksRequestId;
+    set({
+      publicationBlocksLoading: true,
+      publicationBlocksError: null,
+      publicationBlocksDocumentId: docId,
+      publicationBlocks: [],
+    });
+    try {
+      const collection = await loadPublicationBlocksV2(docId, {}, invoke);
+      if (get().selectedDocumentId !== docId || requestId !== publicationBlocksRequestId) return;
+      set({
+        publicationBlocks: collection.blocks,
+        publicationBlocksDocumentId: docId,
+        publicationBlocksLoading: false,
+        publicationBlocksError: null,
+      });
+    } catch (error) {
+      if (get().selectedDocumentId !== docId || requestId !== publicationBlocksRequestId) return;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to load publication blocks:', error);
+      set({ publicationBlocksLoading: false, publicationBlocksError: message });
+    }
+  },
+
   selectSection: (sectionId: string) => {
     set({ currentSectionId: sectionId });
   },
 
   goBack: () => {
+    publicationBlocksRequestId += 1;
     set({
       selectedDocumentId: null,
       currentDocumentType: null,
@@ -269,6 +316,10 @@ export const useStore = create<ReaderState>((set, get) => ({
       paragraphs: [],
       currentParagraph: null,
       visibleParagraphs: [],
+      publicationBlocks: [],
+      publicationBlocksDocumentId: null,
+      publicationBlocksLoading: false,
+      publicationBlocksError: null,
       focusedParagraphId: null,
       searchHighlightQuery: '',
       searchMatchedParagraphIds: [],

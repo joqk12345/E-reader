@@ -11,6 +11,11 @@ type OpenResponse = {
   schemaVersion: number;
   sessionId: string;
   documentId: string;
+  publicationId?: string | null;
+  sourceHash?: string | null;
+  renderMode: 'sanitized' | 'legacyRaw';
+  contentPolicyVersion: number | null;
+  resourceSizeBasis: 'archiveUncompressed';
   resourceSizes: Record<string, number>;
 };
 
@@ -59,6 +64,10 @@ export class TauriPublicationLoader {
   private constructor(
     readonly sessionId: string,
     readonly documentId: string,
+    readonly publicationId: string | null,
+    readonly sourceHash: string | null,
+    readonly renderMode: OpenResponse['renderMode'],
+    readonly contentPolicyVersion: number | null,
     private readonly invoke: PublicationInvoke,
     private readonly resourceSizes: ReadonlyMap<string, number>
   ) {}
@@ -80,6 +89,16 @@ export class TauriPublicationLoader {
       if (!response.sessionId || !response.resourceSizes || typeof response.resourceSizes !== 'object') {
         throw new Error('Publication open response is incomplete');
       }
+      if (response.resourceSizeBasis !== 'archiveUncompressed') {
+        throw new Error(`Unsupported publication resource size basis: ${String(response.resourceSizeBasis)}`);
+      }
+      if (response.renderMode === 'sanitized') {
+        if (response.contentPolicyVersion !== 1) {
+          throw new Error(`Unsupported publication content policy version: ${String(response.contentPolicyVersion)}`);
+        }
+      } else if (response.renderMode !== 'legacyRaw' || response.contentPolicyVersion !== null) {
+        throw new Error(`Unsupported publication render mode: ${String(response.renderMode)}`);
+      }
     } catch (validationError) {
       if (response && typeof response.sessionId === 'string' && response.sessionId) {
         try {
@@ -97,7 +116,16 @@ export class TauriPublicationLoader {
     for (const [href, size] of Object.entries(response.resourceSizes)) {
       if (Number.isFinite(size) && size >= 0) sizes.set(href, size);
     }
-    return new TauriPublicationLoader(response.sessionId, response.documentId, invoke, sizes);
+    return new TauriPublicationLoader(
+      response.sessionId,
+      response.documentId,
+      response.publicationId ?? null,
+      response.sourceHash ?? null,
+      response.renderMode,
+      response.contentPolicyVersion,
+      invoke,
+      sizes
+    );
   }
 
   readonly loadText = async (href: string): Promise<string | null> => {
