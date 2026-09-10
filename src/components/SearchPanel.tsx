@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PanelButton } from './ui/Button';
+import { Select } from './ui/Select';
+import { Textarea } from './ui/Textarea';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import {
@@ -511,79 +514,79 @@ export const SearchPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200">
-        <textarea
+      <div className="p-4 border-b border-border">
+        <Textarea
           ref={queryInputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t.searchPlaceholder}
-          className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full p-3 border border-control-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-focus"
           rows={3}
         />
 
         <div className="mt-3 flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-size-subheading text-secondary">
             <span>{t.resultsLabel}</span>
-            <select
+            <Select
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
-              className="border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-control-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-focus"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
-            </select>
+            </Select>
           </label>
 
           {selectedDocumentId && (
-            <button
+            <PanelButton
               onClick={() => void handleIndexDocument()}
               disabled={isIndexing}
-              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:bg-gray-200 transition-colors"
+              className="px-3 py-2 text-size-subheading bg-surface-subtle text-secondary rounded-lg hover:bg-surface-hover disabled:bg-surface-hover transition-colors"
             >
               {isIndexing ? t.reindexing : t.rebuildIndex}
-            </button>
+            </PanelButton>
           )}
 
-          <button
+          <PanelButton
             onClick={() => void handleSearch()}
             disabled={isSearching || !query.trim()}
-            className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+            className="ml-auto px-4 py-2 bg-action text-on-action rounded-lg hover:bg-action-text disabled:bg-muted transition-colors"
           >
             {isSearching ? t.searching : t.search}
-          </button>
+          </PanelButton>
         </div>
 
         {searchHistory.length > 0 && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-gray-600">{t.searchHistory}</span>
-              <button
+              <span className="text-size-caption font-medium text-navigation">{t.searchHistory}</span>
+              <PanelButton
                 type="button"
                 onClick={() => setSearchHistory([])}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-size-caption text-muted hover:text-secondary"
               >
                 {t.clearHistory}
-              </button>
+              </PanelButton>
             </div>
             <div className="flex flex-wrap gap-2">
               {searchHistory.map((item) => (
-                <button
+                <PanelButton
                   key={item}
                   type="button"
                   onClick={() => void handleSearch(item)}
-                  className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:border-blue-300 hover:text-blue-700"
+                  className="rounded-full border border-control-border bg-surface px-3 py-1 text-size-caption text-secondary hover:border-focus-border hover:text-action-text"
                 >
                   {item}
-                </button>
+                </PanelButton>
               ))}
             </div>
           </div>
         )}
 
-        <div className="mt-3 text-xs text-gray-600 space-y-1">
+        <div className="mt-3 text-size-caption text-navigation space-y-1">
           <p>Mode: {searchMode === 'semantic-local'
             ? t.modeSemantic
             : searchMode === 'semantic-remote'
@@ -601,33 +604,33 @@ export const SearchPanel: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border-b border-red-200">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="p-4 bg-danger-subtle border-b border-danger/25">
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
       {showModelDownloadHint && (
-        <div className="p-4 bg-amber-50 border-b border-amber-200 space-y-2">
-          <p className="text-sm text-amber-700">
+        <div className="p-4 bg-warning-subtle border-b border-warning/25 space-y-2">
+          <p className="text-size-subheading text-warning">
             {t.modelHint}
           </p>
-          <button
+          <PanelButton
             onClick={() => void handleUseDefaultModelAndDownload()}
             disabled={isDownloadingModel}
-            className="px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:bg-amber-300"
+            className="px-3 py-2 text-size-subheading bg-warning text-on-action rounded hover:bg-warning disabled:bg-control-border"
           >
             {isDownloadingModel ? t.downloadingModel : t.useDefaultAndDownload}
-          </button>
+          </PanelButton>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {results.length === 0 && !error && !isSearching && (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex flex-col items-center justify-center h-full text-muted">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="text-sm">
+            <p className="text-size-subheading">
               {query.trim()
                 ? t.noResultHint
                 : t.enterQueryHint}
@@ -639,18 +642,18 @@ export const SearchPanel: React.FC = () => {
           {results.map((result, idx) => (
             <div
               key={result.paragraph_id}
-              className="p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-300 transition-shadow cursor-pointer"
+              className="p-3 bg-surface border border-border rounded-lg hover:shadow-md hover:border-focus-border transition-shadow cursor-pointer"
               onClick={() => void handleResultClick(result)}
             >
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs text-gray-500 font-mono">
+                <span className="text-size-caption text-muted font-mono">
                   #{idx + 1} • {result.location}
                 </span>
-                <span className="text-xs text-blue-600 font-semibold">
+                <span className="text-size-caption text-action font-semibold">
                   {(result.score * 100).toFixed(1)}%
                 </span>
               </div>
-              <p className="text-sm text-gray-800 leading-relaxed">
+              <p className="text-size-subheading text-foreground leading-relaxed">
                 {result.snippet}
               </p>
             </div>

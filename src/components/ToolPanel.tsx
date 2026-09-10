@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { SearchPanel } from './SearchPanel';
 import { SummaryPanel } from './SummaryPanel';
 import { TranslatePanel } from './TranslatePanel';
@@ -302,14 +303,14 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
 
   return (
     <aside
-      className="relative h-full min-h-0 flex flex-col bg-white border-l border-gray-200 flex-shrink-0"
+      className="relative h-full min-h-0 flex flex-col bg-surface border-l border-border flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
       {collapsed ? (
-        <div className="flex items-center justify-center border-b border-gray-200 p-2 flex-shrink-0">
-          <button
+        <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
+          <PanelButton
             onClick={onToggleCollapse}
-            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-gray-100 text-gray-600"
+            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
             title="Expand tools"
             aria-label="Expand tools"
           >
@@ -325,14 +326,14 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             >
               <path d="M12 4l-6 6 6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       ) : (
-        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-2.5">
-          <span className="text-sm font-semibold text-gray-800">Tools</span>
-          <button
+        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+          <span className="text-size-subheading font-semibold text-foreground">Tools</span>
+          <PanelButton
             onClick={onToggleCollapse}
-            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-gray-100 text-gray-600"
+            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
             title="Collapse tools"
             aria-label="Collapse tools"
           >
@@ -348,47 +349,47 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
             >
               <path d="M8 4l6 6-6 6" />
             </svg>
-          </button>
+          </PanelButton>
         </div>
       )}
 
       {collapsed ? (
         <div className="flex-1 min-h-0 py-2 space-y-1 overflow-y-auto">
           {tabs.map((tab) => (
-            <button
+            <PanelButton
               key={tab.key}
               onClick={() => {
                 setActiveTab(tab.key);
                 onToggleCollapse();
               }}
               title={tab.label}
-              className={`mx-auto w-8 h-8 rounded-md flex items-center justify-center text-sm ${
+              className={`mx-auto w-8 h-8 rounded-md flex items-center justify-center text-size-subheading ${
                 activeTab === tab.key
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-action-subtle text-action-text'
+                  : 'text-navigation hover:bg-surface-subtle'
               }`}
             >
               <span>{tab.icon}</span>
-            </button>
+            </PanelButton>
           ))}
         </div>
       ) : (
         <>
           {/* Tabs */}
-          <div className="grid grid-cols-3 border-b border-gray-200">
+          <div className="grid grid-cols-3 border-b border-border">
             {tabs.map((tab) => (
-              <button
+              <PanelButton
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors border-r border-b border-gray-100 last:border-r-0 ${
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 text-size-subheading font-medium transition-colors border-r border-b border-border last:border-r-0 ${
                   activeTab === tab.key
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-action-subtle text-action-text border-b-2 border-action'
+                    : 'text-navigation hover:bg-surface-subtle'
                 }`}
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
-              </button>
+              </PanelButton>
             ))}
           </div>
           {/* Content */}
@@ -414,7 +415,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
 
       {!collapsed && (
         <div
-          className="absolute top-0 left-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-gray-200"
+          className="absolute top-0 left-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-surface-hover"
           onPointerDown={(event) => {
             dragStateRef.current = { startX: event.clientX, startWidth: width };
             document.body.style.cursor = 'col-resize';

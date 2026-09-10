@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo, type MouseEvent, type ReactNode, type ReactElement, Children, cloneElement, isValidElement } from 'react';
+import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
@@ -11,15 +14,39 @@ import { parseSentenceKey, splitIntoSentences, toSpeakableText } from '../utils/
 import type { Annotation, AnnotationStyle, Paragraph } from '../types';
 import {
   READER_THEMES,
-  VIEW_SETTINGS_KEY,
   clamp,
-  loadReaderViewSettings,
-  type ReaderViewSettings,
+  type ReaderSyntaxTokens,
 } from './readerTheme';
+import { useReaderViewSettings } from '../features/reader/useReaderViewSettings';
+import { useReaderTranslation } from '../features/reader/useReaderTranslation';
+import {
+  ALL_SELECTION_ACTIONS,
+  useSelectionActionOrder,
+  type SelectionAction,
+} from '../features/reader/useSelectionActionOrder';
+import { useReaderAnnotations } from '../features/reader/useReaderAnnotations';
+import { useReaderRenderModel } from '../features/reader/useReaderRenderModel';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
 const markdownTranslationKey = (paragraphId: string) => `${paragraphId}__md`;
+const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const invokeTranslateWithRetry = async (
+  text: string,
+  targetLang: 'zh' | 'en',
+  attempts = 2,
+): Promise<string> => {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await invoke<string>('translate', { text, targetLang });
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await delay(350 * attempt);
+    }
+  }
+  throw lastError;
+};
 const PDF_IMAGE_MARKER_RE = /^\[\[PDF_IMAGE:(.+)\]\]$/;
 const annotationStyleOrder: AnnotationStyle[] = ['single_underline', 'double_underline', 'wavy_strikethrough'];
 const annotationStyleLabel: Record<AnnotationStyle, string> = {
@@ -37,9 +64,7 @@ type SelectionDraft = {
   note: string;
 };
 
-type SelectionAction = 'simple' | 'context' | 'term' | 'dict' | 'takeaway' | 'ask' | 'play' | 'copy' | 'share' | 'highlight' | 'note';
 type SelectionActionMode = 'highlight' | 'note' | null;
-const ALL_SELECTION_ACTIONS: SelectionAction[] = ['simple', 'context', 'term', 'dict', 'takeaway', 'ask', 'play', 'copy', 'share', 'highlight', 'note'];
 
 const selectionActionLabel: Record<SelectionAction, string> = {
   simple: 'Explain Simply',
@@ -187,15 +212,15 @@ const renderKatexHtml = (value: string, displayMode: boolean): string | null => 
   }
 };
 
-const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
-  const baseText = isDark ? '#d6d9de' : '#1f2937';
-  const keyword = isDark ? '#f38ba8' : '#8b1d1d';
-  const stringColor = isDark ? '#a6e3a1' : '#166534';
-  const numberColor = isDark ? '#f9e2af' : '#7c3aed';
-  const commentColor = isDark ? '#94a3b8' : '#64748b';
-  const functionColor = isDark ? '#89b4fa' : '#1d4ed8';
-  const propertyColor = isDark ? '#94e2d5' : '#0f766e';
-  const boolColor = isDark ? '#fab387' : '#b45309';
+const buildCodeRules = (language: string, syntax: ReaderSyntaxTokens): CodeRule[] => {
+  const baseText = syntax.base;
+  const keyword = syntax.keyword;
+  const stringColor = syntax.string;
+  const numberColor = syntax.number;
+  const commentColor = syntax.comment;
+  const functionColor = syntax.function;
+  const propertyColor = syntax.property;
+  const boolColor = syntax.boolean;
 
   if (language === 'json') {
     return [
@@ -251,8 +276,8 @@ const buildCodeRules = (language: string, isDark: boolean): CodeRule[] => {
   ];
 };
 
-const renderHighlightedCode = (code: string, language: string, isDark: boolean): ReactNode => {
-  const rules = buildCodeRules(language, isDark);
+const renderHighlightedCode = (code: string, language: string, syntax: ReaderSyntaxTokens): ReactNode => {
+  const rules = buildCodeRules(language, syntax);
   if (rules.length === 0 || !code) return code;
 
   const tokens: Array<{ start: number; end: number; color: string; priority: number }> = [];
@@ -298,13 +323,6 @@ const renderHighlightedCode = (code: string, language: string, isDark: boolean):
     nodes.push(<span key={`plain-tail-${cursor}`}>{code.slice(cursor)}</span>);
   }
   return nodes;
-};
-
-const normalizeSelectionActionOrder = (input: SelectionAction[]): SelectionAction[] => {
-  const dedup = input.filter((item, index) => input.indexOf(item) === index);
-  const valid = dedup.filter((item): item is SelectionAction => ALL_SELECTION_ACTIONS.includes(item));
-  const missing = ALL_SELECTION_ACTIONS.filter((item) => !valid.includes(item));
-  return [...valid, ...missing];
 };
 
 type AudiobookStartEventDetail = {
@@ -356,7 +374,7 @@ const renderTextWithHighlight = (text: string, query: string): ReactNode => {
   return parts.map((part, idx) => {
     if (part.toLowerCase() === keyword.toLowerCase()) {
       return (
-        <mark key={`mark-${idx}`} className="bg-yellow-200 text-inherit px-0.5 rounded">
+        <mark key={`mark-${idx}`} className="bg-warning-subtle text-inherit px-0.5 rounded">
           {part}
         </mark>
       );
@@ -367,12 +385,12 @@ const renderTextWithHighlight = (text: string, query: string): ReactNode => {
 
 const annotationClassName = (style: AnnotationStyle) => {
   if (style === 'double_underline') {
-    return 'decoration-2 underline decoration-double decoration-emerald-600 underline-offset-2';
+    return 'decoration-2 underline decoration-double decoration-success underline-offset-2';
   }
   if (style === 'wavy_strikethrough') {
-    return 'line-through decoration-rose-500 decoration-wavy decoration-2';
+    return 'line-through decoration-danger decoration-wavy decoration-2';
   }
-  return 'underline decoration-2 decoration-sky-600 underline-offset-2';
+  return 'underline decoration-2 decoration-action underline-offset-2';
 };
 
 const renderTextWithAnnotation = (text: string, annotation: Annotation, keyPrefix: string): ReactNode => {
@@ -566,7 +584,7 @@ const highlightSentenceInElement = (element: HTMLElement, sentence: string): HTM
 
   const mark = document.createElement('mark');
   mark.setAttribute('data-reading-sentence', 'true');
-  mark.className = 'rounded bg-amber-100 px-0.5 text-inherit ring-1 ring-amber-300';
+  mark.className = 'rounded bg-warning-subtle px-0.5 text-inherit ring-1 ring-warning';
   const fragment = range.extractContents();
   mark.appendChild(fragment);
   range.insertNode(mark);
@@ -1718,9 +1736,6 @@ export function ReaderContent() {
     searchHighlightQuery,
     searchMatchedParagraphIds,
   } = useStore();
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [translationErrors, setTranslationErrors] = useState<Record<string, string>>({});
-  const [annotationsByParagraph, setAnnotationsByParagraph] = useState<Record<string, Annotation[]>>({});
   const [selectionDraft, setSelectionDraft] = useState<SelectionDraft | null>(null);
   const [selectionAnchor, setSelectionAnchor] = useState<{ x: number; y: number } | null>(null);
   const [selectionActionMode, setSelectionActionMode] = useState<SelectionActionMode>(null);
@@ -1728,16 +1743,7 @@ export function ReaderContent() {
   const [isQuestionInputExpanded, setIsQuestionInputExpanded] = useState(false);
   const [isSelectionMenuOpen, setIsSelectionMenuOpen] = useState(false);
   const [isSelectionReorderMode, setIsSelectionReorderMode] = useState(false);
-  const [selectionActionOrder, setSelectionActionOrder] = useState<SelectionAction[]>(() => {
-    try {
-      const raw = localStorage.getItem('reader_selection_action_order');
-      if (!raw) return ALL_SELECTION_ACTIONS;
-      const parsed = JSON.parse(raw) as SelectionAction[];
-      return normalizeSelectionActionOrder(parsed);
-    } catch {
-      return ALL_SELECTION_ACTIONS;
-    }
-  });
+  const { selectionActionOrder, setSelectionActionOrder, reorderSelectionActions } = useSelectionActionOrder();
   const [pointerSortAction, setPointerSortAction] = useState<SelectionAction | null>(null);
   const [selectionPopoverOffset, setSelectionPopoverOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectionPopoverSize, setSelectionPopoverSize] = useState<{ width: number; height: number }>({ width: DEFAULT_SELECTION_POPOVER_WIDTH, height: 0 });
@@ -1745,9 +1751,7 @@ export function ReaderContent() {
   const [pdfDisplayMode, setPdfDisplayMode] = useState<'text' | 'original'>('text');
   const [annotationRefreshTick, setAnnotationRefreshTick] = useState(0);
   const [columnPageIndex, setColumnPageIndex] = useState(0);
-  const [viewSettings, setViewSettings] = useState<ReaderViewSettings>(() =>
-    loadReaderViewSettings(readerFontSize)
-  );
+  const { viewSettings, setViewSettings } = useReaderViewSettings(readerFontSize, setReaderFontSize);
   const [documentSourceUrl, setDocumentSourceUrl] = useState<string | null>(null);
   const [remoteArticleImages, setRemoteArticleImages] = useState<RemoteArticleImage[]>([]);
   const [supplementalReferences, setSupplementalReferences] = useState<string[]>([]);
@@ -1755,10 +1759,6 @@ export function ReaderContent() {
   const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [contentViewport, setContentViewport] = useState({ width: 0, height: 0 });
-  const translationsRef = useRef<Record<string, string>>({});
-  const inFlightRef = useRef<Set<string>>(new Set());
-  const pendingPatchRef = useRef<Record<string, string>>({});
-  const flushTimerRef = useRef<number | null>(null);
   const autoTranslate = true;
   const [translationParallelism, setTranslationParallelism] = useState(5);
   const matchedParagraphSet = useRef<Set<string>>(new Set());
@@ -1777,9 +1777,9 @@ export function ReaderContent() {
   const isTranslationEnabled = translationMode !== 'off';
   const showTranslation = isTranslationEnabled && viewSettings.bilingualViewMode !== 'source';
   const showSource = viewSettings.bilingualViewMode !== 'translation' || !isTranslationEnabled;
-  const translationCardBg = currentTheme.isDark ? '#2f3540' : '#e8ebf2';
-  const translationCardBorder = currentTheme.isDark ? '#72a5ff' : '#8fb5ff';
-  const translationIconColor = currentTheme.isDark ? '#9fc0ff' : '#5f8fe5';
+  const translationCardBg = currentTheme.secondary;
+  const translationCardBorder = currentTheme.link;
+  const translationIconColor = currentTheme.link;
 
   useEffect(() => {
     let cancelled = false;
@@ -1907,7 +1907,7 @@ export function ReaderContent() {
       style={{ backgroundColor: translationCardBg, borderColor: translationCardBorder }}
     >
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-sm leading-none select-none" style={{ color: translationIconColor }}>
+        <span className="mt-0.5 text-size-subheading leading-none select-none" style={{ color: translationIconColor }}>
           🌐
         </span>
         <div className="min-w-0 flex-1">{content}</div>
@@ -1930,45 +1930,61 @@ export function ReaderContent() {
       </div>
     );
   };
-  const markdownParagraphMeta = useMemo(
-    () => (currentDocumentType === 'markdown' ? buildMarkdownParagraphMeta(paragraphs) : {}),
-    [currentDocumentType, paragraphs]
+  const {
+    markdownParagraphMeta,
+    visibleParagraphs,
+    renderParagraphs,
+    pdfTableMemberIdsByLeader,
+    normalizedMarkdownTexts,
+  } = useReaderRenderModel({
+    currentDocumentType: currentDocumentType || 'epub',
+    paragraphs,
+    supplementalReferences,
+    isWebSourceDocument,
+    isMultimediaMode,
+    remoteArticleImages,
+    buildMarkdownParagraphMeta,
+    filterVisibleMarkdownParagraphs,
+    injectSupplementalReferencesParagraph,
+    filterVisiblePdfParagraphs,
+    filterLeadingSummaryParagraphs,
+    groupPdfTableParagraphs,
+    isReaderImagePlaceholderLine,
+    normalizeMarkdownForReader,
+  });
+  const getTranslationItems = useMemo(
+    () => (paragraph: { id: string; text: string }) => {
+      if (currentDocumentType === 'markdown') {
+        const meta = markdownParagraphMeta[paragraph.id];
+        const text = isMultimediaMode
+          ? sanitizeMarkdownForTranslation(paragraph.text, { inMediaLinks: meta?.inMediaLinks })
+          : paragraph.text;
+        return [{ key: markdownTranslationKey(paragraph.id), text }];
+      }
+      return splitIntoSentences(paragraph.text).map((text, index) => ({
+        key: `${paragraph.id}_${index}`,
+        text,
+      }));
+    },
+    [currentDocumentType, isMultimediaMode, markdownParagraphMeta],
   );
-  const markdownFilterOptions = useMemo<MarkdownVisibilityFilterOptions>(
-    () => ({
-      dropLeadingBeforeFirstH1: isWebSourceDocument,
-      dropLeadingSummarySection: true,
-      hideMediaLinksSection: !isMultimediaMode,
-    }),
-    [isMultimediaMode, isWebSourceDocument]
-  );
-  const visibleParagraphs = useMemo(
-    () =>
-      currentDocumentType === 'markdown'
-        ? injectSupplementalReferencesParagraph(
-            filterVisibleMarkdownParagraphs(paragraphs, markdownParagraphMeta, markdownFilterOptions),
-            supplementalReferences
-          )
-        : currentDocumentType === 'pdf'
-          ? filterVisiblePdfParagraphs(filterLeadingSummaryParagraphs(paragraphs))
-          : filterLeadingSummaryParagraphs(paragraphs),
-    [
-      currentDocumentType,
-      markdownFilterOptions,
-      markdownParagraphMeta,
-      paragraphs,
-      supplementalReferences,
-    ]
-  );
-  const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
-    () =>
-      currentDocumentType === 'pdf'
-        ? groupPdfTableParagraphs(visibleParagraphs)
-        : {
-            paragraphs: visibleParagraphs,
-            memberIdsByLeaderId: new Map<string, string[]>(),
-          },
-    [currentDocumentType, visibleParagraphs]
+  const {
+    translations,
+    translationErrors,
+    handleTranslateSentence,
+    handleTranslateMarkdownParagraph,
+  } = useReaderTranslation({
+    translationMode,
+    currentSectionId,
+    visibleParagraphs,
+    translationParallelism,
+    autoTranslate,
+    getTranslationItems,
+    invokeTranslate: invokeTranslateWithRetry,
+  });
+  const { annotationsByParagraph, setAnnotationsByParagraph } = useReaderAnnotations(
+    paragraphs,
+    annotationRefreshTick,
   );
   const sourceWordCount = useMemo(
     () => renderParagraphs.reduce((sum, paragraph) => sum + countWords(paragraph.text || ''), 0),
@@ -2016,27 +2032,6 @@ export function ReaderContent() {
     const start = columnPageIndex * doubleColumnPageSize;
     return renderParagraphs.slice(start, start + doubleColumnPageSize);
   }, [columnPageIndex, doubleColumnPageSize, isTwoColumnLayout, renderParagraphs]);
-  const normalizedMarkdownTexts = useMemo(() => {
-    const cursor = { current: 0 };
-    const normalized: Record<string, string> = {};
-    const hasInlineImagePlaceholders = visibleParagraphs.some((paragraph) =>
-      paragraph.text.split('\n').some((line) => isReaderImagePlaceholderLine(line))
-    );
-    for (const paragraph of visibleParagraphs) {
-      normalized[paragraph.id] =
-        currentDocumentType === 'markdown'
-          ? normalizeMarkdownForReader(
-              paragraph.text,
-              isMultimediaMode ? remoteArticleImages : [],
-              isMultimediaMode ? cursor : undefined,
-              isMultimediaMode ? hasInlineImagePlaceholders : false
-            )
-          : paragraph.text;
-    }
-    return normalized;
-  }, [currentDocumentType, isMultimediaMode, remoteArticleImages, visibleParagraphs]);
-
-  const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
   const openExternalUrl = (url: string) => {
     const normalized = url.trim();
     if (!normalized) return;
@@ -2065,46 +2060,9 @@ export function ReaderContent() {
     openExternalUrl(normalized);
   };
 
-  const invokeTranslateWithRetry = async (
-    text: string,
-    targetLang: 'zh' | 'en',
-    attempts = 2
-  ): Promise<string> => {
-    let lastError: unknown = null;
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      try {
-        return await invoke<string>('translate', { text, targetLang });
-      } catch (error) {
-        lastError = error;
-        if (attempt < attempts) {
-          await delay(350 * attempt);
-        }
-      }
-    }
-    throw lastError;
-  };
-
   useEffect(() => {
     matchedParagraphSet.current = new Set(searchMatchedParagraphIds);
   }, [searchMatchedParagraphIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(viewSettings));
-    } catch (error) {
-      console.warn('Failed to persist reader view settings:', error);
-    }
-  }, [viewSettings]);
-
-  useEffect(() => {
-    const refresh = () => {
-      setViewSettings(loadReaderViewSettings(readerFontSize));
-    };
-    window.addEventListener('reader:view-settings-updated', refresh as EventListener);
-    return () => {
-      window.removeEventListener('reader:view-settings-updated', refresh as EventListener);
-    };
-  }, [readerFontSize]);
 
   useEffect(() => {
     const onSetBilingualViewMode = (
@@ -2208,12 +2166,6 @@ export function ReaderContent() {
   }, [columnPageIndex, isTwoColumnLayout, totalColumnPages]);
 
   useEffect(() => {
-    if (viewSettings.fontSize !== readerFontSize) {
-      setReaderFontSize(viewSettings.fontSize);
-    }
-  }, [readerFontSize, setReaderFontSize, viewSettings.fontSize]);
-
-  useEffect(() => {
     const container = contentRef.current;
     if (!container) return;
 
@@ -2261,167 +2213,6 @@ export function ReaderContent() {
   const dispatchAudiobookStart = (detail: AudiobookStartEventDetail) => {
     window.dispatchEvent(new CustomEvent<AudiobookStartEventDetail>('reader:audiobook-start', { detail }));
   };
-
-  const clearFlushTimer = () => {
-    if (flushTimerRef.current !== null) {
-      window.clearTimeout(flushTimerRef.current);
-      flushTimerRef.current = null;
-    }
-  };
-
-  const scheduleFlushTranslations = () => {
-    if (flushTimerRef.current !== null) return;
-    flushTimerRef.current = window.setTimeout(() => {
-      flushTimerRef.current = null;
-      const patch = pendingPatchRef.current;
-      pendingPatchRef.current = {};
-      if (Object.keys(patch).length === 0) return;
-      setTranslations((prev) => ({ ...prev, ...patch }));
-    }, 120);
-  };
-
-  // 翻译单个句子
-  const translateSentence = async (key: string, sentence: string) => {
-    if (translationsRef.current[key] || inFlightRef.current.has(key)) return;
-
-    // 根据设置的翻译方向确定目标语言
-    const targetLang = translationMode === 'zh-en' ? 'en' : 'zh';
-    inFlightRef.current.add(key);
-    try {
-      const result = await invokeTranslateWithRetry(sentence, targetLang, 2);
-      translationsRef.current[key] = result;
-      pendingPatchRef.current[key] = result;
-      setTranslationErrors((prev) => {
-        if (!prev[key]) return prev;
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      scheduleFlushTranslations();
-    } catch (error) {
-      console.error('Failed to translate sentence:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      setTranslationErrors((prev) => ({ ...prev, [key]: message }));
-    } finally {
-      inFlightRef.current.delete(key);
-    }
-  };
-
-  // 点击翻译句子
-  const handleTranslateSentence = async (paragraphId: string, sentence: string, index: number) => {
-    const key = `${paragraphId}_${index}`;
-    await translateSentence(key, sentence);
-  };
-
-  const handleTranslateMarkdownParagraph = async (paragraphId: string, text: string) => {
-    if (!text.trim()) return;
-    await translateSentence(markdownTranslationKey(paragraphId), text);
-  };
-
-  // 自动翻译当前章节所有句子（开启双语时）
-  useEffect(() => {
-    if (translationMode === 'off' || !autoTranslate) return;
-
-    let cancelled = false;
-    const pending: Array<{ key: string; text: string }> = [];
-
-    for (const paragraph of visibleParagraphs) {
-      if (currentDocumentType === 'markdown') {
-        const meta = markdownParagraphMeta[paragraph.id];
-        const text =
-          isMultimediaMode
-            ? sanitizeMarkdownForTranslation(paragraph.text, {
-                inMediaLinks: meta?.inMediaLinks,
-              })
-            : paragraph.text;
-        const key = markdownTranslationKey(paragraph.id);
-        if (translationsRef.current[key]) continue;
-        if (inFlightRef.current.has(key)) continue;
-        if (!text.trim()) continue;
-        pending.push({ key, text });
-        continue;
-      }
-
-      const sentences = splitIntoSentences(paragraph.text);
-      sentences.forEach((sentence, index) => {
-        const key = `${paragraph.id}_${index}`;
-        if (translationsRef.current[key]) return;
-        if (inFlightRef.current.has(key)) return;
-        if (!sentence.trim()) return;
-        pending.push({ key, text: sentence });
-      });
-    }
-
-    if (pending.length === 0) return;
-
-    const maxConcurrency = Math.min(
-      Math.max(1, translationParallelism),
-      pending.length
-    );
-    const runWorker = async () => {
-      while (pending.length > 0 && !cancelled) {
-        const item = pending.shift();
-        if (!item) return;
-        await translateSentence(item.key, item.text);
-      }
-    };
-
-    const workers = Array.from(
-      { length: maxConcurrency },
-      () => runWorker()
-    );
-
-    void Promise.all(workers);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [translationMode, autoTranslate, visibleParagraphs, currentDocumentType, translationParallelism, markdownParagraphMeta, isMultimediaMode]);
-
-  // 当章节或翻译方向变化时，清空翻译缓存并重建任务
-  useEffect(() => {
-    clearFlushTimer();
-    pendingPatchRef.current = {};
-    translationsRef.current = {};
-    inFlightRef.current.clear();
-    setTranslations({});
-    setTranslationErrors({});
-  }, [currentSectionId, translationMode]);
-
-  useEffect(() => {
-    return () => clearFlushTimer();
-  }, []);
-
-  useEffect(() => {
-    const paragraphIds = paragraphs.map((item) => item.id);
-    if (paragraphIds.length === 0) {
-      setAnnotationsByParagraph({});
-      return;
-    }
-
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const rows = await invoke<Annotation[]>('list_annotations', { paragraphIds });
-        if (cancelled) return;
-        const grouped: Record<string, Annotation[]> = {};
-        for (const item of rows) {
-          if (!grouped[item.paragraph_id]) {
-            grouped[item.paragraph_id] = [];
-          }
-          grouped[item.paragraph_id].push(item);
-        }
-        setAnnotationsByParagraph(grouped);
-      } catch (err) {
-        console.error('Failed to load annotations:', err);
-      }
-    };
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [paragraphs, annotationRefreshTick]);
 
   const clearSelectionDraft = () => {
     setSelectionDraft(null);
@@ -2706,17 +2497,6 @@ export function ReaderContent() {
   };
 
   useEffect(() => {
-    localStorage.setItem('reader_selection_action_order', JSON.stringify(selectionActionOrder));
-  }, [selectionActionOrder]);
-
-  useEffect(() => {
-    const normalized = normalizeSelectionActionOrder(selectionActionOrder);
-    if (normalized.join('|') !== selectionActionOrder.join('|')) {
-      setSelectionActionOrder(normalized);
-    }
-  }, [selectionActionOrder]);
-
-  useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       if (popoverDragRef.current) {
         const dx = event.clientX - popoverDragRef.current.startX;
@@ -2749,19 +2529,6 @@ export function ReaderContent() {
       window.removeEventListener('pointerup', onPointerUp);
     };
   }, []);
-
-  const reorderSelectionActions = (from: SelectionAction, to: SelectionAction) => {
-    if (from === to) return;
-    setSelectionActionOrder((prev) => {
-      const fromIndex = prev.indexOf(from);
-      const toIndex = prev.indexOf(to);
-      if (fromIndex < 0 || toIndex < 0) return prev;
-      const next = [...prev];
-      next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, from);
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (!isTwoColumnLayout || !currentReadingSentenceKey) return;
@@ -2830,8 +2597,8 @@ export function ReaderContent() {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-sm" style={{ color: currentTheme.isDark ? '#9ca3af' : '#4b5563' }}>Loading content...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-action"></div>
+          <p className="mt-2 text-size-subheading" style={{ color: currentTheme.syntax.muted }}>Loading content...</p>
         </div>
       </div>
     );
@@ -2840,7 +2607,7 @@ export function ReaderContent() {
   if (paragraphs.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: currentTheme.background }}>
-        <p style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}>
+        <p style={{ color: currentTheme.syntax.muted }}>
           {currentSectionId
             ? 'No content extracted for this section. The parser may have failed.'
             : 'Select a section from the table of contents'}
@@ -2888,9 +2655,9 @@ export function ReaderContent() {
       >
         {currentDocumentType === 'pdf' && (
           <div className="mb-4 flex items-center justify-end gap-2">
-            <button
+            <PanelButton
               onClick={() => setPdfDisplayMode('text')}
-              className="rounded-lg border px-3 py-1.5 text-sm"
+              className="rounded-lg border px-3 py-1.5 text-size-subheading"
               style={
                 pdfDisplayMode === 'text'
                   ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
@@ -2898,10 +2665,10 @@ export function ReaderContent() {
               }
             >
               Text View
-            </button>
-            <button
+            </PanelButton>
+            <PanelButton
               onClick={() => setPdfDisplayMode('original')}
-              className="rounded-lg border px-3 py-1.5 text-sm"
+              className="rounded-lg border px-3 py-1.5 text-size-subheading"
               style={
                 pdfDisplayMode === 'original'
                   ? { borderColor: currentTheme.link, backgroundColor: currentTheme.secondary, color: currentTheme.link }
@@ -2909,7 +2676,7 @@ export function ReaderContent() {
               }
             >
               PDF Original
-            </button>
+            </PanelButton>
           </div>
         )}
         {currentDocumentType === 'pdf' && pdfDisplayMode === 'original' && currentPdfPath ? (
@@ -2996,7 +2763,7 @@ export function ReaderContent() {
               >
                 {shouldShowPdfPreview && (
                   <section className="mb-3 rounded-lg border p-2" style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.secondary }}>
-                    <div className="mb-2 text-xs" style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}>Page {currentPage}</div>
+                    <div className="mb-2 text-size-caption" style={{ color: currentTheme.syntax.comment }}>Page {currentPage}</div>
                     <iframe
                       title={`PDF Page ${currentPage}`}
                       src={`${convertFileSrc(currentPdfPath)}#page=${currentPage}&zoom=page-width`}
@@ -3010,8 +2777,8 @@ export function ReaderContent() {
                   }}
                   data-paragraph-id={paragraph.id}
                   className={`mb-4 rounded ${
-                    focusedParagraphId === paragraph.id ? 'bg-blue-50/70 ring-1 ring-blue-200' : ''
-                  } ${isSearchMatchedParagraph ? 'bg-yellow-50/60' : ''}`}
+                    focusedParagraphId === paragraph.id ? 'bg-action-subtle/70 ring-1 ring-focus' : ''
+                  } ${isSearchMatchedParagraph ? 'bg-warning-subtle/60' : ''}`}
                 >
                 {isMarkdownParagraph ? (
                   <div className="space-y-2">
@@ -3024,17 +2791,17 @@ export function ReaderContent() {
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
-                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-3xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
-                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-2xl font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
-                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-xl font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
-                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-lg font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
-                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-base font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
-                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-sm font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
+                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-size-hero font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
+                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-size-hero-sm font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
+                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-size-heading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
+                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-size-title font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
+                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-size-body font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
+                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-size-subheading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
                             p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
                             ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
                             li: ({ children }) => <li className="my-1">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `li-${paragraph.id}`)}</li>,
-                            blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.isDark ? '#b6bcc7' : '#374151' }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
+                            blockquote: ({ children }) => <blockquote className="my-3 border-l-4 pl-4 italic" style={{ borderColor: currentTheme.border, color: currentTheme.syntax.quote }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `quote-${paragraph.id}`)}</blockquote>,
                             code: ({ className, children }) => {
                               const rawCode = toCodeText(children).replace(/\n$/, '');
                               const language = inferCodeLanguage(className);
@@ -3119,7 +2886,7 @@ export function ReaderContent() {
                                     style={{ fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`, backgroundColor: currentTheme.codeBg, color: currentTheme.codeText, borderColor: currentTheme.border }}
                                   >
                                     <code className={props.className || 'block'} style={{ backgroundColor: 'transparent', color: currentTheme.codeText }}>
-                                      {renderHighlightedCode(rawCode, language, currentTheme.isDark)}
+                                      {renderHighlightedCode(rawCode, language, currentTheme.syntax)}
                                     </code>
                                   </pre>
                                 );
@@ -3152,8 +2919,8 @@ export function ReaderContent() {
                               if (!isMultimediaMode && !isArxivHtmlDocument) {
                                 return (
                                   <span
-                                    className="my-2 block text-sm italic"
-                                    style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                    className="my-2 block text-size-subheading italic"
+                                    style={{ color: currentTheme.syntax.muted }}
                                   >
                                     {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
                                   </span>
@@ -3179,7 +2946,7 @@ export function ReaderContent() {
                                       className="h-16 w-24 shrink-0 rounded border object-cover"
                                       style={{ borderColor: currentTheme.border, backgroundColor: currentTheme.background }}
                                     />
-                                    <span className="min-w-0 text-sm leading-5" style={{ color: currentTheme.foreground }}>
+                                    <span className="min-w-0 text-size-subheading leading-5" style={{ color: currentTheme.foreground }}>
                                       {alt || 'Open image'}
                                     </span>
                                   </a>
@@ -3241,8 +3008,8 @@ export function ReaderContent() {
                                       ),
                                       img: ({ alt }) => (
                                         <span
-                                          className="my-1 block text-xs italic"
-                                          style={{ color: currentTheme.isDark ? '#9ca3af' : '#6b7280' }}
+                                          className="my-1 block text-size-caption italic"
+                                          style={{ color: currentTheme.syntax.muted }}
                                         >
                                           {alt ? `Image: ${normalizeInlineText(alt)}` : 'Image'}
                                         </span>
@@ -3257,19 +3024,19 @@ export function ReaderContent() {
                           )
                         ) : canTranslateMarkdownParagraph ? (
                           <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2 py-1`}>
-                            <button
+                            <PanelButton
                               onClick={() =>
                                 void handleTranslateMarkdownParagraph(
                                   paragraph.id,
                                   translatableMarkdownText
                                 )
                               }
-                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              className="text-size-caption text-action hover:text-action underline"
                             >
                               {translationErrors[markdownTranslationKey(paragraph.id)] ? 'Retry Translation' : 'Translate'}
-                            </button>
+                            </PanelButton>
                             {translationErrors[markdownTranslationKey(paragraph.id)] && (
-                              <span className="text-xs text-red-600">
+                              <span className="text-size-caption text-danger">
                                 {translationErrors[markdownTranslationKey(paragraph.id)]}
                               </span>
                             )}
@@ -3284,9 +3051,9 @@ export function ReaderContent() {
                     if (pdfVisualNote) {
                       return (
                         <div
-                          className="my-3 rounded-lg border px-3 py-2 text-sm italic"
+                          className="my-3 rounded-lg border px-3 py-2 text-size-subheading italic"
                           style={{
-                            color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                            color: currentTheme.syntax.quote,
                             borderColor: currentTheme.border,
                             backgroundColor: currentTheme.secondary,
                           }}
@@ -3301,7 +3068,7 @@ export function ReaderContent() {
                         return (
                           <header className="mb-6 text-center">
                             <h1
-                              className="text-3xl font-semibold leading-tight tracking-tight text-slate-900"
+                              className="text-size-hero font-semibold leading-tight tracking-tight text-heading"
                               style={{ color: currentTheme.foreground }}
                             >
                               {renderWithSearchHighlight(
@@ -3323,10 +3090,10 @@ export function ReaderContent() {
                               : 'h4';
                         const headingClassName =
                           pdfParagraphKind === 'heading1'
-                            ? 'mt-8 mb-3 text-2xl font-semibold'
+                            ? 'mt-8 mb-3 text-size-hero-sm font-semibold'
                             : pdfParagraphKind === 'heading2'
-                              ? 'mt-6 mb-2 text-xl font-semibold'
-                              : 'mt-4 mb-2 text-lg font-semibold';
+                              ? 'mt-6 mb-2 text-size-heading font-semibold'
+                              : 'mt-4 mb-2 text-size-title font-semibold';
                         return (
                           <HeadingTag
                             className={headingClassName}
@@ -3344,8 +3111,8 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'caption') {
                         return (
                           <p
-                            className="mb-3 text-center text-sm italic text-slate-600"
-                            style={{ color: currentTheme.isDark ? '#cbd5e1' : '#475569' }}
+                            className="mb-3 text-center text-size-subheading italic text-navigation"
+                            style={{ color: currentTheme.syntax.quote }}
                           >
                             {renderWithSearchHighlight(
                               pdfText,
@@ -3359,9 +3126,9 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'keywords') {
                         return (
                           <p
-                            className="mb-4 rounded-lg border px-3 py-2 text-sm italic"
+                            className="mb-4 rounded-lg border px-3 py-2 text-size-subheading italic"
                             style={{
-                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              color: currentTheme.syntax.quote,
                               borderColor: currentTheme.border,
                               backgroundColor: currentTheme.secondary,
                             }}
@@ -3378,8 +3145,8 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'metadata') {
                         return (
                           <p
-                            className={`mb-3 text-sm ${currentPage === 1 ? 'text-center' : ''}`}
-                            style={{ color: currentTheme.isDark ? '#9ca3af' : '#64748b' }}
+                            className={`mb-3 text-size-subheading ${currentPage === 1 ? 'text-center' : ''}`}
+                            style={{ color: currentTheme.syntax.comment }}
                           >
                             {renderWithSearchHighlight(
                               pdfText,
@@ -3393,9 +3160,9 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'toc') {
                         return (
                           <pre
-                            className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-sm leading-7"
+                            className="mb-3 overflow-x-auto whitespace-pre-wrap bg-transparent px-0 py-0 text-size-subheading leading-7"
                             style={{
-                              color: currentTheme.isDark ? '#cbd5e1' : '#475569',
+                              color: currentTheme.syntax.quote,
                               fontSize: `${Math.max(viewSettings.fontSize - 2, 12)}px`,
                               fontVariantNumeric: 'tabular-nums',
                             }}
@@ -3412,7 +3179,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'table') {
                         return (
                           <pre
-                            className="mb-4 overflow-x-auto whitespace-pre rounded-lg border px-3 py-3 text-sm leading-7"
+                            className="mb-4 overflow-x-auto whitespace-pre rounded-lg border px-3 py-3 text-size-subheading leading-7"
                             style={{
                               color: currentTheme.foreground,
                               borderColor: currentTheme.border,
@@ -3434,7 +3201,7 @@ export function ReaderContent() {
                       if (pdfParagraphKind === 'preformatted') {
                         return (
                           <pre
-                            className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-lg border px-3 py-2 text-sm leading-relaxed"
+                            className="mb-4 overflow-x-auto whitespace-pre-wrap rounded-lg border px-3 py-2 text-size-subheading leading-relaxed"
                             style={{
                               color: currentTheme.foreground,
                               borderColor: currentTheme.border,
@@ -3468,7 +3235,7 @@ export function ReaderContent() {
                             ref={(el) => {
                               sentenceRefs.current[key] = el;
                             }}
-                            className={isReading ? 'rounded px-2 py-1 border border-amber-300 bg-amber-100' : ''}
+                            className={isReading ? 'rounded border border-warning/25 bg-warning-subtle px-2 py-1' : ''}
                             style={{ fontSize: `${viewSettings.fontSize}px`, lineHeight: paragraphLineHeight, letterSpacing: cjkLetterSpacing, color: currentTheme.foreground }}
                           >
                             {renderWithSearchHighlight(sentence, isSearchMatchedParagraph, paragraphAnnotations, `${paragraph.id}-${index}`)}
@@ -3488,12 +3255,12 @@ export function ReaderContent() {
                               )
                             ) : (
                               <div className={`${showSource ? 'ml-4' : ''} flex items-center gap-2`}>
-                                <button
+                                <PanelButton
                                   onClick={() => handleTranslateSentence(paragraph.id, sentence, index)}
-                                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                  className="text-size-caption text-action hover:text-action underline"
                                 >
                                   Translate
-                                </button>
+                                </PanelButton>
                               </div>
                             )}
                           </div>
@@ -3515,7 +3282,7 @@ export function ReaderContent() {
         <div
           ref={selectionPopoverRef}
           data-selection-popover="true"
-          className="fixed z-50 -translate-x-1/2 rounded-xl border border-slate-300 bg-white p-2.5 shadow-[0_14px_36px_rgba(15,23,42,0.16)] overflow-y-auto"
+          className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-floating overflow-y-auto"
           style={{
             left: `${selectionPopoverLeft}px`,
             top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
@@ -3529,9 +3296,9 @@ export function ReaderContent() {
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
         >
-          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-slate-300 bg-gradient-to-r from-slate-50 to-zinc-50 px-2 py-1.5 shadow-sm backdrop-blur">
-            <button
-              className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100"
+          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-control-border bg-gradient-to-r from-surface-subtle to-surface-hover px-2 py-1.5 shadow-sm backdrop-blur">
+            <PanelButton
+              className="rounded-md px-1.5 py-0.5 text-size-meta text-muted hover:bg-surface-subtle"
               title="Drag to move panel"
               onPointerDown={(event) => {
                 if (event.button !== 0) return;
@@ -3546,7 +3313,7 @@ export function ReaderContent() {
               }}
             >
               ⋮⋮
-            </button>
+            </PanelButton>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
             {selectionActionOrder.map((action) => (
               <div
@@ -3566,8 +3333,8 @@ export function ReaderContent() {
                 }}
               >
                 {action === 'ask' && !isSelectionReorderMode && isQuestionInputExpanded ? (
-                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-slate-300 bg-white px-3">
-                    <input
+                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-control-border bg-surface px-3">
+                    <Input
                       autoFocus
                       value={selectionQuestion}
                       onChange={(e) => setSelectionQuestion(e.target.value)}
@@ -3585,146 +3352,146 @@ export function ReaderContent() {
                         if (!selectionQuestion.trim()) setIsQuestionInputExpanded(false);
                       }}
                       placeholder="Type your question and press Enter"
-                      className="w-full bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                      className="w-full bg-transparent text-size-control text-secondary placeholder:text-faint focus:outline-none"
                     />
-                    <button
+                    <PanelButton
                       onClick={handleAskQuestionFromSelection}
                       disabled={!selectionQuestion.trim()}
-                      className="shrink-0 whitespace-nowrap rounded-full border border-slate-300 bg-slate-50 px-3.5 py-1.5 text-[12px] font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 whitespace-nowrap rounded-full border border-control-border bg-surface-subtle px-3.5 py-1.5 text-size-caption font-medium text-secondary hover:border-control-border hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Submit
-                    </button>
+                    </PanelButton>
                   </div>
                 ) : (
-                  <button
+                  <PanelButton
                     onClick={() => {
                       if (isSelectionReorderMode) return;
                       handleSelectionAction(action);
                     }}
-                    className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[12px] font-medium transition ${
+                    className={`whitespace-nowrap rounded-full border px-2.5 py-1.5 text-size-caption font-medium transition ${
                       isSelectionReorderMode
                         ? pointerSortAction === action
-                          ? 'cursor-grabbing border-slate-400 bg-slate-200 text-slate-800'
-                          : 'cursor-grab border-slate-300 bg-slate-100 text-slate-700'
-                        : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50'
+                          ? 'cursor-grabbing border-control-border bg-surface-hover text-foreground'
+                          : 'cursor-grab border-control-border bg-surface-subtle text-secondary'
+                        : 'border-control-border bg-surface text-foreground hover:border-control-border hover:bg-surface-subtle'
                     }`}
                   >
                     <span className="inline-flex items-center gap-1.5 align-middle">
-                      <span className="text-[11px] text-slate-500">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
+                      <span className="text-size-meta text-muted">{isSelectionReorderMode ? '☰' : selectionActionIcon[action]}</span>
                       <span>{selectionActionLabel[action]}</span>
                     </span>
-                  </button>
+                  </PanelButton>
                 )}
               </div>
             ))}
             </div>
             <div className="relative">
-              <button
+              <PanelButton
                 onClick={() => setIsSelectionMenuOpen((prev) => !prev)}
-                className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+                className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                 title="More actions"
               >
                 ▾
-              </button>
+              </PanelButton>
               {isSelectionMenuOpen && (
-                <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-slate-300 bg-white p-1.5 shadow-lg">
-                  <button
+                <div className="absolute right-0 top-9 z-20 w-44 rounded-xl border border-control-border bg-surface p-1.5 shadow-lg">
+                  <PanelButton
                     onClick={() => {
                       setIsQuestionInputExpanded(false);
                       setIsSelectionReorderMode((prev) => !prev);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-size-caption text-secondary hover:bg-surface-subtle"
                   >
                     {isSelectionReorderMode ? 'Done Reordering' : 'Reorder'}
-                  </button>
-                  <button
+                  </PanelButton>
+                  <PanelButton
                     onClick={() => {
                       setSelectionActionOrder(ALL_SELECTION_ACTIONS);
                       setIsSelectionReorderMode(false);
                       setIsSelectionMenuOpen(false);
                     }}
-                    className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-100"
+                    className="w-full rounded-lg px-2 py-1.5 text-left text-size-caption text-secondary hover:bg-surface-subtle"
                   >
                     Reset to Default
-                  </button>
+                  </PanelButton>
                 </div>
               )}
             </div>
-            <button
+            <PanelButton
               onClick={clearSelectionDraft}
-              className="rounded-md border border-slate-300 bg-slate-50 px-2 py-1 text-[12px] text-slate-700 hover:bg-slate-100"
+              className="rounded-md border border-control-border bg-surface-subtle px-2 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
               title="Close"
             >
               ×
-            </button>
+            </PanelButton>
           </div>
           {isSelectionReorderMode && (
-            <p className="mb-1.5 text-[10px] text-slate-500">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
+            <p className="mb-1.5 text-size-micro text-muted">Reorder mode: Drag buttons above to reorder, click menu when done.</p>
           )}
-          <p className="mb-1.5 line-clamp-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
+          <p className="mb-1.5 line-clamp-2 rounded border border-control-border bg-surface-subtle px-2 py-1 text-size-meta text-navigation">
             “{selectionDraft.selectedText}”
           </p>
           {selectionActionMode === 'highlight' && (
             <>
               <div className="mb-2 flex items-center gap-2 flex-wrap">
                 {annotationStyleOrder.map((style) => (
-                  <button
+                  <PanelButton
                     key={style}
                     onClick={() => setSelectionDraft((prev) => (prev ? { ...prev, style } : prev))}
-                    className={`rounded border px-2 py-1 text-xs ${
+                    className={`rounded border px-2 py-1 text-size-caption ${
                       selectionDraft.style === style
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        ? 'border-focus bg-action-subtle text-action-text'
+                        : 'border-control-border text-secondary hover:border-control-border'
                     }`}
                   >
                     {annotationStyleLabel[style]}
-                  </button>
+                  </PanelButton>
                 ))}
               </div>
               <div className="mb-2 flex justify-end gap-2">
-                <button
+                <PanelButton
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                  className="rounded border border-control-border px-2 py-1 text-size-caption text-secondary"
                 >
                   Back
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={() => void handleCreateHighlightOnly()}
-                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                  className="rounded bg-action px-2 py-1 text-size-caption text-on-action hover:bg-action-text"
                 >
                   Save Highlight
-                </button>
+                </PanelButton>
               </div>
             </>
           )}
           {selectionActionMode === 'note' && (
             <>
-              <textarea
+              <Textarea
                 value={selectionDraft.note}
                 onChange={(e) => setSelectionDraft((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
                 placeholder="Enter note content (optional)"
                 rows={3}
-                className="mb-2 w-full resize-none rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mb-2 w-full resize-none rounded border border-control-border px-2 py-1 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
               />
               <div className="mb-2 flex justify-end gap-2">
-                <button
+                <PanelButton
                   onClick={() => setSelectionActionMode(null)}
-                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700"
+                  className="rounded border border-control-border px-2 py-1 text-size-caption text-secondary"
                 >
                   Back
-                </button>
-                <button
+                </PanelButton>
+                <PanelButton
                   onClick={handleSaveNoteSelection}
-                  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                  className="rounded bg-action px-2 py-1 text-size-caption text-on-action hover:bg-action-text"
                 >
                   Save Note
-                </button>
+                </PanelButton>
               </div>
             </>
           )}
           <div
-            className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-slate-400"
+            className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize text-faint"
             title="Drag to resize panel"
             onPointerDown={(event) => {
               if (event.button !== 0) return;
@@ -3748,28 +3515,28 @@ export function ReaderContent() {
         <>
           <div
             data-selection-popover="true"
-            className="fixed inset-0 z-50 bg-black/30"
+            className="fixed inset-0 z-50 bg-foreground/30"
             onClick={() => setTtsConfirmParagraphId(null)}
           />
           <div
             data-selection-popover="true"
-            className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-gray-200 bg-white p-4 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-[60] w-[min(92vw,24rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-4 shadow-2xl"
           >
-            <h4 className="text-sm font-semibold text-gray-900">Start reading from here?</h4>
-            <p className="mt-2 text-xs text-gray-600">TTS will start from the paragraph containing the selected text.</p>
+            <h4 className="text-size-subheading font-semibold text-heading">Start reading from here?</h4>
+            <p className="mt-2 text-size-caption text-navigation">TTS will start from the paragraph containing the selected text.</p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
+              <PanelButton
                 onClick={() => setTtsConfirmParagraphId(null)}
-                className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-700"
+                className="rounded border border-control-border px-3 py-1.5 text-size-caption text-secondary"
               >
                 Cancel
-              </button>
-              <button
+              </PanelButton>
+              <PanelButton
                 onClick={handleConfirmPlayFromSelection}
-                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+                className="rounded bg-action px-3 py-1.5 text-size-caption text-on-action hover:bg-action-text"
               >
                 Start Reading
-              </button>
+              </PanelButton>
             </div>
           </div>
         </>

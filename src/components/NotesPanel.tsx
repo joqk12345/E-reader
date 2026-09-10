@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Textarea } from './ui/Textarea';
+import { PanelButton } from './ui/Button';
 import { useStore } from '../store/useStore';
 
 type NoteRequest = {
@@ -148,82 +150,82 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({ request }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-gray-200 space-y-2">
+      <div className="p-3 border-b border-border space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            Notes Target: <span className="font-medium text-gray-900">{currentDocTitle}</span>
+          <span className="text-size-subheading text-navigation">
+            Notes Target: <span className="font-medium text-heading">{currentDocTitle}</span>
           </span>
-          <span className="text-xs text-gray-500">{currentDocNotes.length} notes</span>
+          <span className="text-size-caption text-muted">{currentDocNotes.length} notes</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <PanelButton
             onClick={exportJson}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
-            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Export JSON
-          </button>
-          <button
+          </PanelButton>
+          <PanelButton
             onClick={() => void exportMarkdown()}
             disabled={!selectedDocumentId || currentDocNotes.length === 0}
-            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Copy Markdown
-          </button>
+          </PanelButton>
         </div>
       </div>
 
-      <div className="p-3 border-b border-gray-200 space-y-2">
-        <textarea
+      <div className="p-3 border-b border-border space-y-2">
+        <Textarea
           rows={3}
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           placeholder="Paste notes JSON for import..."
-          className="w-full resize-none border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
         />
         <div className="flex items-center justify-between">
-          <button
+          <PanelButton
             onClick={importFromJson}
             disabled={!importText.trim()}
-            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+            className="px-2 py-1 text-size-caption border border-control-border rounded hover:bg-surface-subtle disabled:bg-surface-subtle disabled:text-faint"
           >
             Import JSON
-          </button>
-          {importError && <span className="text-xs text-red-600">{importError}</span>}
+          </PanelButton>
+          {importError && <span className="text-size-caption text-danger">{importError}</span>}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {!selectedDocumentId && (
-          <div className="h-full flex items-center justify-center text-sm text-gray-500">
+          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
             Please select a document first.
           </div>
         )}
         {selectedDocumentId && currentDocNotes.length === 0 && (
-          <div className="h-full flex items-center justify-center text-sm text-gray-500">
+          <div className="h-full flex items-center justify-center text-size-subheading text-muted">
             No notes yet. Select text in Reader and click “笔记” in the popup toolbar.
           </div>
         )}
         {currentDocNotes.map((note) => (
-          <div key={note.id} className="border border-gray-200 rounded-lg p-3 bg-white">
+          <div key={note.id} className="border border-border rounded-lg p-3 bg-surface">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] text-gray-500">{formatTime(note.updatedAt)}</span>
-              <button
+              <span className="text-size-meta text-muted">{formatTime(note.updatedAt)}</span>
+              <PanelButton
                 onClick={() => deleteNote(note.id)}
-                className="text-xs text-red-600 hover:text-red-700"
+                className="text-size-caption text-danger hover:text-danger"
               >
                 Delete
-              </button>
+              </PanelButton>
             </div>
-            <blockquote className="text-sm text-gray-800 border-l-2 border-blue-200 pl-2 mb-2 whitespace-pre-wrap">
+            <blockquote className="text-size-subheading text-foreground border-l-2 border-action-subtle pl-2 mb-2 whitespace-pre-wrap">
               {note.selectedText}
             </blockquote>
-            <textarea
+            <Textarea
               rows={3}
               value={note.noteText}
               onChange={(e) => updateNoteText(note.id, e.target.value)}
               placeholder="Write your note..."
-              className="w-full resize-none border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full resize-none border border-control-border rounded px-2 py-1.5 text-size-subheading focus:outline-none focus:ring-2 focus:ring-focus"
             />
           </div>
         ))}

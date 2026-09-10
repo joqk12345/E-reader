@@ -12,6 +12,8 @@ import {
   suggestDocumentTags,
 } from '../services/tagService';
 import { TagNameDialog } from './TagNameDialog';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
 
 const findTagByNameOrAlias = (tags: TagRecord[], raw: string) => {
   const normalized = raw.trim().toLowerCase();
@@ -266,7 +268,7 @@ export const TagsPanel: React.FC = () => {
 
   if (!selectedDocumentId || !selectedDocument) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+      <div className="rounded-lg border border-dashed border-control-border p-4 text-size-subheading text-muted">
         No document selected.
       </div>
     );
@@ -300,23 +302,24 @@ export const TagsPanel: React.FC = () => {
       />
 
       <div className="space-y-4 p-1">
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="rounded-xl border border-border bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Applied Tags</h3>
-            <p className="text-xs text-gray-500">{selectedDocument.title}</p>
+            <h3 className="text-size-subheading font-semibold text-heading">Applied Tags</h3>
+            <p className="text-size-caption text-muted">{selectedDocument.title}</p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => void refresh()}
-            className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+            className="h-7 rounded-md px-2 text-size-meta"
           >
             Refresh
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 flex gap-2">
-          <input
+          <Input
             value={manualTagDraft}
             onChange={(event) => setManualTagDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -326,125 +329,132 @@ export const TagsPanel: React.FC = () => {
               }
             }}
             placeholder="Add manual tag"
-            className="h-9 flex-1 rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-md text-size-control"
           />
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void handleAddManualTag()}
             disabled={!manualTagDraft.trim()}
-            className="rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-300"
+            className="rounded-md text-size-meta"
           >
             Add
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
           {appliedTags.length === 0 ? (
-            <span className="text-xs text-gray-500">No tags applied yet.</span>
+            <span className="text-size-caption text-muted">No tags applied yet.</span>
           ) : (
             appliedTags.map((tag) => (
               <span
                 key={tag.tag_id}
-                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2.5 py-1 text-size-caption text-secondary"
               >
                 #{tag.tag_name}
                 {tag.is_temporary && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-700">temp</span>
+                  <span className="rounded bg-warning-subtle px-1 text-size-micro text-warning">temp</span>
                 )}
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => void handleRemoveTag(tag.tag_id)}
-                  className="text-slate-500 hover:text-red-600"
+                  className="!h-5 !min-h-0 !w-5 !px-0 text-muted hover:text-danger"
                   aria-label={`Remove ${tag.tag_name}`}
                 >
                   ×
-                </button>
+                </Button>
               </span>
             ))
           )}
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="rounded-xl border border-border bg-surface p-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Recommended Tags</h3>
-            <p className="text-xs text-gray-500">AI first, heuristic fallback. New candidates require review.</p>
+            <h3 className="text-size-subheading font-semibold text-heading">Recommended Tags</h3>
+            <p className="text-size-caption text-muted">AI first, heuristic fallback. New candidates require review.</p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => void handleRefreshSuggestions()}
             disabled={isSuggesting}
-            className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black disabled:bg-gray-400"
+            className="rounded-md bg-heading text-size-meta hover:bg-foreground"
           >
             {isSuggesting ? 'Generating...' : 'Refresh Suggestions'}
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 space-y-2">
           {suggestions.length === 0 ? (
-            <div className="text-xs text-gray-500">{isLoading ? 'Loading...' : 'No pending suggestions.'}</div>
+            <div className="text-size-caption text-muted">{isLoading ? 'Loading...' : 'No pending suggestions.'}</div>
           ) : (
             suggestions.map((suggestion) => {
               const matched = Boolean(suggestion.matched_tag_id);
               return (
-                <div key={suggestion.id} className="rounded-lg border border-gray-200 p-3">
+                <div key={suggestion.id} className="rounded-lg border border-border p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="break-words text-sm font-semibold text-gray-900">
+                        <span className="break-words text-size-subheading font-semibold text-heading">
                           #{suggestion.proposed_name}
                         </span>
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+                        <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro uppercase tracking-wide text-muted">
                           {suggestion.source}
                         </span>
                         {matched && suggestion.matched_tag_name && (
-                          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                          <span className="rounded bg-success/10 px-1.5 py-0.5 text-size-micro text-success">
                             match: {suggestion.matched_tag_name}
                           </span>
                         )}
                       </div>
-                      {suggestion.reason && <p className="mt-1 text-xs text-gray-600">{suggestion.reason}</p>}
+                      {suggestion.reason && <p className="mt-1 text-size-caption text-navigation">{suggestion.reason}</p>}
                       {typeof suggestion.confidence === 'number' && (
-                        <p className="mt-1 text-[11px] text-gray-500">
+                        <p className="mt-1 text-size-meta text-muted">
                           Confidence: {(suggestion.confidence * 100).toFixed(0)}%
                         </p>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1 sm:max-w-[44%] sm:justify-end">
                       {matched ? (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => void handleAcceptMatchedSuggestion(suggestion.id)}
-                          className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
+                          className="h-7 rounded-md bg-success px-2 text-size-meta hover:bg-success"
                         >
                           Accept
-                        </button>
+                        </Button>
                       ) : (
                         <>
-                          <button
-                            type="button"
+                          <Button
+                            variant="primary"
+                            size="sm"
                             onClick={() => void handleCreateTemporaryFromSuggestion(suggestion)}
-                            className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-amber-700"
+                            className="h-7 rounded-md bg-warning px-2 text-size-meta hover:bg-warning"
                           >
                             Create Temp
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => void handleMapSuggestion(suggestion)}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                            className="h-7 rounded-md px-2 text-size-meta"
                           >
                             Map
-                          </button>
+                          </Button>
                         </>
                       )}
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => void handleRejectSuggestion(suggestion.id)}
-                        className="rounded-md border border-red-200 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                        className="h-7 rounded-md border border-danger/25 px-2 text-size-meta text-danger hover:bg-danger-subtle"
                       >
                         Reject
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -454,71 +464,74 @@ export const TagsPanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-gray-900">Tag Library</h3>
-        <input
+      <div className="rounded-xl border border-border bg-surface p-3">
+        <h3 className="text-size-subheading font-semibold text-heading">Tag Library</h3>
+        <Input
           value={librarySearch}
           onChange={(event) => setLibrarySearch(event.target.value)}
           placeholder="Search existing tags..."
-          className="mt-3 h-9 w-full rounded-md border border-gray-300 px-3 text-sm focus:border-blue-500 focus:outline-none"
+          className="mt-3 w-full rounded-md text-size-control"
         />
         <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
           {filteredLibrary.length === 0 ? (
-            <span className="text-xs text-gray-500">No matching reusable tags.</span>
+            <span className="text-size-caption text-muted">No matching reusable tags.</span>
           ) : (
             filteredLibrary.slice(0, 40).map((tag) => (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 key={tag.id}
-                type="button"
                 onClick={() => void handleApplyExistingTag(tag.id)}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-300 px-2.5 py-1 text-xs text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                className="h-7 rounded-full px-2.5 text-size-meta hover:border-focus-border hover:bg-action-subtle"
               >
                 <span>#{tag.name}</span>
-                <span className="text-[10px] text-gray-400">{tag.usage_count}</span>
-              </button>
+                <span className="text-size-micro text-faint">{tag.usage_count}</span>
+              </Button>
             ))
           )}
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
-        <h3 className="text-sm font-semibold text-gray-900">Related Articles</h3>
+      <div className="rounded-xl border border-border bg-surface p-3">
+        <h3 className="text-size-subheading font-semibold text-heading">Related Articles</h3>
         {relatedOriginDoc && selectedDocumentId !== relatedOriginDoc.id && (
-          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+          <div className="mt-3 rounded-lg border border-action-subtle bg-action-subtle px-3 py-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">Original Article</div>
-                <div className="mt-1 truncate text-sm text-blue-900">{relatedOriginDoc.title}</div>
+                <div className="text-size-meta font-semibold uppercase tracking-wide text-action-text">Original Article</div>
+                <div className="mt-1 truncate text-size-subheading text-action">{relatedOriginDoc.title}</div>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleReturnToOriginalDocument}
-                className="shrink-0 rounded-md border border-blue-300 bg-white px-2 py-1 text-xs text-blue-700 hover:bg-blue-100"
+                className="h-7 shrink-0 rounded-md border-focus-border px-2 text-size-meta text-action-text hover:bg-action-subtle"
               >
                 Back
-              </button>
+              </Button>
             </div>
           </div>
         )}
         <div className="mt-3 space-y-2">
           {relatedDocs.length === 0 ? (
-            <div className="text-xs text-gray-500">No related documents with shared tags yet.</div>
+            <div className="text-size-caption text-muted">No related documents with shared tags yet.</div>
           ) : (
             relatedDocs.map((doc) => (
-              <button
+              <Button
+                variant="ghost"
+                size="md"
                 key={doc.doc_id}
-                type="button"
                 onClick={() => handleOpenRelatedDocument(doc.doc_id)}
-                className="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-blue-300 hover:bg-blue-50/30"
+                className="h-auto w-full justify-start rounded-lg border border-border p-3 text-left hover:border-focus-border hover:bg-action-subtle/30"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-gray-900">{doc.title}</div>
-                    <div className="mt-1 text-[11px] text-gray-500">
+                    <div className="truncate text-size-subheading font-medium text-heading">{doc.title}</div>
+                    <div className="mt-1 text-size-meta text-muted">
                       {doc.shared_tag_count} shared tags · {new Date(doc.updated_at * 1000).toLocaleDateString()}
                     </div>
                   </div>
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase text-gray-600">
+                  <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro uppercase text-navigation">
                     {doc.file_type}
                   </span>
                 </div>
@@ -527,14 +540,14 @@ export const TagsPanel: React.FC = () => {
                     {doc.shared_tags.slice(0, 5).map((tag) => (
                       <span
                         key={`${doc.doc_id}-${tag}`}
-                        className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"
+                        className="rounded bg-surface-subtle px-1.5 py-0.5 text-size-micro text-navigation"
                       >
                         #{tag}
                       </span>
                     ))}
                   </div>
                 )}
-              </button>
+              </Button>
             ))
           )}
         </div>

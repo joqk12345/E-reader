@@ -19,6 +19,10 @@ import {
   type UpdateTarget,
 } from './services/updater';
 import { matchesAnyShortcut } from './utils/shortcuts';
+import { Tabs } from './components/ui/Tabs';
+import { Button } from './components/ui/Button';
+import type { SettingsSection } from './components/settings/settingsTypes';
+import { useAppTheme } from './features/app/useAppTheme';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -45,7 +49,6 @@ type EmbeddingStatus = {
   stale: number;
 };
 
-type SettingsSection = 'reading' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
 type HomeView = 'library' | 'semantic-search';
 
 const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE === 'foliate';
@@ -69,12 +72,13 @@ const normalizeEndpointMode = (url?: string): 'local' | 'http' => {
 };
 
 const statusToneClass = (status: string): string => {
-  if (status === 'ok') return 'text-emerald-700';
-  if (status === 'warn') return 'text-amber-700';
-  return 'text-rose-700';
+  if (status === 'ok') return 'text-success';
+  if (status === 'warn') return 'text-warning';
+  return 'text-danger';
 };
 
 function App() {
+  useAppTheme();
   const {
     selectedDocumentId,
     currentDocumentType,
@@ -304,9 +308,9 @@ function App() {
 
   const runtimeStatusBar = (
     <div className="flex items-center gap-4">
-      <span className="font-semibold text-gray-700">Runtime</span>
+      <span className="font-semibold text-secondary">Runtime</span>
       <span>
-        Chat: <span className="text-gray-800">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
+        Chat: <span className="text-foreground">{runtimeConfig?.chat_model || 'N/A'}</span> ·{' '}
         <span className="uppercase">{runtimeConfig?.provider === 'openai' ? 'http' : normalizeEndpointMode(runtimeConfig?.lm_studio_url)}</span> ·{' '}
         <span className={statusToneClass(
           runtimeConfig?.provider === 'openai'
@@ -319,7 +323,7 @@ function App() {
         </span>
       </span>
       <span>
-        Embedding: <span className="text-gray-800">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
+        Embedding: <span className="text-foreground">{runtimeConfig?.embedding_model || 'N/A'}</span> ·{' '}
         <span className="uppercase">{runtimeConfig?.embedding_provider === 'local_transformers'
           ? 'local'
           : runtimeConfig?.embedding_provider === 'ollama'
@@ -334,10 +338,10 @@ function App() {
         </span>
       </span>
       <span>
-        Index: <span className="text-gray-800">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
+        Index: <span className="text-foreground">{embeddingStatus ? `${embeddingStatus.indexed}/${embeddingStatus.total}` : 'N/A'}</span>
       </span>
       <span>
-        TTS: <span className="text-gray-800">
+        TTS: <span className="text-foreground">
           {runtimeConfig?.tts_provider === 'cosyvoice'
             ? 'CosyVoice'
             : runtimeConfig?.edge_tts_voice || 'Edge TTS'}
@@ -369,7 +373,7 @@ function App() {
         />
       )}
 
-      <div className="h-screen w-screen bg-gray-50 flex flex-col">
+      <div className="flex h-screen w-screen flex-col bg-surface-subtle text-foreground">
         <div className="flex-1 min-h-0">
           {selectedDocumentId ? (
             FOLIATE_EPUB_SPIKE_ENABLED && currentDocumentType === 'epub' ? (
@@ -381,29 +385,37 @@ function App() {
             )
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <div className="border-b border-gray-200 bg-white px-4 py-2">
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
-                  {([
-                    ['library', 'Library'],
-                    ['semantic-search', 'Semantic Search'],
-                  ] as const).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setHomeView(value)}
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                        homeView === value
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+              <header className="flex h-[58px] shrink-0 items-center justify-between border-b border-border bg-surface px-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-action text-size-subheading font-semibold text-on-action shadow-sm">R</div>
+                  <div className="leading-none">
+                    <div className="font-serif text-size-title font-medium tracking-tight text-heading">Reader</div>
+                    <div className="mt-1 text-size-micro font-medium uppercase tracking-[0.16em] text-muted">Your reading desk</div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex-1 min-h-0">
+                <nav aria-label="Workspace">
+                  <Tabs
+                    items={[{ value: 'library', label: 'Library' }, { value: 'semantic-search', label: 'Semantic Search' }]}
+                    value={homeView}
+                    onChange={setHomeView}
+                  />
+                </nav>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openSettings('reading')}
+                  data-testid="preferences-button"
+                  aria-label="Open Preferences"
+                  className="h-8 rounded-full px-3 text-size-control hover:border-focus-border hover:text-action-text"
+                >
+                  <span aria-hidden="true">⚙</span>
+                  Preferences
+                </Button>
+              </header>
+
+              <div data-testid="workspace-content" className="flex-1 min-h-0">
                 {homeView === 'library' ? (
                   <Library statusBar={runtimeStatusBar} />
                 ) : (

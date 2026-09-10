@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import { DocumentCard } from './DocumentCard';
@@ -28,6 +27,16 @@ import {
   suggestTagsForDocuments,
   addTagAlias,
 } from '../services/tagService';
+import { useLibrarySidebarResize } from '../features/library/useLibrarySidebarResize';
+import { useLibraryImport } from '../features/library/useLibraryImport';
+import { Button, type ButtonProps } from './ui/Button';
+import { Input } from './ui/Input';
+import { Checkbox } from './ui/Checkbox';
+import {
+  FAVORITES_CATEGORY,
+  RECENTS_CATEGORY,
+  useLibraryDocumentFilters,
+} from '../features/library/useLibraryDocumentFilters';
 
 type LibraryProps = {
   statusBar?: React.ReactNode;
@@ -42,18 +51,11 @@ type DocumentInsight = {
   category: string;
 };
 
-const FAVORITES_CATEGORY = 'Favorites';
-const RECENTS_CATEGORY = 'Recents';
 const FAVORITES_STORAGE_KEY = 'reader.favoriteDocumentIds';
 
-const normalizeFileType = (fileType: string): 'epub' | 'pdf' | 'markdown' => {
-  const normalized = fileType.trim().toLowerCase();
-  if (normalized === 'md') return 'markdown';
-  if (normalized === 'epub' || normalized === 'pdf' || normalized === 'markdown') {
-    return normalized;
-  }
-  return 'markdown';
-};
+function LibraryButton({ variant = 'ghost', size = 'sm', ...props }: ButtonProps) {
+  return <Button variant={variant} size={size} {...props} />;
+}
 
 const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
   { name: 'AI/机器学习', keywords: ['ai', 'llm', 'ml', 'machine learning', '模型', '推理', 'agent', 'rag', 'vllm'] },
@@ -106,10 +108,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [groupByCategory, setGroupByCategory] = useState(true);
-  const [isImportingFile, setIsImportingFile] = useState(false);
-  const [isImportingUrl, setIsImportingUrl] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importUrlDraft, setImportUrlDraft] = useState('');
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
@@ -117,8 +115,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [expandedCategoryItems, setExpandedCategoryItems] = useState<Record<string, boolean>>({});
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(248);
-  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const { sidebarWidth, isResizingSidebar, beginResize } = useLibrarySidebarResize();
   const [allDocumentTags, setAllDocumentTags] = useState<DocumentTagAssignment[]>([]);
   const [tagFacets, setTagFacets] = useState<TagFacet[]>([]);
   const [tagLibrary, setTagLibrary] = useState<TagRecord[]>([]);
@@ -156,19 +153,16 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [tagManagerFeedback, setTagManagerFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const displayMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const formatImportErrorMessage = (error: unknown) => {
-    const raw = error instanceof Error ? error.message : String(error ?? '');
-    const normalized = raw.toLowerCase();
-    const isDuplicateFile =
-      normalized.includes('unique constraint failed: documents.file_path') ||
-      (normalized.includes('documents.file_path') && normalized.includes('unique'));
-
-    if (isDuplicateFile) {
-      return '该文件已导入到 Library，无需重复导入。';
-    }
-    return `导入失败：${raw}`;
-  };
-
+  const {
+    isImportingFile,
+    isImportingUrl,
+    showImportDialog,
+    setShowImportDialog,
+    importUrlDraft,
+    setImportUrlDraft,
+    handleImportFile,
+    handleImportUrlBeta,
+  } = useLibraryImport({ loadDocuments, importEpub, importPdf, importMarkdown, selectDocument });
 
   useEffect(() => {
     loadDocuments();
@@ -247,20 +241,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     setBatchSelectedTagIds((prev) => prev.filter((tagId) => tagLibrary.some((tag) => tag.id === tagId)));
   }, [tagFacets, tagLibrary]);
 
-  const getDocumentCategory = (docId: string) => {
-    if (favoriteDocumentIds[docId]) {
-      return FAVORITES_CATEGORY;
-    }
-    return documentInsights[docId]?.category || '其他';
-  };
-
-  const getDocumentCardCategory = (docId: string) => {
-    if (categoryFilter === RECENTS_CATEGORY) {
-      return undefined;
-    }
-    return getDocumentCategory(docId);
-  };
-
   const isFavoriteDocument = (docId: string) => Boolean(favoriteDocumentIds[docId]);
 
   const toggleFavoriteDocument = (docId: string) => {
@@ -324,74 +304,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     };
   }, [documents, runAutoClassification]);
 
-  const handleImportFile = async () => {
-    setIsImportingFile(true);
-    let importedSuccessfully = false;
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [
-          {
-            name: 'Documents',
-            extensions: ['epub', 'pdf', 'md']
-          }
-        ]
-      });
-
-      if (selected && typeof selected === 'string') {
-        const ext = selected.split('.').pop()?.toLowerCase();
-        if (ext === 'epub') {
-          await importEpub(selected);
-          importedSuccessfully = true;
-        } else if (ext === 'pdf') {
-          const docId = await importPdf(selected);
-          selectDocument(docId);
-          importedSuccessfully = true;
-        } else if (ext === 'md') {
-          await importMarkdown(selected);
-          importedSuccessfully = true;
-        }
-      }
-    } catch (error) {
-      console.error('Import failed:', error);
-      alert(formatImportErrorMessage(error));
-    } finally {
-      setIsImportingFile(false);
-      if (importedSuccessfully) {
-        setShowImportDialog(false);
-      }
-    }
-  };
-
-  const normalizeUrl = (input: string) => {
-    const trimmed = input.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-    return `https://${trimmed}`;
-  };
-
-  const handleImportUrlBeta = async () => {
-    const url = normalizeUrl(importUrlDraft);
-    if (!url) return;
-    setIsImportingUrl(true);
-    let importedSuccessfully = false;
-    try {
-      const docId = await invoke<string>('import_url', { url });
-      await loadDocuments();
-      selectDocument(docId);
-      importedSuccessfully = true;
-    } catch (error) {
-      console.error('Import URL failed:', error);
-      alert(formatImportErrorMessage(error));
-    } finally {
-      setIsImportingUrl(false);
-      if (importedSuccessfully) {
-        setImportUrlDraft('');
-        setShowImportDialog(false);
-      }
-    }
-  };
-
   const handleDeleteRequest = (id: string, title: string) => {
     setPendingDelete({ id, title });
   };
@@ -427,90 +339,28 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     return tagFacets.filter((facet) => !query || facet.name.toLowerCase().includes(query));
   }, [tagFacets, tagSearchText]);
 
-  const shouldGroupDisplayedDocuments = groupByCategory && categoryFilter !== RECENTS_CATEGORY;
-
-  const displayedDocuments = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    const filtered = documents.filter((doc) => {
-      const docType = normalizeFileType(doc.file_type);
-      if (typeFilter !== 'all' && docType !== typeFilter) return false;
-      if (
-        categoryFilter !== 'all' &&
-        categoryFilter !== RECENTS_CATEGORY &&
-        getDocumentCategory(doc.id) !== categoryFilter
-      ) {
-        return false;
-      }
-      if (selectedTagIds.length > 0) {
-        const docTagIds = new Set((documentTagMap[doc.id] || []).map((item) => item.tag_id));
-        const matches =
-          tagMatchMode === 'all'
-            ? selectedTagIds.every((tagId) => docTagIds.has(tagId))
-            : selectedTagIds.some((tagId) => docTagIds.has(tagId));
-        if (!matches) return false;
-      }
-      if (!q) return true;
-      const title = doc.title.toLowerCase();
-      const author = (doc.author || '').toLowerCase();
-      const filePath = doc.file_path.toLowerCase();
-      return title.includes(q) || author.includes(q) || filePath.includes(q);
-    });
-
-    const sorted = [...filtered];
-    if (categoryFilter === RECENTS_CATEGORY || sortBy === 'recent') {
-      sorted.sort((a, b) => b.updated_at - a.updated_at);
-    } else if (sortBy === 'title') {
-      sorted.sort((a, b) => a.title.localeCompare(b.title));
-    } else {
-      sorted.sort((a, b) => normalizeFileType(a.file_type).localeCompare(normalizeFileType(b.file_type)) || a.title.localeCompare(b.title));
-    }
-    return sorted;
-  }, [categoryFilter, documents, documentTagMap, favoriteDocumentIds, searchText, selectedTagIds, sortBy, tagMatchMode, typeFilter, documentInsights]);
-
-  const categoryOptions = useMemo(() => {
-    const categories = new Set<string>();
-    documents.forEach((doc) => categories.add(getDocumentCategory(doc.id)));
-    return Array.from(categories).sort((a, b) => a.localeCompare(b));
-  }, [documents, favoriteDocumentIds, documentInsights]);
-
-  const regularCategoryOptions = useMemo(
-    () => categoryOptions.filter((category) => category !== FAVORITES_CATEGORY && category !== RECENTS_CATEGORY),
-    [categoryOptions]
-  );
-
-  const groupedEntries = useMemo(() => {
-    const grouped = displayedDocuments.reduce<Record<string, ReaderDocument[]>>((acc, doc) => {
-      const category = getDocumentCategory(doc.id);
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(doc);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).sort((a, b) => {
-      if (a[0] === FAVORITES_CATEGORY && b[0] !== FAVORITES_CATEGORY) return -1;
-      if (b[0] === FAVORITES_CATEGORY && a[0] !== FAVORITES_CATEGORY) return 1;
-      return b[1].length - a[1].length || a[0].localeCompare(b[0]);
-    });
-  }, [displayedDocuments, favoriteDocumentIds, documentInsights]);
-
-  const typeSummaries = useMemo(() => {
-    const markdownCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'markdown').length;
-    const pdfCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'pdf').length;
-    const epubCount = documents.filter((doc) => normalizeFileType(doc.file_type) === 'epub').length;
-    return [
-      { key: 'all' as const, label: 'All', count: documents.length },
-      { key: 'epub' as const, label: 'EPUB', count: epubCount },
-      { key: 'pdf' as const, label: 'PDF', count: pdfCount },
-      { key: 'markdown' as const, label: 'Markdown', count: markdownCount },
-    ];
-  }, [documents]);
-
-  const favoriteCount = useMemo(
-    () => documents.reduce((acc, doc) => (isFavoriteDocument(doc.id) ? acc + 1 : acc), 0),
-    [documents, favoriteDocumentIds]
-  );
-
-  const quickCategories = useMemo(() => regularCategoryOptions.slice(0, 10), [regularCategoryOptions]);
+  const {
+    getDocumentCardCategory,
+    shouldGroupDisplayedDocuments,
+    displayedDocuments,
+    regularCategoryOptions,
+    groupedEntries,
+    typeSummaries,
+    favoriteCount,
+    quickCategories,
+  } = useLibraryDocumentFilters({
+    documents,
+    typeFilter,
+    sortBy,
+    searchText,
+    categoryFilter,
+    groupByCategory,
+    selectedTagIds,
+    tagMatchMode,
+    documentTagMap,
+    favoriteDocumentIds,
+    documentInsights,
+  });
 
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
@@ -901,23 +751,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     return () => window.removeEventListener('pointerdown', onPointerDown);
   }, [showDisplayMenu]);
 
-  useEffect(() => {
-    if (!isResizingSidebar) return;
-
-    const onPointerMove = (event: PointerEvent) => {
-      const next = Math.min(360, Math.max(210, event.clientX));
-      setSidebarWidth(next);
-    };
-    const onPointerUp = () => setIsResizingSidebar(false);
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [isResizingSidebar]);
-
   return (
     <>
       <TagNameDialog
@@ -995,57 +828,57 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       />
 
       {pendingDelete && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-5">
-            <h3 className="text-lg font-semibold text-gray-900">Confirm Delete</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Delete document <span className="font-medium text-gray-900">{pendingDelete.title}</span>?
+        <div className="fixed inset-0 z-50 bg-foreground bg-opacity-40 flex items-center justify-center">
+          <div className="bg-surface rounded-lg shadow-xl w-full max-w-md mx-4 p-5">
+            <h3 className="text-size-title font-semibold text-heading">Confirm Delete</h3>
+            <p className="mt-2 text-size-subheading text-navigation">
+              Delete document <span className="font-medium text-heading">{pendingDelete.title}</span>?
               This action cannot be undone.
             </p>
             <div className="mt-4 flex justify-end gap-2">
-              <button
+              <LibraryButton
                 onClick={() => setPendingDelete(null)}
-                className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-3 py-2 text-size-subheading text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
               >
                 Cancel
-              </button>
-              <button
+              </LibraryButton>
+              <LibraryButton
                 onClick={() => void handleConfirmDelete()}
-                className="px-3 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+                className="px-3 py-2 text-size-subheading text-on-action bg-danger rounded-md hover:bg-danger"
               >
                 Delete
-              </button>
+              </LibraryButton>
             </div>
           </div>
         </div>
       )}
 
       {showImportDialog && (
-        <div className="fixed inset-0 z-40 bg-black/35 flex items-center justify-center">
-          <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">Import</h3>
-            <p className="mt-1 text-xs text-gray-500">Choose a local EPUB, PDF, or Markdown file.</p>
+        <div data-testid="import-dialog" role="dialog" aria-label="Import document" className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
+          <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-4 shadow-xl">
+            <h3 className="text-size-body font-semibold text-heading">Import</h3>
+            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB, PDF, or Markdown file.</p>
 
             <div className="mt-3 space-y-2">
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => void handleImportFile()}
                 disabled={isImportingFile || isImportingUrl}
-                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7 3h7l5 5v13H7z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5" />
                 </svg>
                 {isImportingFile ? 'Importing File...' : 'Import File'}
-              </button>
+              </LibraryButton>
 
-              <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2">
+              <div className="rounded-md border border-warning/25 bg-warning-subtle/60 p-2">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-amber-700">Import from URL</span>
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Beta</span>
+                  <span className="text-size-meta font-semibold text-warning">Import from URL</span>
+                  <span className="rounded bg-warning-subtle px-1.5 py-0.5 text-size-micro font-medium text-warning">Beta</span>
                 </div>
-                <input
+                <Input
                   value={importUrlDraft}
                   onChange={(e) => setImportUrlDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -1055,97 +888,96 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     }
                   }}
                   placeholder="https://example.com/article"
-                  className="w-full rounded border border-amber-200 bg-white px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full rounded border border-warning/25 bg-surface px-2.5 py-1.5 text-size-caption focus:outline-none focus:ring-2 focus:ring-warning"
                 />
-                <button
+                <LibraryButton
                   type="button"
                   onClick={() => void handleImportUrlBeta()}
                   disabled={!importUrlDraft.trim() || isImportingUrl || isImportingFile}
-                  className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-700 disabled:bg-gray-400"
+                  className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-warning px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-warning disabled:bg-muted"
                 >
                   {isImportingUrl ? 'Importing URL...' : 'Import URL (Beta)'}
-                </button>
+                </LibraryButton>
               </div>
             </div>
 
             <div className="mt-3 flex justify-end">
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => {
                   if (isImportingFile || isImportingUrl) return;
                   setImportUrlDraft('');
                   setShowImportDialog(false);
                 }}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-control-border bg-surface px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Close
-              </button>
+              </LibraryButton>
             </div>
           </div>
         </div>
       )}
 
       {showBatchDialog && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
-          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/35 p-4">
+          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Batch Tags</h3>
-                <p className="text-sm text-gray-500">Filter by imported time (`created_at`) and apply or review tag operations.</p>
+                <h3 className="text-size-title font-semibold text-heading">Batch Tags</h3>
+                <p className="text-size-subheading text-muted">Filter by imported time (`created_at`) and apply or review tag operations.</p>
               </div>
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => setShowBatchDialog(false)}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Close
-              </button>
+              </LibraryButton>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => setBatchMode('ai-recommend')}
-                className={`rounded-md px-3 py-2 text-sm font-medium ${
-                  batchMode === 'ai-recommend' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`rounded-md px-3 py-2 text-size-subheading font-medium ${
+                  batchMode === 'ai-recommend' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
                 }`}
               >
                 Run AI Suggestions
-              </button>
-              <button
+              </LibraryButton>
+              <LibraryButton
                 type="button"
                 onClick={() => setBatchMode('apply-existing')}
-                className={`rounded-md px-3 py-2 text-sm font-medium ${
-                  batchMode === 'apply-existing' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`rounded-md px-3 py-2 text-size-subheading font-medium ${
+                  batchMode === 'apply-existing' ? 'bg-action text-on-action' : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
                 }`}
               >
                 Apply Existing Tags
-              </button>
+              </LibraryButton>
             </div>
 
             {batchFeedback && (
               <div
-                className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+                className={`mt-4 rounded-lg border px-3 py-2 text-size-subheading ${
                   batchFeedback.tone === 'success'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                    : 'border-red-200 bg-red-50 text-red-700'
+                    ? 'border-success/25 bg-success/10 text-success'
+                    : 'border-danger/25 bg-danger-subtle text-danger'
                 }`}
               >
                 {batchFeedback.message}
               </div>
             )}
 
-            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <label className="inline-flex items-start gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
+            <div className="mt-4 rounded-lg border border-border bg-surface-subtle p-3">
+              <label className="inline-flex items-start gap-2 text-size-subheading text-secondary">
+                <Checkbox
                   checked={batchUseCurrentResults}
                   onChange={(event) => setBatchUseCurrentResults(event.target.checked)}
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="font-medium text-gray-900">Use current library results</span>
-                  <span className="mt-1 block text-xs text-gray-500">
+                  <span className="font-medium text-heading">Use current library results</span>
+                  <span className="mt-1 block text-size-caption text-muted">
                     Reuse the current Library search, type, category, and tag filters before applying the date range.
                   </span>
                 </span>
@@ -1153,51 +985,51 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             </div>
 
             <div className="mt-4">
-              <label className="text-sm text-gray-700">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">Document Search</div>
-                <input
+                <Input
                   value={batchDocumentSearch}
                   onChange={(event) => setBatchDocumentSearch(event.target.value)}
                   placeholder="Filter matched documents by title, author, or path..."
-                  className="h-9 w-full rounded-md border border-gray-300 px-3"
+                  className="h-9 w-full rounded-md border border-control-border px-3"
                 />
               </label>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <label className="text-sm text-gray-700">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">Start Date</div>
-                <input
+                <Input
                   type="date"
                   value={batchStartDate}
                   onChange={(event) => setBatchStartDate(event.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-300 px-3"
+                  className="h-9 w-full rounded-md border border-control-border px-3"
                 />
               </label>
-              <label className="text-sm text-gray-700">
+              <label className="text-size-subheading text-secondary">
                 <div className="mb-1 font-medium">End Date</div>
-                <input
+                <Input
                   type="date"
                   value={batchEndDate}
                   onChange={(event) => setBatchEndDate(event.target.value)}
-                  className="h-9 w-full rounded-md border border-gray-300 px-3"
+                  className="h-9 w-full rounded-md border border-control-border px-3"
                 />
               </label>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+              <div className="rounded-lg border border-border bg-surface-subtle p-3 text-size-subheading text-secondary">
                 <div className="font-medium">Matched Documents</div>
-                <div className="mt-1 text-2xl font-semibold text-gray-900">{effectiveBatchDocs.length}</div>
-                <div className="mt-1 text-xs text-gray-500">
+                <div className="mt-1 text-size-hero-sm font-semibold text-heading">{effectiveBatchDocs.length}</div>
+                <div className="mt-1 text-size-caption text-muted">
                   Scope: {batchUseCurrentResults ? 'Current library results + date range' : 'Date range only'}
                 </div>
                 {batchDocumentSearch.trim() && (
-                  <div className="mt-1 text-xs text-gray-500">Document search: {batchDocumentSearch.trim()}</div>
+                  <div className="mt-1 text-size-caption text-muted">Document search: {batchDocumentSearch.trim()}</div>
                 )}
                 {batchMode === 'apply-existing' && batchDocFilterTagIds.length > 0 && (
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-size-caption text-muted">
                     Existing tag filter: {batchDocFilterTagMode === 'all' ? 'Match all' : 'Match any'}
                   </div>
                 )}
-                <div className="mt-1 text-xs text-gray-500">
+                <div className="mt-1 text-size-caption text-muted">
                   {effectiveBatchDocs.slice(0, 3).map((doc) => doc.title).join(' · ') || 'No documents in the current range'}
                 </div>
               </div>
@@ -1205,89 +1037,89 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             {batchMode === 'apply-existing' && (
               <div className="mt-5 space-y-4">
-                <div className="rounded-xl border border-gray-200 p-4">
+                <div className="rounded-xl border border-border p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Filter Target Documents By Existing Tags</h4>
-                      <p className="text-xs text-gray-500">Use one or more existing tags to narrow the matched documents before applying new tags.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Filter Target Documents By Existing Tags</h4>
+                      <p className="text-size-caption text-muted">Use one or more existing tags to narrow the matched documents before applying new tags.</p>
                     </div>
-                    <div className="flex rounded-md bg-gray-100 p-1">
-                      <button
+                    <div className="flex rounded-md bg-surface-subtle p-1">
+                      <LibraryButton
                         type="button"
                         onClick={() => setBatchDocFilterTagMode('any')}
-                        className={`rounded px-2 py-1 text-xs ${
-                          batchDocFilterTagMode === 'any' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+                        className={`rounded px-2 py-1 text-size-caption ${
+                          batchDocFilterTagMode === 'any' ? 'bg-surface text-action-text shadow-sm' : 'text-navigation hover:bg-surface-subtle'
                         }`}
                       >
                         Match Any
-                      </button>
-                      <button
+                      </LibraryButton>
+                      <LibraryButton
                         type="button"
                         onClick={() => setBatchDocFilterTagMode('all')}
-                        className={`rounded px-2 py-1 text-xs ${
-                          batchDocFilterTagMode === 'all' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+                        className={`rounded px-2 py-1 text-size-caption ${
+                          batchDocFilterTagMode === 'all' ? 'bg-surface text-action-text shadow-sm' : 'text-navigation hover:bg-surface-subtle'
                         }`}
                       >
                         Match All
-                      </button>
+                      </LibraryButton>
                     </div>
                   </div>
-                  <input
+                  <Input
                     value={batchDocFilterTagSearch}
                     onChange={(event) => setBatchDocFilterTagSearch(event.target.value)}
                     placeholder="Search tags to filter the target documents..."
-                    className="mt-3 h-9 w-full rounded-md border border-gray-300 px-3 text-sm"
+                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-size-subheading"
                   />
                   <div className="mt-3 flex max-h-40 flex-wrap gap-2 overflow-y-auto">
                     {filteredBatchDocFilterTags.map((tag) => (
-                      <button
+                      <LibraryButton
                         key={`filter-${tag.id}`}
                         type="button"
                         onClick={() => toggleBatchDocFilterTagId(tag.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs ${
+                        className={`rounded-full border px-2.5 py-1 text-size-caption ${
                           batchDocFilterTagIds.includes(tag.id)
-                            ? 'border-blue-300 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            ? 'border-focus-border bg-action-subtle text-action-text'
+                            : 'border-control-border text-secondary hover:bg-surface-subtle'
                         }`}
                       >
-                        #{tag.name} <span className="text-[10px] text-gray-400">{tag.usage_count}</span>
-                      </button>
+                        #{tag.name} <span className="text-size-micro text-faint">{tag.usage_count}</span>
+                      </LibraryButton>
                     ))}
                   </div>
                   {batchDocFilterTagIds.length > 0 && (
-                    <button
+                    <LibraryButton
                       type="button"
                       onClick={() => setBatchDocFilterTagIds([])}
-                      className="mt-3 rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                      className="mt-3 rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                     >
                       Clear Existing Tag Filter
-                    </button>
+                    </LibraryButton>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-gray-200 p-4">
+                <div className="rounded-xl border border-border p-4">
                   <div className="mb-3">
-                    <h4 className="text-sm font-semibold text-gray-900">Matched Result Preview</h4>
-                    <p className="text-xs text-gray-500">These are the documents that will be updated. Current tags refresh after batch apply.</p>
+                    <h4 className="text-size-subheading font-semibold text-heading">Matched Result Preview</h4>
+                    <p className="text-size-caption text-muted">These are the documents that will be updated. Current tags refresh after batch apply.</p>
                   </div>
                   <div className="space-y-2">
                     {effectiveBatchDocs.length === 0 ? (
-                      <div className="text-sm text-gray-500">No documents match the current batch filters.</div>
+                      <div className="text-size-subheading text-muted">No documents match the current batch filters.</div>
                     ) : (
                       effectiveBatchDocs.slice(0, 8).map((doc) => (
-                        <div key={`batch-preview-${doc.id}`} className="rounded-lg border border-gray-200 p-3">
-                          <div className="text-sm font-medium text-gray-900">{doc.title}</div>
+                        <div key={`batch-preview-${doc.id}`} className="rounded-lg border border-border p-3">
+                          <div className="text-size-subheading font-medium text-heading">{doc.title}</div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {(documentTagMap[doc.id] || []).length === 0 ? (
-                              <span className="text-xs text-gray-500">No tags yet</span>
+                              <span className="text-size-caption text-muted">No tags yet</span>
                             ) : (
                               (documentTagMap[doc.id] || []).map((item) => (
                                 <div
                                   key={`${doc.id}-${item.tag_id}`}
-                                  className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700"
+                                  className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-size-meta text-secondary"
                                 >
                                   <span>#{item.tag_name}</span>
-                                  <button
+                                  <LibraryButton
                                     type="button"
                                     onClick={() =>
                                       setBatchReplaceDraft({
@@ -1298,18 +1130,18 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                       })
                                     }
                                     disabled={batchPreviewActionKey !== null}
-                                    className="rounded px-1 text-[10px] text-blue-700 hover:bg-blue-50 disabled:text-gray-400"
+                                    className="rounded px-1 text-size-micro text-action-text hover:bg-action-subtle disabled:text-faint"
                                   >
                                     Edit
-                                  </button>
-                                  <button
+                                  </LibraryButton>
+                                  <LibraryButton
                                     type="button"
                                     onClick={() => void handleBatchPreviewRemoveTag(doc.id, item.tag_id, item.tag_name)}
                                     disabled={batchPreviewActionKey !== null}
-                                    className="rounded px-1 text-[10px] text-red-600 hover:bg-red-50 disabled:text-gray-400"
+                                    className="rounded px-1 text-size-micro text-danger hover:bg-danger-subtle disabled:text-faint"
                                   >
                                     {batchPreviewActionKey === `remove:${doc.id}:${item.tag_id}` ? '...' : 'Remove'}
-                                  </button>
+                                  </LibraryButton>
                                 </div>
                               ))
                             )}
@@ -1319,45 +1151,45 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     )}
                   </div>
                   {effectiveBatchDocs.length > 8 && (
-                    <div className="mt-2 text-xs text-gray-500">Showing 8 of {effectiveBatchDocs.length} matched documents.</div>
+                    <div className="mt-2 text-size-caption text-muted">Showing 8 of {effectiveBatchDocs.length} matched documents.</div>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-gray-200 p-4">
+                <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Tags To Apply</h4>
-                      <p className="text-xs text-gray-500">Apply the selected tags directly to the currently matched documents.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Tags To Apply</h4>
+                      <p className="text-size-caption text-muted">Apply the selected tags directly to the currently matched documents.</p>
                     </div>
-                    <button
+                    <LibraryButton
                       type="button"
                       onClick={() => void handleBatchApplyExisting()}
                       disabled={isBatchRunning || effectiveBatchDocs.length === 0 || batchSelectedTagIds.length === 0}
-                      className="rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-300"
+                      className="rounded-md bg-action px-3 py-2 text-size-caption font-medium text-on-action hover:bg-action-text disabled:bg-control-border"
                     >
                       {isBatchRunning ? 'Applying...' : 'Apply Tags'}
-                    </button>
+                    </LibraryButton>
                   </div>
-                  <input
+                  <Input
                     value={batchTagSearch}
                     onChange={(event) => setBatchTagSearch(event.target.value)}
                     placeholder="Search tags to apply..."
-                    className="mt-3 h-9 w-full rounded-md border border-gray-300 px-3 text-sm"
+                    className="mt-3 h-9 w-full rounded-md border border-control-border px-3 text-size-subheading"
                   />
                   <div className="mt-3 flex max-h-56 flex-wrap gap-2 overflow-y-auto">
                     {filteredBatchTags.map((tag) => (
-                      <button
+                      <LibraryButton
                         key={tag.id}
                         type="button"
                         onClick={() => toggleBatchSelectedTagId(tag.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs ${
+                        className={`rounded-full border px-2.5 py-1 text-size-caption ${
                           batchSelectedTagIds.includes(tag.id)
-                            ? 'border-blue-300 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            ? 'border-focus-border bg-action-subtle text-action-text'
+                            : 'border-control-border text-secondary hover:bg-surface-subtle'
                         }`}
                       >
-                        #{tag.name} <span className="text-[10px] text-gray-400">{tag.usage_count}</span>
-                      </button>
+                        #{tag.name} <span className="text-size-micro text-faint">{tag.usage_count}</span>
+                      </LibraryButton>
                     ))}
                   </div>
                 </div>
@@ -1366,43 +1198,43 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             {batchMode === 'ai-recommend' && (
               <div className="mt-5 space-y-4">
-                <div className="rounded-xl border border-gray-200 p-4">
+                <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Generate Tag Suggestions</h4>
-                      <p className="text-xs text-gray-500">Suggestions that match existing tags can be accepted directly. New candidates go into the review queue.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Generate Tag Suggestions</h4>
+                      <p className="text-size-caption text-muted">Suggestions that match existing tags can be accepted directly. New candidates go into the review queue.</p>
                     </div>
-                    <button
+                    <LibraryButton
                       type="button"
                       onClick={() => void handleBatchSuggest()}
                       disabled={isBatchRunning || selectedBatchDocs.length === 0}
-                      className="rounded-md bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-black disabled:bg-gray-300"
+                      className="rounded-md bg-heading px-3 py-2 text-size-caption font-medium text-on-action hover:bg-foreground disabled:bg-control-border"
                     >
                       {isBatchRunning ? 'Generating...' : 'Run AI Suggestions'}
-                    </button>
+                    </LibraryButton>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 p-4">
+                <div className="rounded-xl border border-border p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900">Pending Review</h4>
-                      <p className="text-xs text-gray-500">Grouped by normalized tag name. Suggestions that match existing tags can be accepted directly.</p>
+                      <h4 className="text-size-subheading font-semibold text-heading">Pending Review</h4>
+                      <p className="text-size-caption text-muted">Grouped by normalized tag name. Suggestions that match existing tags can be accepted directly.</p>
                     </div>
-                    <button
+                    <LibraryButton
                       type="button"
                       onClick={() => void refreshTagData()}
-                      className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                      className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                     >
                       Reload
-                    </button>
+                    </LibraryButton>
                   </div>
                   <div className="space-y-3">
                     {pendingReviewItems.length === 0 ? (
-                      <div className="text-sm text-gray-500">No pending review items.</div>
+                      <div className="text-size-subheading text-muted">No pending review items.</div>
                     ) : (
                       pendingReviewItems.map((item) => (
-                        <div key={`${item.normalized_name}:${item.matched_tag_id || 'new'}`} className="rounded-lg border border-gray-200 p-3">
+                        <div key={`${item.normalized_name}:${item.matched_tag_id || 'new'}`} className="rounded-lg border border-border p-3">
                           {(() => {
                             const reviewKey = `${item.normalized_name}:${item.matched_tag_id || 'new'}`;
                             const isExpanded = expandedReviewItems[reviewKey] ?? false;
@@ -1413,62 +1245,62 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-sm font-semibold text-gray-900">#{item.proposed_name}</span>
+                                      <span className="text-size-subheading font-semibold text-heading">#{item.proposed_name}</span>
                                       {item.matched_tag_name ? (
-                                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700">
+                                        <span className="rounded bg-success/10 px-1.5 py-0.5 text-size-micro text-success">
                                           match: {item.matched_tag_name}
                                         </span>
                                       ) : (
-                                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">new candidate</span>
+                                        <span className="rounded bg-warning-subtle px-1.5 py-0.5 text-size-micro text-warning">new candidate</span>
                                       )}
-                                      <span className="text-[11px] text-gray-500">{item.doc_count} docs</span>
+                                      <span className="text-size-meta text-muted">{item.doc_count} docs</span>
                                     </div>
                                     {item.reasons.length > 0 && (
-                                      <p className="mt-1 text-xs leading-5 text-gray-600">{item.reasons.slice(0, 2).join(' / ')}</p>
+                                      <p className="mt-1 text-size-caption leading-5 text-navigation">{item.reasons.slice(0, 2).join(' / ')}</p>
                                     )}
                                   </div>
                                   <div className="flex shrink-0 flex-wrap gap-1">
                             {item.matched_tag_id ? (
-                              <button
+                              <LibraryButton
                                 type="button"
                                 onClick={() => void handleReviewMatchedItem(item)}
-                                className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
+                                className="rounded-md bg-success px-2 py-1 text-size-meta font-medium text-on-action hover:bg-success"
                               >
                                 Accept
-                              </button>
+                              </LibraryButton>
                             ) : (
                               <>
-                                <button
+                                <LibraryButton
                                   type="button"
                                   onClick={() => void handleCreateReviewTag(item)}
-                                  className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-amber-700"
+                                  className="rounded-md bg-warning px-2 py-1 text-size-meta font-medium text-on-action hover:bg-warning"
                                 >
                                   Create Temp
-                                </button>
-                                <button
+                                </LibraryButton>
+                                <LibraryButton
                                   type="button"
                                   onClick={() => void handleMapReviewItem(item)}
-                                  className="rounded-md border border-gray-300 px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                                  className="rounded-md border border-control-border px-2 py-1 text-size-meta font-medium text-secondary hover:bg-surface-subtle"
                                 >
                                   Map
-                                </button>
+                                </LibraryButton>
                               </>
                             )}
-                            <button
+                            <LibraryButton
                               type="button"
                               onClick={() => void handleRejectReviewItem(item)}
-                              className="rounded-md border border-red-200 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50"
+                              className="rounded-md border border-danger/25 px-2 py-1 text-size-meta font-medium text-danger hover:bg-danger-subtle"
                             >
                               Reject
-                            </button>
+                            </LibraryButton>
                                   </div>
                                 </div>
 
-                                <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                                <div className="mt-3 rounded-lg bg-surface-subtle p-3">
                                   <div className="mb-2 flex items-center justify-between gap-2">
-                                    <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Related Documents</div>
+                                    <div className="text-size-meta font-semibold uppercase tracking-wide text-muted">Related Documents</div>
                                     {item.sample_docs.length > 4 && (
-                                      <button
+                                      <LibraryButton
                                         type="button"
                                         onClick={() =>
                                           setExpandedReviewItems((prev) => ({
@@ -1476,31 +1308,31 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                                             [reviewKey]: !isExpanded,
                                           }))
                                         }
-                                        className="text-[11px] font-medium text-blue-700 hover:text-blue-800"
+                                        className="text-size-meta font-medium text-action-text hover:text-action"
                                       >
                                         {isExpanded ? 'Show less' : `Show more (${item.sample_docs.length - 4})`}
-                                      </button>
+                                      </LibraryButton>
                                     )}
                                   </div>
                                   <div className="space-y-2">
                                     {visibleDocs.map((doc) => (
                                       <div
                                         key={doc.doc_id}
-                                        className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
+                                        className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
                                       >
-                                        <div className="min-w-0 flex-1 text-sm text-gray-800">
+                                        <div className="min-w-0 flex-1 text-size-subheading text-foreground">
                                           <div className="truncate">{doc.title}</div>
                                         </div>
-                                        <button
+                                        <LibraryButton
                                           type="button"
                                           onClick={() => {
                                             selectDocument(doc.doc_id);
                                             setShowBatchDialog(false);
                                           }}
-                                          className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50"
+                                          className="shrink-0 rounded-md border border-control-border px-2 py-1 text-size-meta text-secondary hover:bg-surface-subtle"
                                         >
                                           Open
-                                        </button>
+                                        </LibraryButton>
                                       </div>
                                     ))}
                                   </div>
@@ -1520,40 +1352,40 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       )}
 
       {showTagManager && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
-          <div className="max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/35 p-4">
+          <div className="max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Tag Library</h3>
-                <p className="text-sm text-gray-500">Rename, merge, manage aliases, promote temporary tags, and clean up unused tags.</p>
+                <h3 className="text-size-title font-semibold text-heading">Tag Library</h3>
+                <p className="text-size-subheading text-muted">Rename, merge, manage aliases, promote temporary tags, and clean up unused tags.</p>
               </div>
               <div className="flex gap-2">
-                <button
+                <LibraryButton
                   type="button"
                   onClick={() => {
                     setTagManagerFeedback(null);
                     setShowCleanupUnusedConfirm(true);
                   }}
-                  className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="rounded-md border border-danger/25 px-3 py-1.5 text-size-caption font-medium text-danger hover:bg-danger-subtle"
                 >
                   Cleanup Unused
-                </button>
-                <button
+                </LibraryButton>
+                <LibraryButton
                   type="button"
                   onClick={() => setShowTagManager(false)}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                  className="rounded-md border border-control-border px-3 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
                 >
                   Close
-                </button>
+                </LibraryButton>
               </div>
             </div>
 
             {tagManagerFeedback && (
               <div
-                className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+                className={`mt-4 rounded-lg border px-3 py-2 text-size-subheading ${
                   tagManagerFeedback.tone === 'success'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                    : 'border-red-200 bg-red-50 text-red-700'
+                    ? 'border-success/25 bg-success/10 text-success'
+                    : 'border-danger/25 bg-danger-subtle text-danger'
                 }`}
               >
                 {tagManagerFeedback.message}
@@ -1561,23 +1393,21 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             )}
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <input
+              <Input
                 value={tagManagerSearch}
                 onChange={(event) => setTagManagerSearch(event.target.value)}
                 placeholder="Search tags or aliases..."
-                className="h-9 min-w-[220px] rounded-md border border-gray-300 px-3 text-sm"
+                className="h-9 min-w-[220px] rounded-md border border-control-border px-3 text-size-subheading"
               />
-              <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs text-gray-700">
-                <input
-                  type="checkbox"
+              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-size-caption text-secondary">
+                <Checkbox
                   checked={tagManagerTemporaryOnly}
                   onChange={(event) => setTagManagerTemporaryOnly(event.target.checked)}
                 />
                 Temporary only
               </label>
-              <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-xs text-gray-700">
-                <input
-                  type="checkbox"
+              <label className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-size-caption text-secondary">
+                <Checkbox
                   checked={tagManagerUnusedOnly}
                   onChange={(event) => setTagManagerUnusedOnly(event.target.checked)}
                 />
@@ -1587,45 +1417,45 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
             <div className="mt-4 space-y-3">
               {filteredTagLibrary.length === 0 ? (
-                <div className="text-sm text-gray-500">No tags match current filters.</div>
+                <div className="text-size-subheading text-muted">No tags match current filters.</div>
               ) : (
                 filteredTagLibrary.map((tag) => (
-                  <div key={tag.id} className="rounded-xl border border-gray-200 p-4">
+                  <div key={tag.id} className="rounded-xl border border-border p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">#{tag.name}</span>
+                          <span className="text-size-subheading font-semibold text-heading">#{tag.name}</span>
                           {tag.is_temporary && (
-                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">temporary</span>
+                            <span className="rounded bg-warning-subtle px-1.5 py-0.5 text-size-micro text-warning">temporary</span>
                           )}
-                          <span className="text-[11px] text-gray-500">{tag.usage_count} docs</span>
+                          <span className="text-size-meta text-muted">{tag.usage_count} docs</span>
                           {tag.pending_suggestion_count > 0 && (
-                            <span className="text-[11px] text-gray-500">{tag.pending_suggestion_count} pending</span>
+                            <span className="text-size-meta text-muted">{tag.pending_suggestion_count} pending</span>
                           )}
                         </div>
                         {tag.aliases.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {tag.aliases.map((alias) => (
-                              <span key={alias.id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
+                              <span key={alias.id} className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-1 text-size-meta text-navigation">
                                 {alias.alias}
-                                <button
+                                <LibraryButton
                                   type="button"
                                   onClick={() => void handleRemoveAlias(alias.id)}
-                                  className="text-slate-500 hover:text-red-600"
+                                  className="text-muted hover:text-danger"
                                 >
                                   ×
-                                </button>
+                                </LibraryButton>
                               </span>
                             ))}
                           </div>
                         )}
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-1">
-                        <button type="button" onClick={() => void handleRenameTag(tag)} className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50">Rename</button>
-                        <button type="button" onClick={() => void handleMergeTag(tag)} className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50">Merge</button>
-                        <button type="button" onClick={() => void handleAddAlias(tag)} className="rounded-md border border-gray-300 px-2 py-1 text-[11px] text-gray-700 hover:bg-gray-50">Add Alias</button>
+                        <LibraryButton type="button" onClick={() => void handleRenameTag(tag)} className="rounded-md border border-control-border px-2 py-1 text-size-meta text-secondary hover:bg-surface-subtle">Rename</LibraryButton>
+                        <LibraryButton type="button" onClick={() => void handleMergeTag(tag)} className="rounded-md border border-control-border px-2 py-1 text-size-meta text-secondary hover:bg-surface-subtle">Merge</LibraryButton>
+                        <LibraryButton type="button" onClick={() => void handleAddAlias(tag)} className="rounded-md border border-control-border px-2 py-1 text-size-meta text-secondary hover:bg-surface-subtle">Add Alias</LibraryButton>
                         {tag.is_temporary && (
-                          <button type="button" onClick={() => void handlePromoteTemporary(tag)} className="rounded-md border border-amber-200 px-2 py-1 text-[11px] text-amber-700 hover:bg-amber-50">Promote</button>
+                          <LibraryButton type="button" onClick={() => void handlePromoteTemporary(tag)} className="rounded-md border border-warning/25 px-2 py-1 text-size-meta text-warning hover:bg-warning-subtle">Promote</LibraryButton>
                         )}
                       </div>
                     </div>
@@ -1637,139 +1467,143 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </div>
       )}
 
-      <div className={`h-full flex bg-gray-50 ${isResizingSidebar ? 'select-none' : ''}`}>
+      <div data-testid="library-page" className={`h-full flex bg-surface-subtle ${isResizingSidebar ? 'select-none' : ''}`}>
         <aside
-          className="relative shrink-0 border-r border-gray-200 bg-[#f6f7f9] p-3"
+          data-testid="library-format-filters"
+          className="relative shrink-0 border-r border-border bg-surface px-4 py-5"
           style={{ width: `${sidebarWidth}px` }}
         >
-          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Formats</h2>
+          <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Formats</h2>
           <div className="space-y-1">
             {typeSummaries.map((item) => {
               const active = typeFilter === item.key;
               return (
-                <button
+                <LibraryButton
                   key={item.key}
                   type="button"
                   onClick={() => setTypeFilter(item.key)}
-                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors ${
-                    active ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-200'
+                  data-testid={`format-filter-${item.key}`}
+                  aria-label={`Filter by ${item.label}`}
+                  aria-pressed={active}
+                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-size-subheading transition-colors ${
+                    active ? 'bg-heading text-on-action' : 'text-navigation hover:bg-surface-hover'
                   }`}
                 >
                   <span>{item.label}</span>
-                  <span className={active ? 'text-gray-200' : 'text-gray-500'}>{item.count}</span>
-                </button>
+                  <span className={active ? 'text-surface-subtle' : 'text-muted'}>{item.count}</span>
+                </LibraryButton>
               );
             })}
           </div>
 
-          <div className="mt-4 border-t border-gray-200 pt-3">
-            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">Category</h2>
+          <div className="mt-5 border-t border-border pt-4">
+            <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Category</h2>
             <div className="space-y-1">
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(FAVORITES_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === FAVORITES_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                  categoryFilter === FAVORITES_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 <span>Favorite</span>
-                <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{favoriteCount}</span>
-              </button>
-              <button
+                <span className={categoryFilter === FAVORITES_CATEGORY ? 'text-action' : 'text-muted'}>{favoriteCount}</span>
+              </LibraryButton>
+              <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(RECENTS_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === RECENTS_CATEGORY ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                  categoryFilter === RECENTS_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 <span>Recents</span>
-                <span className={categoryFilter === RECENTS_CATEGORY ? 'text-blue-600' : 'text-gray-500'}>{documents.length}</span>
-              </button>
-              <div className="my-1 h-px bg-gray-200" />
-              <button
+                <span className={categoryFilter === RECENTS_CATEGORY ? 'text-action' : 'text-muted'}>{documents.length}</span>
+              </LibraryButton>
+              <div className="my-1 h-px bg-border" />
+              <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter('all')}
-                className={`w-full rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                  categoryFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                className={`w-full rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                  categoryFilter === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 All
-              </button>
+              </LibraryButton>
               {quickCategories.map((category) => (
-                <button
+                <LibraryButton
                   key={category}
                   type="button"
                   onClick={() => setCategoryFilter(category)}
-                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                    categoryFilter === category ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-200'
+                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                    categoryFilter === category ? 'bg-action-subtle text-action-text' : 'text-secondary hover:bg-surface-hover'
                   }`}
                 >
                   {category}
-                </button>
+                </LibraryButton>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 border-t border-gray-200 pt-3">
+          <div className="mt-4 border-t border-border pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Tags</h2>
-              <span className="text-[10px] text-gray-400">{tagFacets.length}</span>
+              <h2 className="text-size-meta font-semibold uppercase tracking-wide text-muted">Tags</h2>
+              <span className="text-size-micro text-faint">{tagFacets.length}</span>
             </div>
-            <input
+            <Input
               value={tagSearchText}
               onChange={(event) => setTagSearchText(event.target.value)}
               placeholder="Filter tags..."
-              className="mb-2 h-8 w-full rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-700"
+              className="mb-2 h-8 w-full rounded-md border border-control-border bg-surface px-2 text-size-caption text-secondary"
             />
-            <div className="mb-2 flex rounded-md bg-white p-1">
-              <button
+            <div className="mb-2 flex rounded-md bg-surface p-1">
+              <LibraryButton
                 type="button"
                 onClick={() => setTagMatchMode('any')}
-                className={`flex-1 rounded px-2 py-1 text-xs ${tagMatchMode === 'any' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`flex-1 rounded px-2 py-1 text-size-caption ${tagMatchMode === 'any' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
               >
                 Any
-              </button>
-              <button
+              </LibraryButton>
+              <LibraryButton
                 type="button"
                 onClick={() => setTagMatchMode('all')}
-                className={`flex-1 rounded px-2 py-1 text-xs ${tagMatchMode === 'all' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                className={`flex-1 rounded px-2 py-1 text-size-caption ${tagMatchMode === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-subtle'}`}
               >
                 All
-              </button>
+              </LibraryButton>
             </div>
             <div className="max-h-56 space-y-1 overflow-y-auto">
               {filteredTagFacets.length === 0 ? (
-                <div className="rounded-md bg-white px-2.5 py-2 text-xs text-gray-500">No tags</div>
+                <div className="rounded-md bg-surface px-2.5 py-2 text-size-caption text-muted">No tags</div>
               ) : (
                 filteredTagFacets.slice(0, 24).map((facet) => {
                   const active = selectedTagIds.includes(facet.tag_id);
                   return (
-                    <button
+                    <LibraryButton
                       key={facet.tag_id}
                       type="button"
                       onClick={() => toggleSelectedTagId(facet.tag_id)}
-                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-                        active ? 'bg-blue-100 text-blue-700' : 'bg-white text-gray-700 hover:bg-gray-200'
+                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                        active ? 'bg-action-subtle text-action-text' : 'bg-surface text-secondary hover:bg-surface-hover'
                       }`}
                     >
                       <span className="truncate">
                         #{facet.name}
-                        {facet.is_temporary && <span className="ml-1 text-[10px] text-amber-600">temp</span>}
+                        {facet.is_temporary && <span className="ml-1 text-size-micro text-warning">temp</span>}
                       </span>
-                      <span className={active ? 'text-blue-600' : 'text-gray-500'}>{facet.count}</span>
-                    </button>
+                      <span className={active ? 'text-action' : 'text-muted'}>{facet.count}</span>
+                    </LibraryButton>
                   );
                 })
               )}
             </div>
             {selectedTagIds.length > 0 && (
-              <button
+              <LibraryButton
                 type="button"
                 onClick={() => setSelectedTagIds([])}
-                className="mt-2 w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="mt-2 w-full rounded-md border border-control-border px-2.5 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Clear Tag Filter
-              </button>
+              </LibraryButton>
             )}
           </div>
 
@@ -1777,53 +1611,49 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             role="separator"
             aria-label="Resize sidebar"
             className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize transition-colors ${
-              isResizingSidebar ? 'bg-blue-300/70' : 'bg-transparent hover:bg-blue-200/60'
+              isResizingSidebar ? 'bg-action-subtle/70' : 'bg-transparent hover:bg-action-subtle/60'
             }`}
             onPointerDown={(event) => {
               if (event.button !== 0) return;
               event.preventDefault();
-              setIsResizingSidebar(true);
+              beginResize();
             }}
           />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-gray-200 bg-white px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <div className="mr-1 flex shrink-0 items-center gap-2">
-                <img
-                  src="/reader-logo.svg"
-                  alt="Reader Logo"
-                  className="h-7 w-7 rounded-md border border-slate-200 bg-white p-0.5 shadow-sm"
-                />
-                <div className="leading-tight">
-                  <div className="text-sm font-semibold text-gray-900">Reader</div>
-                  <div className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Library</div>
-                </div>
+          <div className="border-b border-border bg-surface/80 px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="mr-2 shrink-0 leading-tight">
+                <div className="font-serif text-size-heading font-medium tracking-tight text-heading">Library</div>
+                <div className="mt-1 text-size-micro font-medium uppercase tracking-[0.14em] text-muted">Your collection</div>
               </div>
 
-              <div className="min-w-0 flex-1">
-                <input
+              <div className="min-w-0 max-w-2xl flex-1">
+                <Input
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search library..."
-                  className="h-8 w-full rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+                  placeholder="Search your collection..."
+                  data-testid="library-search-input"
+                  aria-label="Search your collection"
+                  className="h-9 w-full rounded-xl border border-control-border bg-surface px-3 text-size-control text-foreground placeholder:text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-action/15"
                 />
               </div>
 
               {isAutoClassifying && (
-                <span className="shrink-0 text-[11px] text-gray-500">Indexing...</span>
+                <span className="shrink-0 text-size-meta text-muted">Indexing...</span>
               )}
 
               {isTagDataLoading && (
-                <span className="shrink-0 text-[11px] text-gray-500">Tags syncing...</span>
+                <span className="shrink-0 text-size-meta text-muted">Tags syncing...</span>
               )}
 
               <div ref={displayMenuRef} className="relative shrink-0">
-                <button
+                <LibraryButton
                   type="button"
                   onClick={() => setShowDisplayMenu((prev) => !prev)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  data-testid="display-options-button"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-control-border bg-surface text-secondary hover:bg-surface-subtle"
                   aria-label="Display options"
                   title="Display options"
                 >
@@ -1832,159 +1662,163 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     <circle cx="12" cy="12" r="1.6" />
                     <circle cx="19" cy="12" r="1.6" />
                   </svg>
-                </button>
+                </LibraryButton>
 
                 {showDisplayMenu && (
-                  <div className="absolute right-0 top-9 z-30 w-72 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                  <div className="absolute right-0 top-9 z-30 w-72 rounded-xl border border-border bg-surface p-2 shadow-xl">
                     {([
                       ['grid', 'Grid'],
                       ['list', 'List'],
                       ['compact', 'Compact'],
                     ] as const).map(([value, label]) => (
-                      <button
+                      <LibraryButton
                         key={value}
                         type="button"
                         onClick={() => {
                           setViewMode(value);
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{viewMode === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
-                      </button>
+                        <span className="w-4 text-center text-size-title leading-none">{viewMode === value ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
+                      </LibraryButton>
                     ))}
 
-                    <div className="my-2 h-px bg-gray-200" />
-                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Sort by...</div>
+                    <div className="my-2 h-px bg-surface-hover" />
+                    <div className="px-2 py-1 text-size-meta font-semibold text-faint">Sort by...</div>
                     {([
                       ['recent', 'Recent'],
                       ['title', 'Title'],
                       ['type', 'Type'],
                     ] as const).map(([value, label]) => (
-                      <button
+                      <LibraryButton
                         key={value}
                         type="button"
                         onClick={() => {
                           setSortBy(value);
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{sortBy === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
-                      </button>
+                        <span className="w-4 text-center text-size-title leading-none">{sortBy === value ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
+                      </LibraryButton>
                     ))}
 
-                    <div className="my-2 h-px bg-gray-200" />
-                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Filter by type...</div>
+                    <div className="my-2 h-px bg-surface-hover" />
+                    <div className="px-2 py-1 text-size-meta font-semibold text-faint">Filter by type...</div>
                     {([
                       ['all', 'All'],
                       ['epub', 'EPUB'],
                       ['pdf', 'PDF'],
                       ['markdown', 'Markdown'],
                     ] as const).map(([value, label]) => (
-                      <button
+                      <LibraryButton
                         key={value}
                         type="button"
                         onClick={() => {
                           setTypeFilter(value);
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{typeFilter === value ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">{label}</span>
-                      </button>
+                        <span className="w-4 text-center text-size-title leading-none">{typeFilter === value ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">{label}</span>
+                      </LibraryButton>
                     ))}
 
-                    <div className="my-2 h-px bg-gray-200" />
-                    <div className="px-2 py-1 text-[11px] font-semibold text-gray-400">Category...</div>
+                    <div className="my-2 h-px bg-surface-hover" />
+                    <div className="px-2 py-1 text-size-meta font-semibold text-faint">Category...</div>
                     <div className="max-h-44 overflow-y-auto">
-                      <button
+                      <LibraryButton
                         type="button"
                         onClick={() => {
                           setCategoryFilter(FAVORITES_CATEGORY);
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === FAVORITES_CATEGORY ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">Favorite</span>
-                      </button>
-                      <button
+                        <span className="w-4 text-center text-size-title leading-none">{categoryFilter === FAVORITES_CATEGORY ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">Favorite</span>
+                      </LibraryButton>
+                      <LibraryButton
                         type="button"
                         onClick={() => {
                           setCategoryFilter(RECENTS_CATEGORY);
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === RECENTS_CATEGORY ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">Recents</span>
-                      </button>
-                      <div className="my-1 h-px bg-gray-200" />
-                      <button
+                        <span className="w-4 text-center text-size-title leading-none">{categoryFilter === RECENTS_CATEGORY ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">Recents</span>
+                      </LibraryButton>
+                      <div className="my-1 h-px bg-surface-hover" />
+                      <LibraryButton
                         type="button"
                         onClick={() => {
                           setCategoryFilter('all');
                           setShowDisplayMenu(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
-                        <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === 'all' ? '✓' : ''}</span>
-                        <span className="text-base font-medium leading-6">All</span>
-                      </button>
+                        <span className="w-4 text-center text-size-title leading-none">{categoryFilter === 'all' ? '✓' : ''}</span>
+                        <span className="text-size-body font-medium leading-6">All</span>
+                      </LibraryButton>
                       {regularCategoryOptions.map((category) => (
-                        <button
+                        <LibraryButton
                           key={category}
                           type="button"
                           onClick={() => {
                             setCategoryFilter(category);
                             setShowDisplayMenu(false);
                           }}
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                         >
-                          <span className="w-4 text-center text-[18px] leading-none">{categoryFilter === category ? '✓' : ''}</span>
-                          <span className="truncate text-base font-medium leading-6">{category}</span>
-                        </button>
+                          <span className="w-4 text-center text-size-title leading-none">{categoryFilter === category ? '✓' : ''}</span>
+                          <span className="truncate text-size-body font-medium leading-6">{category}</span>
+                        </LibraryButton>
                       ))}
                     </div>
 
-                    <div className="my-2 h-px bg-gray-200" />
-                    <button
+                    <div className="my-2 h-px bg-surface-hover" />
+                    <LibraryButton
                       type="button"
                       onClick={() => {
                         setGroupByCategory((prev) => !prev);
                         setShowDisplayMenu(false);
                       }}
-                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-gray-800 hover:bg-gray-100"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                     >
-                      <span className="w-4 text-center text-[18px] leading-none">{shouldGroupDisplayedDocuments ? '✓' : ''}</span>
-                      <span className="text-base font-medium leading-6">Group by category</span>
-                    </button>
+                      <span className="w-4 text-center text-size-title leading-none">{shouldGroupDisplayedDocuments ? '✓' : ''}</span>
+                      <span className="text-size-body font-medium leading-6">Group by category</span>
+                    </LibraryButton>
                   </div>
                 )}
               </div>
 
-              <button
+              <LibraryButton
                 onClick={() => setShowBatchDialog(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                data-testid="batch-tags-button"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Batch Tags
-              </button>
+              </LibraryButton>
 
-              <button
+              <LibraryButton
                 onClick={() => setShowTagManager(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                data-testid="tag-library-button"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
               >
                 Tag Library
-              </button>
+              </LibraryButton>
 
-              <button
+              <LibraryButton
                 onClick={handleUnifiedImport}
                 disabled={isImportingFile || isImportingUrl}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-gray-400"
+                data-testid="library-import-button"
+                aria-label="Import document"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1999,24 +1833,24 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
                 </svg>
                 {isImportingFile || isImportingUrl ? 'Importing...' : 'Import'}
-              </button>
+              </LibraryButton>
           </div>
         </div>
 
       {/* Documents Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div data-testid="library-document-list" className="flex-1 overflow-y-auto p-6">
         {documents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex flex-col items-center justify-center h-full text-muted">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <p className="text-lg">No documents yet</p>
-            <p className="text-sm mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
+            <p className="text-size-title">No documents yet</p>
+            <p className="text-size-subheading mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
           </div>
         ) : displayedDocuments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <p className="text-base">No documents match current filters</p>
-            <p className="text-sm mt-2">Try clearing search text, tag filters, or switching type/category filters</p>
+          <div className="flex flex-col items-center justify-center h-full text-muted">
+            <p className="text-size-body">No documents match current filters</p>
+            <p className="text-size-subheading mt-2">Try clearing search text, tag filters, or switching type/category filters</p>
           </div>
         ) : shouldGroupDisplayedDocuments ? (
           <div className="space-y-6">
@@ -2030,14 +1864,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               return (
               <section key={category}>
                 <div className="mb-2 flex items-center justify-between">
-                  <button
+                  <LibraryButton
                     onClick={() => toggleCategoryCollapsed(category)}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-gray-900"
+                    className="inline-flex items-center gap-2 text-size-subheading font-semibold text-foreground hover:text-heading"
                   >
-                    <span className={`text-xs transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
+                    <span className={`text-size-caption transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
                     <span>{category}</span>
-                  </button>
-                  <span className="text-xs text-gray-500">{items.length} docs</span>
+                  </LibraryButton>
+                  <span className="text-size-caption text-muted">{items.length} docs</span>
                 </div>
                 {!isCollapsed && (viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -2074,12 +1908,12 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 ))}
                 {!isCollapsed && hasMoreItems && (
                   <div className="mt-2 flex justify-center">
-                    <button
+                    <LibraryButton
                       onClick={() => toggleCategoryExpandedItems(category)}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-size-caption text-action hover:text-action underline"
                     >
                       {showAllItems ? 'Show less' : `Show more (${items.length - DEFAULT_CATEGORY_VISIBLE_COUNT})`}
-                    </button>
+                    </LibraryButton>
                   </div>
                 )}
               </section>
@@ -2121,7 +1955,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         )}
       </div>
       {statusBar && (
-        <div className="h-7 border-t border-gray-200 bg-white px-3 text-[11px] text-gray-600 flex items-center overflow-x-auto whitespace-nowrap">
+        <div className="h-7 border-t border-border bg-surface px-3 text-size-meta text-navigation flex items-center overflow-x-auto whitespace-nowrap">
           {statusBar}
         </div>
       )}

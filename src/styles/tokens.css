@@ -1,0 +1,76 @@
+/* Application UI tokens; reading themes remain independent. RGB channels support opacity modifiers. */
+:root {
+  /* Warm, editorial neutrals keep the reading surface quiet. */
+  --color-surface: 250 249 247;
+  --color-surface-subtle: 244 242 238;
+  --color-surface-hover: 235 232 226;
+  --color-foreground: 41 39 36;
+  --color-heading: 28 27 25;
+  --color-muted: 120 113 108;
+  --color-secondary: 68 64 60;
+  --color-navigation: 87 82 77;
+  --color-faint: 168 162 155;
+  --color-border: 226 222 215;
+  --color-control-border: 207 201 193;
+  /* Anthropic-inspired terracotta used only for actions and focus. */
+  --color-action: 201 98 69;
+  --color-action-text: 166 72 48;
+  --color-action-subtle: 249 230 221;
+  --color-focus: 201 98 69;
+  --color-focus-border: 224 139 116;
+  --color-success: 57 112 87;
+  --color-success-indicator: 82 145 111;
+  --color-warning: 153 98 35;
+  --color-warning-subtle: 250 239 218;
+  --color-danger: 174 76 70;
+  --color-danger-subtle: 251 229 227;
+  --color-on-action: 255 255 255;
+  --font-size-caption: 12px;
+  --font-size-control: 13px;
+  --font-size-label: 15px;
+  --font-size-body: 16px;
+  --font-size-micro: 10px;
+  --font-size-meta: 11px;
+  --font-size-title: 18px;
+  --font-size-subheading: 14px;
+  --font-size-brand: 19px;
+  --font-size-heading: 20px;
+  --font-size-display: 21px;
+  --font-size-hero-sm: 24px;
+  --font-size-hero: 29px;
+  --font-size-reading-sm: 0.9em;
+  --font-size-reading-md: 0.92em;
+  --settings-control-width: 280px;
+  --radius-panel: 22px;
+  --shadow-panel: 0 24px 70px rgb(37 31 26 / 18%);
+  --shadow-floating: 0 14px 36px rgb(28 27 25 / 16%);
+}
+
+/* The application shell follows the selected app theme; reader palettes stay independent. */
+[data-app-theme='dark'] {
+  --color-surface: 28 28 31;
+  --color-surface-subtle: 20 20 23;
+  --color-surface-hover: 43 43 48;
+  --color-foreground: 229 229 234;
+  --color-heading: 250 250 249;
+  --color-muted: 161 161 170;
+  --color-secondary: 212 212 216;
+  --color-navigation: 179 179 188;
+  --color-faint: 113 113 122;
+  --color-border: 63 63 70;
+  --color-control-border: 82 82 91;
+  --color-action: 221 112 82;
+  --color-action-text: 247 161 132;
+  --color-action-subtle: 74 41 33;
+  --color-focus: 221 112 82;
+  --color-focus-border: 241 145 120;
+  --color-success: 105 190 145;
+  --color-success-indicator: 105 190 145;
+  --color-warning: 230 177 82;
+  --color-warning-subtle: 73 54 25;
+  --color-danger: 241 132 124;
+  --color-danger-subtle: 77 38 37;
+  --color-on-action: 255 255 255;
+  --shadow-panel: 0 24px 70px rgb(0 0 0 / 40%);
+  --shadow-floating: 0 14px 36px rgb(0 0 0 / 34%);
+}

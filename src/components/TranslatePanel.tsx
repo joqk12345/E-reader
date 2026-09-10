@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
+import { Checkbox } from './ui/Checkbox';
+import { Button } from './ui/Button';
+import { Textarea } from './ui/Textarea';
 import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { parseThinkingBlocks } from '../utils/thinking';
 
@@ -105,57 +108,62 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Options */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center gap-4 mb-3">
-          <span className="text-sm font-medium text-gray-700">Target Language:</span>
+          <span className="text-size-subheading font-medium text-secondary">Target Language:</span>
           <div className="flex gap-2">
             {(['en', 'zh'] as TargetLang[]).map((lang) => (
-              <button
+              <Button
+                variant={targetLang === lang ? 'primary' : 'secondary'}
+                size="sm"
                 key={lang}
                 onClick={() => setTargetLang(lang)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`rounded-lg text-size-control ${
                   targetLang === lang
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? ''
+                    : 'bg-surface-subtle hover:bg-surface-hover'
                 }`}
               >
                 {getLanguageName(lang)}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2 text-size-subheading text-secondary">
+            <Checkbox
               checked={autoDetect}
               onChange={(e) => setAutoDetect(e.target.checked)}
               className="h-4 w-4"
             />
             Auto-detect target language
           </label>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={useCurrentParagraph}
             disabled={!currentParagraph}
-            className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 transition-colors"
+            className="rounded-lg bg-surface-subtle text-size-control hover:bg-surface-hover"
           >
             Use Current Paragraph
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleTranslate}
             disabled={isTranslating || (!text.trim() && !currentParagraph)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+            className="rounded-lg px-4 text-size-control"
           >
             {isTranslating ? 'Translating...' : 'Translate'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="p-4 bg-red-50 border-b border-red-200">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="p-4 bg-danger-subtle border-b border-danger/25">
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
@@ -164,31 +172,31 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
         <div className="space-y-4">
           {/* Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-size-subheading font-medium text-secondary mb-2">
               Original Text
             </label>
-            <textarea
+            <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Enter text to translate or click 'Use Current Paragraph'"
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full resize-none rounded-lg p-3"
               rows={8}
             />
           </div>
 
           {/* Output */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-size-subheading font-medium text-secondary mb-2">
               Translation
             </label>
             {translation ? (
-              <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg min-h-[200px]">
+              <div className="w-full p-3 bg-action-subtle border border-action-subtle rounded-lg min-h-[200px]">
                 {parsedTranslation.visibleText ? (
-                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
                     {parsedTranslation.visibleText}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-400 italic">No translation available</p>
+                  <p className="text-size-subheading text-faint italic">No translation available</p>
                 )}
                 <ThinkingDisclosure
                   thinkingBlocks={parsedTranslation.thinkingBlocks}
@@ -197,8 +205,8 @@ export const TranslatePanel: React.FC<TranslatePanelProps> = ({ request }) => {
                 />
               </div>
             ) : (
-              <div className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg min-h-[200px] flex items-center justify-center text-gray-400">
-                <p className="text-sm">Translation will appear here</p>
+              <div className="w-full p-3 bg-surface-subtle border border-border rounded-lg min-h-[200px] flex items-center justify-center text-faint">
+                <p className="text-size-subheading">Translation will appear here</p>
               </div>
             )}
           </div>

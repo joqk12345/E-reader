@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Range } from './ui/Range';
+import { Select } from './ui/Select';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 import { detectLang, splitIntoSentences, toSpeakableText, type TargetLang } from '../utils/sentences';
@@ -420,38 +423,38 @@ export const AudiobookPanel: React.FC = () => {
     <div className="flex flex-col h-full p-4 overflow-y-auto">
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-          <select
+          <label className="block text-size-subheading font-medium text-secondary mb-1">Provider</label>
+          <Select
             value={ttsProvider}
             onChange={(e) => setTtsProvider(e.target.value as TtsProvider)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="auto">Auto</option>
             <option value="edge">Edge TTS</option>
             <option value="cosyvoice">CosyVoice</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Read Target</label>
-          <select
+          <label className="block text-size-subheading font-medium text-secondary mb-1">Read Target</label>
+          <Select
             value={readTarget}
             onChange={(e) => setReadTarget(e.target.value as ReadTarget)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="source">Source Text</option>
             <option value="translation">Translation Text</option>
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-size-subheading font-medium text-secondary mb-1">
             Voice ({activeVoiceLang === 'zh' ? '中文' : 'English'})
           </label>
-          <select
+          <Select
             value={voice}
             onChange={(e) => setVoice(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-control-border rounded-md"
           >
             <option value="">Auto</option>
             {voiceOptions.map((item) => (
@@ -459,12 +462,12 @@ export const AudiobookPanel: React.FC = () => {
                 {item.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Rate: {rate.toFixed(1)}x</label>
-          <input
+          <label className="block text-size-subheading font-medium text-secondary mb-1">Rate: {rate.toFixed(1)}x</label>
+          <Range
             type="range"
             min={0.8}
             max={1.5}
@@ -477,34 +480,34 @@ export const AudiobookPanel: React.FC = () => {
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button
+        <PanelButton
           onClick={() => void startPlayback()}
           disabled={isPlaying || sentences.length === 0}
-          className="px-3 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          className="px-3 py-2 text-size-subheading text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
         >
           Play
-        </button>
-        <button
+        </PanelButton>
+        <PanelButton
           onClick={() => void togglePause()}
           disabled={!isPlaying}
-          className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+          className="px-3 py-2 text-size-subheading text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           {isPaused ? 'Resume' : 'Pause'}
-        </button>
-        <button
+        </PanelButton>
+        <PanelButton
           onClick={() => stopPlayback()}
           disabled={!isPlaying}
-          className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+          className="px-3 py-2 text-size-subheading text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint"
         >
           Stop
-        </button>
+        </PanelButton>
       </div>
 
-      <div className="mt-4 space-y-2 text-xs text-gray-600">
+      <div className="mt-4 space-y-2 text-size-caption text-navigation">
         <p>Sentence queue: {sentences.length}</p>
         {currentProvider && <p>Provider in use: {currentProvider}</p>}
         {currentSentence && <p className="line-clamp-3">Now reading: {currentSentence}</p>}
-        {error && <p className="text-red-600">{error}</p>}
+        {error && <p className="text-danger">{error}</p>}
       </div>
     </div>
   );

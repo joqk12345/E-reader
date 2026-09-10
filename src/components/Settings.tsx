@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { open as openExternal } from '@tauri-apps/plugin-shell';
@@ -9,10 +9,11 @@ import {
   parseShortcutListInput,
   type Keymap,
 } from '../utils/shortcuts';
-import {  READER_THEMES,
-  VIEW_SETTINGS_KEY,
+import {  LEGACY_READER_BACKGROUND,
+  READER_THEMES,
   clamp,
   loadReaderViewSettings,
+  persistReaderViewSettings,
   type ReaderThemeId,
   type ReaderViewSettings,
 } from './readerTheme';
@@ -28,6 +29,12 @@ import {
   compactControlClass,
 } from './settings/SettingsUI';
 import { AiProfilesPanel } from './settings/AiProfilesPanel';
+import type { SettingsSection } from './settings/settingsTypes';
+import { useAppTheme } from '../features/app/useAppTheme';
+import type { AppThemePreference } from './appTheme';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import { Button } from './ui/Button';
 import {
   checkForUpdates,
   clearDismissedUpdateVersion,
@@ -45,8 +52,6 @@ import {
 
 type AiProvider = 'lmstudio' | 'openai';
 type EmbeddingProvider = 'local_transformers' | 'lmstudio' | 'openai_compatible' | 'ollama';
-type SettingsSection = 'reading' | 'editor' | 'translation' | 'ai' | 'audio' | 'shortcuts' | 'integrations' | 'about';
-
 interface Config {
   provider: AiProvider;
   lm_studio_url: string;
@@ -201,7 +206,11 @@ function SidebarIcon({ type }: { type: SettingsSection }) {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'reading' }) => {
+  const { preference: appTheme, setPreference: setAppTheme } = useAppTheme();
   const loadAppConfig = useStore((state) => state.loadConfig);
+  const setReaderBackgroundColor = useStore((state) => state.setReaderBackgroundColor);
+  const setReaderFontSize = useStore((state) => state.setReaderFontSize);
+  const settingsShellRef = useRef<HTMLDivElement | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [config, setConfig] = useState<Config>({
     provider: 'lmstudio',
@@ -224,7 +233,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     cosyvoice_base_url: '',
     cosyvoice_api_key: '',
     translation_mode: 'off',
-    reader_background_color: '#F4F8EE',
+    reader_background_color: LEGACY_READER_BACKGROUND,
     reader_font_size: 18,
     keymap: normalizeKeymap(undefined),
   });
@@ -287,12 +296,48 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   }, [onClose]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(readerViewSettings));
-      window.dispatchEvent(new CustomEvent('reader:view-settings-updated'));
-    } catch (error) {
-      console.warn('Failed to persist reader view settings:', error);
-    }
+    const panel = settingsShellRef.current;
+    if (!panel) return;
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+    const getFocusableElements = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+
+    requestAnimationFrame(() => {
+      getFocusableElements()[0]?.focus();
+    });
+
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const focusable = getFocusableElements();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onTab);
+    return () => {
+      document.removeEventListener('keydown', onTab);
+      previousActiveElement?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    persistReaderViewSettings(readerViewSettings);
   }, [readerViewSettings]);
 
   useEffect(() => {
@@ -508,6 +553,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
     };
 
     try {
+      persistReaderViewSettings(readerViewSettings);
+      setReaderBackgroundColor(nextConfig.reader_background_color);
+      setReaderFontSize(readerViewSettings.fontSize);
       await invoke('update_config', { config: nextConfig });
       await loadAppConfig();
       setConfig(nextConfig);
@@ -553,24 +601,54 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35">
-        <div className="rounded-2xl bg-white p-8 shadow-xl">
-          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm">
+        <div className="rounded-panel bg-surface p-8 shadow-panel">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-action" />
         </div>
       </div>
     );
   }
 
-  const navItems: Array<{ id: SettingsSection; label: string }> = [
-    { id: 'reading', label: 'Appearance' },
-    { id: 'editor', label: 'Editor' },
-    { id: 'translation', label: 'Bilingual Translation' },
-    { id: 'ai', label: 'AI & Embedding' },
-    { id: 'audio', label: 'Audio' },
-    { id: 'shortcuts', label: 'Shortcuts' },
-    { id: 'integrations', label: 'Integrations' },
-    { id: 'about', label: 'About' },
+  const navGroups: Array<{ label: string; items: Array<{ id: SettingsSection; label: string }> }> = [
+    {
+      label: 'Reading',
+      items: [
+        { id: 'reading', label: 'Appearance' },
+        { id: 'editor', label: 'Typography' },
+        { id: 'translation', label: 'Translation' },
+      ],
+    },
+    {
+      label: 'Assistive tools',
+      items: [
+        { id: 'ai', label: 'AI & Embedding' },
+        { id: 'audio', label: 'Audio' },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        { id: 'shortcuts', label: 'Shortcuts' },
+        { id: 'integrations', label: 'Integrations' },
+      ],
+    },
+    {
+      label: 'Reader',
+      items: [{ id: 'about', label: 'About' }],
+    },
   ];
+
+  const sectionDetails: Record<SettingsSection, { eyebrow: string; title: string; description: string }> = {
+    reading: { eyebrow: 'Reading', title: 'Appearance', description: 'Set the atmosphere for every reading session.' },
+    editor: { eyebrow: 'Reading', title: 'Typography', description: 'Tune the page so long passages remain comfortable.' },
+    translation: { eyebrow: 'Reading', title: 'Translation', description: 'Choose how source text and translations meet.' },
+    ai: { eyebrow: 'Assistive tools', title: 'AI & Embedding', description: 'Connect the models that help you understand what you read.' },
+    audio: { eyebrow: 'Assistive tools', title: 'Audio', description: 'Configure narration and playback services.' },
+    shortcuts: { eyebrow: 'Workspace', title: 'Shortcuts', description: 'Make frequent reading actions feel effortless.' },
+    integrations: { eyebrow: 'Workspace', title: 'Integrations', description: 'Connect Reader to the tools around your library.' },
+    about: { eyebrow: 'Reader', title: 'About', description: 'Version, updates, and project information.' },
+  };
+  const activeSectionDetails = sectionDetails[activeSection];
 
   const edgeDisabled = config.tts_provider === 'cosyvoice';
   const cosyDisabled = config.tts_provider === 'edge';
@@ -632,68 +710,115 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
   const updateTargetUrl = updateResult?.downloadUrl || updateResult?.releaseUrl || APP_RELEASES_URL;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-[1px]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="mx-4 flex h-[77vh] w-full max-w-[826px] overflow-hidden rounded-3xl border border-slate-200 bg-[#f6f7f9] shadow-[0_24px_60px_rgba(15,23,42,0.28)]"
+        ref={settingsShellRef}
+        data-settings-shell
+        data-testid="settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-settings-title"
+        tabIndex={-1}
+        className="flex h-[78vh] w-full max-w-[900px] overflow-hidden rounded-panel border border-border bg-surface-subtle shadow-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <aside className="w-[168px] shrink-0 border-r border-slate-200 bg-[#eef0f3] px-2 py-3">
-          <div className="px-2 pb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Settings</div>
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const active = activeSection === item.id;
-              return (
-                <SidebarNavItem
-                  key={item.id}
-                  active={active}
-                  label={item.label}
-                  icon={<SidebarIcon type={item.id} />}
-                  onClick={() => setActiveSection(item.id)}
-                />
-              );
-            })}
+        <aside className="flex w-[208px] shrink-0 flex-col border-r border-border bg-surface px-3 py-4">
+          <div className="mb-6 px-2">
+            <div className="font-serif text-size-brand font-medium tracking-tight text-heading">Reader</div>
+            <div className="mt-1 text-size-meta leading-4 text-muted">A quiet place for difficult books.</div>
+          </div>
+          <nav className="space-y-5">
+            {navGroups.map((group) => (
+              <div key={group.label}>
+                <div className="mb-1 px-2 text-size-micro font-semibold uppercase tracking-[0.14em] text-faint">{group.label}</div>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = activeSection === item.id;
+                    return (
+                      <SidebarNavItem
+                        key={item.id}
+                        active={active}
+                        label={item.label}
+                        icon={<SidebarIcon type={item.id} />}
+                        onClick={() => setActiveSection(item.id)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
+          <div className="mt-auto border-t border-border px-2 pt-4 text-size-meta leading-4 text-muted">
+            App theme applies immediately. Reading preferences are saved with <span className="font-medium text-secondary">Save settings</span>.
+          </div>
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-slate-200 bg-white/80 px-6 py-3">
-            <h1 className="text-center text-[20px] font-semibold tracking-tight text-slate-900">Settings</h1>
+          <header className="flex items-center justify-between border-b border-border bg-surface/90 px-8 py-4">
+            <div className="flex items-center gap-2">
+              <h1 id="reader-settings-title" className="font-serif text-size-display font-medium tracking-tight text-heading">Settings</h1>
+              <span className="rounded-md border border-border bg-surface-subtle px-1.5 py-0.5 text-size-micro font-medium text-muted">⌘ ,</span>
+            </div>
+            <Button
+              type="button"
+              onClick={onClose}
+              data-testid="settings-close-button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-size-title text-muted transition hover:bg-surface-hover hover:text-heading"
+              aria-label="Close settings"
+            >
+              ×
+            </Button>
           </header>
 
-          <main className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            <h2 className="mb-3 text-[22px] font-bold tracking-tight text-slate-900">
-              {activeSection === 'reading' && 'Appearance'}
-              {activeSection === 'editor' && 'Typography'}
-              {activeSection === 'translation' && 'Bilingual Translation'}
-              {activeSection === 'ai' && 'AI & Embedding'}
-              {activeSection === 'audio' && 'Audio'}
-              {activeSection === 'shortcuts' && 'Shortcuts'}
-              {activeSection === 'integrations' && 'Integrations'}
-              {activeSection === 'about' && 'About'}
-            </h2>
+          <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+            <div className="mb-6">
+              <div className="mb-2 text-size-micro font-semibold uppercase tracking-[0.16em] text-action">{activeSectionDetails.eyebrow}</div>
+              <h2 className="font-serif text-size-hero font-medium leading-tight tracking-tight text-heading">{activeSectionDetails.title}</h2>
+              <p className="mt-2 max-w-xl text-size-control leading-5 text-muted">{activeSectionDetails.description}</p>
+            </div>
 
             {message && (
-              <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+              <div className={`mb-4 rounded-xl border px-4 py-3 text-size-subheading ${message.type === 'success' ? 'border-success/25 bg-success/10 text-success' : 'border-danger/25 bg-danger-subtle text-danger'}`}>
                 {message.text}
               </div>
             )}
 
             {activeSection === 'reading' && (
-              <SettingsCard>
+              <>
+                <SettingsCard>
+                <SettingRow
+                  title="App theme"
+                  description="Set the appearance of the Reader workspace"
+                  right={
+                    <Select
+                      aria-label="App theme"
+                      className={`${compactControlClass} w-[200px]`}
+                      value={appTheme}
+                      onChange={(event) => setAppTheme(event.target.value as AppThemePreference)}
+                    >
+                      <option value="system">System</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </Select>
+                  }
+                />
+                <SettingsDivider />
                 <SettingRow
                   title="Theme"
                   description="Choose your reading canvas"
                   right={
                     <div className="flex items-center gap-3">
                       {themeOrder.map((id) => (
-                        <button
+                        <Button
                           key={id}
                           type="button"
                           onClick={() => setReaderViewSettings((prev) => ({ ...prev, theme: id }))}
+                          aria-label={`Use ${id} reading theme`}
+                          aria-pressed={readerViewSettings.theme === id}
                           className="h-7 w-7 rounded-full border-2"
                           style={{
                             backgroundColor: READER_THEMES[id].background,
-                            borderColor: readerViewSettings.theme === id ? '#2563eb' : 'transparent',
+                            borderColor: readerViewSettings.theme === id ? 'rgb(var(--color-action))' : 'transparent',
                           }}
                         />
                       ))}
@@ -705,7 +830,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="Column Layout"
                   description="Switch between single-column and two-column reading"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[200px]`}
                       value={readerViewSettings.layoutMode}
                       onChange={(e) =>
@@ -717,14 +842,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     >
                       <option value="single">Single Column</option>
                       <option value="double">Two Columns</option>
-                    </select>
+                    </Select>
                   }
                 />
                 <SettingRow
                   title="Bilingual View"
                   description="Default display mode for source/translation in reader toolbar"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[240px]`}
                       value={readerViewSettings.bilingualViewMode}
                       onChange={(e) =>
@@ -737,10 +862,38 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <option value="both">Source + Translation</option>
                       <option value="source">Source Only</option>
                       <option value="translation">Translation Only</option>
-                    </select>
+                    </Select>
                   }
                 />
-              </SettingsCard>
+                </SettingsCard>
+                <div
+                className="mt-4 overflow-hidden rounded-2xl border p-5 transition-colors"
+                style={{
+                  backgroundColor: READER_THEMES[readerViewSettings.theme].background,
+                  borderColor: READER_THEMES[readerViewSettings.theme].border,
+                  color: READER_THEMES[readerViewSettings.theme].foreground,
+                }}
+                aria-live="polite"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-size-micro font-semibold uppercase tracking-[0.14em] opacity-70">Live preview</span>
+                  <span className="text-size-caption opacity-70">{readerViewSettings.theme}</span>
+                </div>
+                <p className="mt-4 font-serif text-size-hero-sm leading-tight">A quiet page for difficult books.</p>
+                <p className="mt-2 max-w-xl text-size-control leading-6 opacity-80">
+                  Theme changes are previewed here immediately and applied to the reader when you save.
+                </p>
+                <div
+                  className="mt-4 rounded-xl border px-4 py-3 text-size-control"
+                  style={{
+                    backgroundColor: READER_THEMES[readerViewSettings.theme].secondary,
+                    borderColor: READER_THEMES[readerViewSettings.theme].border,
+                  }}
+                >
+                  Reading surface · Aa 123
+                </div>
+                </div>
+              </>
             )}
 
             {activeSection === 'editor' && (
@@ -750,9 +903,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Main reading text size"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', -1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('fontSize', 1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.fontSize}px</span>
+                      <Button type="button" aria-label="Decrease font size" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', -1)}>−</Button>
+                      <Button type="button" aria-label="Increase font size" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('fontSize', 1)}>+</Button>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.fontSize}px</span>
                     </>
                   }
                 />
@@ -761,9 +914,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Vertical rhythm and readability"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.lineHeight.toFixed(1)}</span>
+                      <Button type="button" aria-label="Decrease line height" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', -0.1)}>−</Button>
+                      <Button type="button" aria-label="Increase line height" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('lineHeight', 0.1)}>+</Button>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.lineHeight.toFixed(1)}</span>
                     </>
                   }
                 />
@@ -772,9 +925,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Set line length for focus"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.contentWidth}em</span>
+                      <Button type="button" aria-label="Decrease content width" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', -2)}>−</Button>
+                      <Button type="button" aria-label="Increase content width" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('contentWidth', 2)}>+</Button>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.contentWidth}em</span>
                     </>
                   }
                 />
@@ -783,21 +936,21 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Spacing between CJK characters"
                   right={
                     <>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</button>
-                      <button type="button" className="h-8 w-8 rounded-lg border border-slate-300 bg-white text-base" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</button>
-                      <span className="w-14 text-right text-[13px] text-slate-700">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
+                      <Button type="button" aria-label="Decrease CJK letter spacing" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', -0.01)}>−</Button>
+                      <Button type="button" aria-label="Increase CJK letter spacing" className="h-8 w-8 rounded-lg border border-control-border bg-surface text-size-body text-secondary transition hover:bg-surface-hover" onClick={() => adjustReaderSetting('cjkLetterSpacing', 0.01)}>+</Button>
+                      <span className="w-14 text-right text-size-control text-secondary">{readerViewSettings.cjkLetterSpacing.toFixed(2)}em</span>
                     </>
                   }
                 />
                 <SettingRow
                   title="CJK Spacing Toggle"
                   description="Enable/disable CJK spacing effect"
-                  right={<ToggleSwitch checked={readerViewSettings.cjkLetterSpacingEnabled} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, cjkLetterSpacingEnabled: next }))} />}
+                  right={<ToggleSwitch label="Enable CJK letter spacing" checked={readerViewSettings.cjkLetterSpacingEnabled} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, cjkLetterSpacingEnabled: next }))} />}
                 />
                 <SettingRow
                   title="Expand Details"
                   description="Automatically expand all details blocks"
-                  right={<ToggleSwitch checked={readerViewSettings.expandDetails} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, expandDetails: next }))} />}
+                  right={<ToggleSwitch label="Expand details automatically" checked={readerViewSettings.expandDetails} onChange={(next) => setReaderViewSettings((prev) => ({ ...prev, expandDetails: next }))} />}
                 />
               </SettingsCard>
             )}
@@ -809,6 +962,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   description="Turn on inline bilingual translation features"
                   right={
                     <ToggleSwitch
+                      label="Enable bilingual translation"
                       checked={config.translation_mode !== 'off'}
                       onChange={(next) =>
                         setConfig((prev) => ({
@@ -828,7 +982,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="Translation Direction"
                   description="Set default translation direction"
                   right={
-                    <select
+                    <Select
                       className={`${compactControlClass} w-[260px]`}
                       value={config.translation_mode === 'off' ? 'en-zh' : config.translation_mode}
                       disabled={config.translation_mode === 'off'}
@@ -841,7 +995,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     >
                       <option value="en-zh">English → Chinese</option>
                       <option value="zh-en">Chinese → English</option>
-                    </select>
+                    </Select>
                   }
                   disabled={config.translation_mode === 'off'}
                 />
@@ -858,36 +1012,36 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   title="TTS Provider"
                   description="Select speech engine"
                   right={
-                    <select className={`${compactControlClass} w-[260px]`} value={config.tts_provider} onChange={(e) => setConfig((prev) => ({ ...prev, tts_provider: e.target.value as 'auto' | 'edge' | 'cosyvoice' }))}>
+                    <Select className={`${compactControlClass} w-[260px]`} value={config.tts_provider} onChange={(e) => setConfig((prev) => ({ ...prev, tts_provider: e.target.value as 'auto' | 'edge' | 'cosyvoice' }))}>
                       <option value="auto">Auto</option>
                       <option value="edge">Edge TTS</option>
                       <option value="cosyvoice">CosyVoice</option>
-                    </select>
+                    </Select>
                   }
                 />
                 <SettingsDivider />
                 <SettingRow
                   title="Edge Voice"
                   description="Voice preset for Edge TTS"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_voice || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_voice: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_voice || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_voice: e.target.value }))} />}
                   disabled={edgeDisabled}
                 />
                 <SettingRow
                   title="Edge Proxy"
                   description="Optional network proxy"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_proxy || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_proxy: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={edgeDisabled} value={config.edge_tts_proxy || ''} onChange={(e) => setConfig((prev) => ({ ...prev, edge_tts_proxy: e.target.value }))} />}
                   disabled={edgeDisabled}
                 />
                 <SettingRow
                   title="CosyVoice URL"
                   description="Endpoint for CosyVoice service"
-                  right={<input className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_base_url: e.target.value }))} />}
+                  right={<Input className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_base_url || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_base_url: e.target.value }))} />}
                   disabled={cosyDisabled}
                 />
                 <SettingRow
                   title="CosyVoice API Key"
                   description="Optional auth token"
-                  right={<input type="password" className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_api_key: e.target.value }))} />}
+                  right={<Input type="password" className={`${compactControlClass} w-[260px]`} disabled={cosyDisabled} value={config.cosyvoice_api_key || ''} onChange={(e) => setConfig((prev) => ({ ...prev, cosyvoice_api_key: e.target.value }))} />}
                   disabled={cosyDisabled}
                 />
               </SettingsCard>
@@ -895,19 +1049,19 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
 
             {activeSection === 'shortcuts' && (
               <SettingsCard>
-                <SettingRow title="Next Page" description="Move to next section" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.next_page} onChange={handleShortcutChange('next_page')} />} />
-                <SettingRow title="Previous Page" description="Move to previous section" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.prev_page} onChange={handleShortcutChange('prev_page')} />} />
-                <SettingRow title="Open Settings" description="Quickly open this panel" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_settings} onChange={handleShortcutChange('open_settings')} />} />
-                <SettingRow title="Toggle Maximize Window" description="Maximize or restore app window" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_window_maximize} onChange={handleShortcutChange('toggle_window_maximize')} />} />
-                <SettingRow title="Toggle Header Toolbar" description="Show or hide reader header tools" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_header_tools} onChange={handleShortcutChange('toggle_header_tools')} />} />
-                <SettingRow title="Increase Font Size" description="Increase reader font size" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_increase} onChange={handleShortcutChange('font_increase')} />} />
-                <SettingRow title="Decrease Font Size" description="Decrease reader font size" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_decrease} onChange={handleShortcutChange('font_decrease')} />} />
-                <SettingRow title="Reset Font Size" description="Reset reader font size to default" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_reset} onChange={handleShortcutChange('font_reset')} />} />
-                <SettingRow title="Open Search" description="Focus search tool" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_search} onChange={handleShortcutChange('open_search')} />} />
-                <SettingRow title="Audio Play" description="Start playback" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_play} onChange={handleShortcutChange('audio_play')} />} />
-                <SettingRow title="Audio Pause/Resume" description="Toggle pause" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_toggle_pause} onChange={handleShortcutChange('audio_toggle_pause')} />} />
-                <SettingRow title="Audio Stop" description="Stop playback" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_stop} onChange={handleShortcutChange('audio_stop')} />} />
-                <SettingRow title="Toggle Reading Mode" description="Enter/exit minimal reader mode" right={<input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_reading_mode} onChange={handleShortcutChange('toggle_reading_mode')} />} />
+                <SettingRow title="Next Page" description="Move to next section" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.next_page} onChange={handleShortcutChange('next_page')} />} />
+                <SettingRow title="Previous Page" description="Move to previous section" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.prev_page} onChange={handleShortcutChange('prev_page')} />} />
+                <SettingRow title="Open Settings" description="Quickly open this panel" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_settings} onChange={handleShortcutChange('open_settings')} />} />
+                <SettingRow title="Toggle Maximize Window" description="Maximize or restore app window" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_window_maximize} onChange={handleShortcutChange('toggle_window_maximize')} />} />
+                <SettingRow title="Toggle Header Toolbar" description="Show or hide reader header tools" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_header_tools} onChange={handleShortcutChange('toggle_header_tools')} />} />
+                <SettingRow title="Increase Font Size" description="Increase reader font size" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_increase} onChange={handleShortcutChange('font_increase')} />} />
+                <SettingRow title="Decrease Font Size" description="Decrease reader font size" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_decrease} onChange={handleShortcutChange('font_decrease')} />} />
+                <SettingRow title="Reset Font Size" description="Reset reader font size to default" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.font_reset} onChange={handleShortcutChange('font_reset')} />} />
+                <SettingRow title="Open Search" description="Focus search tool" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.open_search} onChange={handleShortcutChange('open_search')} />} />
+                <SettingRow title="Audio Play" description="Start playback" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_play} onChange={handleShortcutChange('audio_play')} />} />
+                <SettingRow title="Audio Pause/Resume" description="Toggle pause" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_toggle_pause} onChange={handleShortcutChange('audio_toggle_pause')} />} />
+                <SettingRow title="Audio Stop" description="Stop playback" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.audio_stop} onChange={handleShortcutChange('audio_stop')} />} />
+                <SettingRow title="Toggle Reading Mode" description="Enter/exit minimal reader mode" right={<Input className={`${compactControlClass} w-[260px]`} value={shortcutInput.toggle_reading_mode} onChange={handleShortcutChange('toggle_reading_mode')} />} />
               </SettingsCard>
             )}
 
@@ -921,6 +1075,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <>
                         <StatusDot success={mcpRunning || mcpEnabled} text={mcpConnectionText} />
                         <ToggleSwitch
+                          label="Enable MCP server"
                           checked={mcpEnabled}
                           disabled={isTogglingMcp}
                           onChange={(next) => void handleToggleMcpEnabled(next)}
@@ -933,6 +1088,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Auto-load Reader MCP configuration when Reader opens"
                     right={
                       <ToggleSwitch
+                        label="Start MCP on launch"
                         checked={mcpUiPrefs.startOnLaunch}
                         onChange={(next) => updateMcpUiPrefs({ startOnLaunch: next })}
                       />
@@ -943,6 +1099,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     description="Apply MCP-driven edits without confirmation (use with caution)"
                     right={
                       <ToggleSwitch
+                        label="Auto-approve MCP edits"
                         checked={mcpUiPrefs.autoApproveEdits}
                         onChange={(next) => updateMcpUiPrefs({ autoApproveEdits: next })}
                       />
@@ -950,38 +1107,38 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   />
                   <SettingsDivider />
                   <div className="px-1 py-2">
-                    <p className="flex items-center gap-2 text-[13px] text-slate-500">
+                    <p className="flex items-center gap-2 text-size-control text-muted">
                       <span>Listening on</span>
-                      <code className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[12px] text-slate-700">{listeningLabel}</code>
-                      <button
+                      <code className="rounded bg-surface-subtle px-2 py-0.5 font-mono text-size-caption text-secondary">{listeningLabel}</code>
+                      <Button
                         type="button"
                         onClick={() => void handleCopy(mcpLaunchCommand || mcpSnippet, 'MCP command copied.')}
-                        className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50"
+                        className="rounded border border-control-border bg-surface px-1.5 py-0.5 text-size-meta text-navigation hover:bg-surface-subtle"
                       >
                         Copy
-                      </button>
+                      </Button>
                     </p>
-                    <p className="mt-2 text-[12px] text-slate-500">
+                    <p className="mt-2 text-size-caption text-muted">
                       Project-level stdio MCP server. AI clients discover it via <code>.mcp.json</code>.
                     </p>
                   </div>
                   <SettingsDivider />
                   <div className="flex items-center gap-2 py-1">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => void loadMcpStatus(true)}
                       disabled={isTestingMcp}
-                      className="rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1.5 text-[13px] text-slate-700 shadow-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-control-border bg-surface-subtle px-2.5 py-1.5 text-size-control text-secondary shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isTestingMcp ? 'Checking...' : 'Test Connection'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => void loadMcpStatus(false)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-700 hover:bg-slate-50"
+                      className="rounded-lg border border-control-border bg-surface px-2.5 py-1.5 text-size-control text-secondary hover:bg-surface-subtle"
                     >
                       Refresh Status
-                    </button>
+                    </Button>
                   </div>
                 </SettingsCard>
 
@@ -990,30 +1147,30 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     rows={[
                       {
                         key: 'Version',
-                        value: <span className="font-mono text-[11px] text-slate-700">{mcpVersion}</span>,
+                        value: <span className="font-mono text-size-meta text-secondary">{mcpVersion}</span>,
                       },
                       {
                         key: 'Tools Available',
                         value: (
-                          <span className="font-medium text-blue-600">{mcpStatus?.tools_available ?? '—'} tools</span>
+                          <span className="font-medium text-action">{mcpStatus?.tools_available ?? '—'} tools</span>
                         ),
                       },
                       {
                         key: 'Resources Available',
-                        value: <span className="font-medium text-slate-700">{mcpStatus?.resources_available ?? 0}</span>,
+                        value: <span className="font-medium text-secondary">{mcpStatus?.resources_available ?? 0}</span>,
                       },
                       {
                         key: 'Connected Clients',
-                        value: <span className="font-medium text-emerald-600">{mcpConnectedClients}</span>,
+                        value: <span className="font-medium text-success">{mcpConnectedClients}</span>,
                       },
                       {
                         key: 'Last Checked',
-                        value: <span className="text-slate-700">{mcpCheckedAt}</span>,
+                        value: <span className="text-secondary">{mcpCheckedAt}</span>,
                       },
                       {
                         key: 'Config',
                         value: (
-                          <span className="font-mono text-[11px] text-slate-700">
+                          <span className="font-mono text-size-meta text-secondary">
                             {mcpStatus?.config_exists ? 'loaded' : 'missing'}
                           </span>
                         ),
@@ -1021,7 +1178,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                     ]}
                   />
                   {mcpStatus?.test_error ? (
-                    <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+                    <div className="mt-3 rounded-lg border border-danger/25 bg-danger-subtle px-3 py-2 text-size-caption text-danger">
                       {mcpStatus.test_error}
                     </div>
                   ) : null}
@@ -1030,21 +1187,21 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingsCard>
                   <div className="space-y-3 py-2">
                     <div className="flex items-center justify-between">
-                      <div className="text-[14px] font-semibold text-slate-900">Install MCP Configuration</div>
-                      <button
+                      <div className="text-size-subheading font-semibold text-heading">Install MCP Configuration</div>
+                      <Button
                         type="button"
                         onClick={() => void handleCopy(mcpSnippet, 'MCP snippet copied.')}
-                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[12px] text-slate-700 hover:bg-slate-50"
+                        className="rounded-lg border border-control-border bg-surface px-2.5 py-1 text-size-caption text-secondary hover:bg-surface-subtle"
                       >
                         Copy
-                      </button>
+                      </Button>
                     </div>
-                    <pre className="overflow-x-auto rounded-lg bg-slate-900 p-3 text-[12px] text-slate-100">{mcpSnippet}</pre>
+                    <pre className="overflow-x-auto rounded-lg bg-heading p-3 text-size-caption text-surface-subtle">{mcpSnippet}</pre>
                     <a
                       href={MCP_SETUP_DOCS_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-[13px] text-blue-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-size-control text-action hover:underline"
                     >
                       MCP Setup Guide ↗
                     </a>
@@ -1067,11 +1224,11 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                       <img
                         src="/reader-logo.svg"
                         alt="Reader Logo"
-                        className="h-14 w-14 rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+                        className="h-14 w-14 rounded-xl border border-border bg-surface p-1 shadow-sm"
                       />
                       <div>
-                        <div className="text-[20px] leading-none font-semibold tracking-tight text-slate-900 group-hover:text-blue-600">Reader</div>
-                        <div className="mt-1 text-[13px] text-slate-500">Version {appVersion}</div>
+                        <div className="text-size-heading leading-none font-semibold tracking-tight text-heading group-hover:text-action">Reader</div>
+                        <div className="mt-1 text-size-control text-muted">Version {appVersion}</div>
                       </div>
                     </a>
                     <div className="flex flex-col items-end gap-1.5 pt-1">
@@ -1080,7 +1237,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_WEBSITE_URL)}
-                        className="flex items-center gap-1.5 text-[15px] text-slate-500 transition-colors hover:text-blue-600"
+                        className="flex items-center gap-1.5 text-size-label text-muted transition-colors hover:text-action"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                           <circle cx="12" cy="12" r="9" />
@@ -1093,7 +1250,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                         target="_blank"
                         rel="noreferrer"
                         onClick={(event) => handleExternalLinkClick(event, APP_GITHUB_URL)}
-                        className="flex items-center gap-1.5 text-[15px] text-slate-500 transition-colors hover:text-blue-600"
+                        className="flex items-center gap-1.5 text-size-label text-muted transition-colors hover:text-action"
                       >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.8 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.8 11.8 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.5-2.8 5.5-5.5 5.8.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
@@ -1108,38 +1265,38 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                   <SettingsCard>
                     <div className="flex items-start justify-between gap-4 px-1 py-1">
                       <div>
-                        <div className="text-[20px] leading-tight font-semibold tracking-tight text-slate-900">Update Available</div>
-                        <div className="mt-3 text-[18px] leading-tight font-semibold tracking-tight text-slate-900">
+                        <div className="text-size-heading leading-tight font-semibold tracking-tight text-heading">Update Available</div>
+                        <div className="mt-3 text-size-title leading-tight font-semibold tracking-tight text-heading">
                           Version {updateResult?.latestVersion}
-                          <span className="ml-2 text-[15px] font-medium text-slate-400">(current: {appVersion})</span>
+                          <span className="ml-2 text-size-label font-medium text-faint">(current: {appVersion})</span>
                         </div>
-                        <div className="mt-2 text-[13px] text-slate-500">Released: {updatePublishedAt}</div>
-                        <div className="mt-4 text-[13px] text-slate-500">See release notes at</div>
+                        <div className="mt-2 text-size-control text-muted">Released: {updatePublishedAt}</div>
+                        <div className="mt-4 text-size-control text-muted">See release notes at</div>
                         <a
                           href={updateResult?.releaseUrl || APP_RELEASES_URL}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(event) => handleExternalLinkClick(event, updateResult?.releaseUrl || APP_RELEASES_URL)}
-                          className="text-[13px] text-slate-600 hover:text-blue-600 hover:underline break-all"
+                          className="text-size-control text-navigation hover:text-action hover:underline break-all"
                         >
                           {updateResult?.releaseUrl || APP_RELEASES_URL}
                         </a>
                       </div>
                       <div className="flex min-w-[180px] flex-col gap-3">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
-                          className="rounded-lg bg-blue-600 px-4 py-2.5 text-[13px] font-medium text-white hover:bg-blue-700"
+                          className="rounded-lg bg-action px-4 py-2.5 text-size-control font-medium text-on-action hover:bg-action-text"
                         >
                           Download
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={handleSkipThisVersion}
-                          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
+                          className="rounded-lg border border-control-border bg-surface px-4 py-2.5 text-size-control font-medium text-secondary hover:bg-surface-subtle"
                         >
                           Skip
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </SettingsCard>
@@ -1148,44 +1305,44 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
                 <SettingsCard>
                   <div className="space-y-3 px-1 py-1">
                     <div>
-                      <div className="text-[20px] leading-tight font-semibold tracking-tight text-slate-900">Updates</div>
+                      <div className="text-size-heading leading-tight font-semibold tracking-tight text-heading">Updates</div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="rounded-xl border border-border bg-surface-subtle px-4 py-3">
                       <SettingRow
                         title="Automatic updates"
                         description="Check for updates on startup"
-                        right={<ToggleSwitch checked={autoUpdatesEnabled} onChange={handleToggleAutoUpdates} />}
+                        right={<ToggleSwitch label="Enable automatic updates" checked={autoUpdatesEnabled} onChange={handleToggleAutoUpdates} />}
                       />
                       <SettingsDivider />
                       <div className="flex items-center justify-between gap-4">
-                        <div className="text-[15px] font-semibold text-slate-900">Check for updates</div>
+                        <div className="text-size-label font-semibold text-heading">Check for updates</div>
                         <div className="flex items-center gap-4">
-                          <div className="text-[15px] text-blue-600">{updateStatusText}</div>
-                          <button
+                          <div className="text-size-label text-action">{updateStatusText}</div>
+                          <Button
                             type="button"
                             onClick={() => void runUpdateCheck(true)}
                             disabled={isCheckingUpdates}
-                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                            className="rounded-lg border border-control-border bg-surface px-3 py-1.5 text-size-control font-medium text-secondary hover:bg-surface-subtle disabled:opacity-60"
                           >
                             {isCheckingUpdates ? 'Checking...' : 'Check Now'}
-                          </button>
+                          </Button>
                         </div>
                       </div>
-                      <div className="mt-2 text-[12px] text-slate-500">Last checked: {updateCheckedAt}</div>
+                      <div className="mt-2 text-size-caption text-muted">Last checked: {updateCheckedAt}</div>
                     </div>
-                    <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface-subtle px-4 py-3">
                       <div>
-                        <div className="text-[15px] font-semibold text-slate-900">Current version: {appVersion}</div>
-                        <div className="text-[13px] text-slate-500">{updateSubtext}</div>
+                        <div className="text-size-label font-semibold text-heading">Current version: {appVersion}</div>
+                        <div className="text-size-control text-muted">{updateSubtext}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
                           type="button"
                           onClick={() => void openExternalUrl(updateTargetUrl)}
-                          className="min-w-[132px] rounded-lg bg-blue-600 px-2.5 py-1 text-[12px] font-medium text-white hover:bg-blue-700"
+                          className="min-w-[132px] rounded-lg bg-action px-2.5 py-1 text-size-caption font-medium text-on-action hover:bg-action-text"
                         >
                           {updateResult?.updateAvailable ? `Download v${updateResult.latestVersion}` : 'Open Releases'}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1194,26 +1351,26 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
             )}
           </main>
 
-          <footer className="flex items-center justify-between border-t border-slate-200 bg-white/90 px-6 py-2.5">
+          <footer className="flex items-center justify-between border-t border-border bg-surface/90 px-8 py-3">
             <SecondaryActionButton icon={<span>↻</span>} label="Reload" onClick={() => void loadConfig()} />
 
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-xl border border-control-border bg-surface px-4 py-2 text-size-control font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={isSaving}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-xl bg-action px-4 py-2 text-size-control font-medium text-on-action shadow-sm transition hover:bg-action-text disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save Settings'}
-              </button>
+              </Button>
             </div>
           </footer>
         </section>

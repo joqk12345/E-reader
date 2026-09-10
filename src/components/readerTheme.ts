@@ -1,5 +1,44 @@
 export type ReaderThemeId = 'white' | 'paper' | 'mint' | 'sepia' | 'night';
 
+export type ReaderSyntaxTokens = {
+  base: string;
+  keyword: string;
+  string: string;
+  number: string;
+  comment: string;
+  function: string;
+  property: string;
+  boolean: string;
+  muted: string;
+  quote: string;
+};
+
+const LIGHT_SYNTAX: ReaderSyntaxTokens = {
+  base: '#1f2937',
+  keyword: '#8b1d1d',
+  string: '#166534',
+  number: '#7c3aed',
+  comment: '#64748b',
+  function: '#1d4ed8',
+  property: '#0f766e',
+  boolean: '#b45309',
+  muted: '#4b5563',
+  quote: '#374151',
+};
+
+const DARK_SYNTAX: ReaderSyntaxTokens = {
+  base: '#d6d9de',
+  keyword: '#f38ba8',
+  string: '#a6e3a1',
+  number: '#f9e2af',
+  comment: '#94a3b8',
+  function: '#89b4fa',
+  property: '#94e2d5',
+  boolean: '#fab387',
+  muted: '#9ca3af',
+  quote: '#b6bcc7',
+};
+
 export type ReaderViewSettings = {
   fontSize: number;
   lineHeight: number;
@@ -14,6 +53,8 @@ export type ReaderViewSettings = {
 };
 
 export const VIEW_SETTINGS_KEY = 'vmark-reader-settings';
+// Kept for backwards compatibility with the persisted Tauri config format.
+export const LEGACY_READER_BACKGROUND = '#F4F8EE';
 
 export const READER_THEMES: Record<
   ReaderThemeId,
@@ -26,6 +67,7 @@ export const READER_THEMES: Record<
     codeBg: string;
     codeText: string;
     isDark: boolean;
+    syntax: ReaderSyntaxTokens;
   }
 > = {
   white: {
@@ -37,6 +79,7 @@ export const READER_THEMES: Record<
     codeBg: '#f5f5f5',
     codeText: '#1a1a1a',
     isDark: false,
+    syntax: LIGHT_SYNTAX,
   },
   paper: {
     background: '#EEEDED',
@@ -47,6 +90,7 @@ export const READER_THEMES: Record<
     codeBg: '#e5e4e4',
     codeText: '#1a1a1a',
     isDark: false,
+    syntax: LIGHT_SYNTAX,
   },
   mint: {
     background: '#CCE6D0',
@@ -57,6 +101,7 @@ export const READER_THEMES: Record<
     codeBg: '#b8d9bd',
     codeText: '#2d3a35',
     isDark: false,
+    syntax: LIGHT_SYNTAX,
   },
   sepia: {
     background: '#F9F0DB',
@@ -67,6 +112,7 @@ export const READER_THEMES: Record<
     codeBg: '#f0e5cc',
     codeText: '#5c4b37',
     isDark: false,
+    syntax: LIGHT_SYNTAX,
   },
   night: {
     background: '#23262b',
@@ -77,6 +123,7 @@ export const READER_THEMES: Record<
     codeBg: '#2a2e34',
     codeText: '#d6d9de',
     isDark: true,
+    syntax: DARK_SYNTAX,
   },
 };
 
@@ -154,5 +201,16 @@ export const loadReaderViewSettings = (readerFontSize: number): ReaderViewSettin
       ...DEFAULT_VIEW_SETTINGS,
       fontSize: readerFontSize || DEFAULT_VIEW_SETTINGS.fontSize,
     };
+  }
+};
+
+export const persistReaderViewSettings = (settings: ReaderViewSettings) => {
+  try {
+    localStorage.setItem(VIEW_SETTINGS_KEY, JSON.stringify(settings));
+    window.dispatchEvent(
+      new CustomEvent<ReaderViewSettings>('reader:view-settings-updated', { detail: settings }),
+    );
+  } catch (error) {
+    console.warn('Failed to persist reader view settings:', error);
   }
 };

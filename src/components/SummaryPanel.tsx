@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PanelButton } from './ui/Button';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store/useStore';
 
@@ -251,90 +252,90 @@ export const SummaryPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="mb-3">
-          <div className="mb-2 text-sm font-medium text-gray-700">Scope:</div>
+          <div className="mb-2 text-size-subheading font-medium text-secondary">Scope:</div>
           <div className="flex flex-wrap gap-2">
             {(['document', 'section', 'paragraph'] as SummaryScope[]).map((item) => {
               const enabled = availableScopes.includes(item);
               return (
-                <button
+                <PanelButton
                   key={item}
                   onClick={() => setScope(item)}
                   disabled={!enabled}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  className={`px-3 py-1.5 text-size-subheading rounded-lg transition-colors ${
                     scope === item
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400'
+                      ? 'bg-action text-on-action'
+                      : 'bg-surface-subtle text-secondary hover:bg-surface-hover disabled:bg-surface-subtle disabled:text-faint'
                   }`}
                 >
                   {item.charAt(0).toUpperCase() + item.slice(1)}
-                </button>
+                </PanelButton>
               );
             })}
           </div>
         </div>
 
         <div className="flex items-center gap-4 mb-3">
-          <span className="text-sm font-medium text-gray-700">Style:</span>
+          <span className="text-size-subheading font-medium text-secondary">Style:</span>
           <div className="flex gap-2">
             {SUMMARY_STYLE_OPTIONS.map((item) => (
-              <button
+              <PanelButton
                 key={item.value}
                 onClick={() => setStyle(item.value)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-size-subheading rounded-lg transition-colors ${
                   style === item.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-action text-on-action'
+                    : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
                 }`}
               >
                 {item.label}
-              </button>
+              </PanelButton>
             ))}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            Target: <span className="font-medium text-gray-900">{target?.label || 'None'}</span>
+          <span className="text-size-subheading text-navigation">
+            Target: <span className="font-medium text-heading">{target?.label || 'None'}</span>
           </span>
-          <button
+          <PanelButton
             onClick={() => void handleSummarize()}
             disabled={isSummarizing || !target}
-            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 transition-colors"
+            className="px-3 py-1.5 text-size-subheading bg-action text-on-action rounded-md hover:bg-action disabled:bg-control-border transition-colors"
           >
             {isSummarizing ? 'Summarizing...' : 'Generate Summary'}
-          </button>
+          </PanelButton>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border-b border-red-200">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="p-4 bg-danger-subtle border-b border-danger/25">
+          <p className="text-size-subheading text-danger">{error}</p>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {!summary && !error && !isSummarizing && (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex flex-col items-center justify-center h-full text-muted">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-sm">Click "Generate Summary" to create a summary</p>
+            <p className="text-size-subheading">Click "Generate Summary" to create a summary</p>
           </div>
         )}
 
         {summary && (
           <div className="prose prose-sm max-w-none">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="mb-3 flex items-center justify-between gap-3 border-b border-gray-100 pb-3">
-                <div className="text-sm font-medium text-gray-700">Generated Summary</div>
-                <button
+            <div className="bg-surface border border-border rounded-lg p-4">
+              <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3">
+                <div className="text-size-subheading font-medium text-secondary">Generated Summary</div>
+                <PanelButton
                   onClick={() => void handleCopy()}
-                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-size-subheading transition-colors ${
                     isCopied
-                      ? 'border-green-200 bg-green-50 text-green-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                      ? 'border-success/25 bg-success/10 text-success'
+                      : 'border-border bg-surface text-navigation hover:bg-surface-subtle hover:text-foreground'
                   }`}
                   title={isCopied ? 'Copied' : 'Copy summary'}
                   aria-label={isCopied ? 'Copied' : 'Copy summary'}
@@ -350,13 +351,13 @@ export const SummaryPanel: React.FC = () => {
                     </svg>
                   )}
                   <span>{isCopied ? 'Copied' : 'Copy'}</span>
-                </button>
+                </PanelButton>
               </div>
 
               {style === 'bullet' ? (
                 <div className="whitespace-pre-wrap">{summary}</div>
               ) : (
-                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{summary}</p>
+                <p className="text-foreground leading-relaxed whitespace-pre-wrap">{summary}</p>
               )}
             </div>
           </div>

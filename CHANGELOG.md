@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- **UI 可测试性与交互回归验证**:
+  - 为 Library、格式筛选、收藏搜索、Preferences、导入弹窗、文档卡片和 Reader 返回操作补充稳定的 `data-testid` / `aria-label` 标识
+  - 新增 `npm run test:ui` Playwright smoke 测试，覆盖 Library 加载、格式筛选、集合搜索、Preferences、导入弹窗、打开文档和返回 Library 的完整流程
+  - UI smoke 测试使用隔离的 Tauri API fixture，不写入本地 Reader 数据库
+  - 补充 Chrome/Chromium 路径检测与 `CHROME_BIN` 环境变量支持，便于在 macOS、Linux 和 CI 环境中运行
+  - 本次验证通过：`check:styles`、`check:boundaries`、`build`、UI smoke 和 `git diff --check`
+
 ## 🆕 Recent Updates (2026-03)
 
 - **远程 Embedding、独立语义检索页与搜索稳定性修复（2026-03-28）**:
