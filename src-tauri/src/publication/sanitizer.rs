@@ -93,10 +93,7 @@ fn inspect_svg_css_tokens(
     if depth > 16 {
         return Err("publication.unsafe_url_removed");
     }
-    while let Ok(token) = parser
-        .next_including_whitespace_and_comments()
-        .map(Clone::clone)
-    {
+    while let Ok(token) = parser.next_including_whitespace_and_comments().cloned() {
         match token {
             Token::UnquotedUrl(value) => {
                 sanitize_url(
@@ -113,9 +110,8 @@ fn inspect_svg_css_tokens(
                     .parse_nested_block(|nested| {
                         let mut value = None;
                         let mut invalid = false;
-                        while let Ok(token) = nested
-                            .next_including_whitespace_and_comments()
-                            .map(Clone::clone)
+                        while let Ok(token) =
+                            nested.next_including_whitespace_and_comments().cloned()
                         {
                             match token {
                                 Token::WhiteSpace(_) | Token::Comment(_) => {}

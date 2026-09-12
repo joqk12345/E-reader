@@ -132,10 +132,7 @@ fn quoted_url_argument(
     parser
         .parse_nested_block(|nested| {
             let mut value = None;
-            while let Ok(token) = nested
-                .next_including_whitespace_and_comments()
-                .map(Clone::clone)
-            {
+            while let Ok(token) = nested.next_including_whitespace_and_comments().cloned() {
                 if !context.count_token() {
                     break;
                 }
@@ -159,10 +156,7 @@ fn quoted_url_argument(
 }
 
 fn discard_import(parser: &mut Parser<'_, '_>, context: &mut CssContext<'_>, depth: usize) {
-    while let Ok(token) = parser
-        .next_including_whitespace_and_comments()
-        .map(Clone::clone)
-    {
+    while let Ok(token) = parser.next_including_whitespace_and_comments().cloned() {
         if !context.count_token() || matches!(token, Token::Semicolon) {
             break;
         }
@@ -185,10 +179,7 @@ fn sanitize_components(
 ) -> String {
     let mut output = String::new();
     while context.error.is_none() {
-        let token = match parser
-            .next_including_whitespace_and_comments()
-            .map(Clone::clone)
-        {
+        let token = match parser.next_including_whitespace_and_comments().cloned() {
             Ok(token) => token,
             Err(_) => break,
         };
