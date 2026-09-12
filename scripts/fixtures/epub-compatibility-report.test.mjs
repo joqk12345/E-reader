@@ -183,5 +183,8 @@ test("keeps checked-in JSON and Markdown reports synchronized with the evidence 
   const generated = buildCompatibilityReport(fixtureManifest, ledger, ledger);
 
   assert.deepEqual(checkedJson, generated);
-  assert.equal(checkedMarkdown, renderCompatibilityMarkdown(generated));
+  assert.equal(
+    checkedMarkdown.replaceAll("\r\n", "\n"),
+    renderCompatibilityMarkdown(generated).replaceAll("\r\n", "\n"),
+  );
 });
