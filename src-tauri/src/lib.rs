@@ -27,13 +27,12 @@ use commands::{
     mcp_request, merge_tags, promote_temporary_tag, publication_close_v2,
     publication_get_blocks_v2, publication_get_position_v2, publication_get_size_v2,
     publication_import_existing_v2, publication_load_blob_v2, publication_load_text_v2,
-    publication_open_v2, publication_save_position_v2,
-    reindex_document_embeddings, remove_document_tag, remove_tag_alias, rename_tag,
-    resolve_agent_runtime, review_tag_suggestions, save_agent_config, save_model_profile,
-    save_provider_profile, search, search_by_embedding, set_mcp_reader_enabled,
-    suggest_document_tags, suggest_tags_for_documents, summarize, test_model_connection,
-    test_model_profile, test_provider_profile, translate, tts_synthesize, update_config,
-    upsert_embeddings_batch, validate_local_embedding_model_path,
+    publication_open_v2, publication_save_position_v2, reindex_document_embeddings,
+    remove_document_tag, remove_tag_alias, rename_tag, resolve_agent_runtime,
+    review_tag_suggestions, save_agent_config, save_model_profile, save_provider_profile, search,
+    search_by_embedding, set_mcp_reader_enabled, suggest_document_tags, suggest_tags_for_documents,
+    summarize, test_model_connection, test_model_profile, test_provider_profile, translate,
+    tts_synthesize, update_config, upsert_embeddings_batch, validate_local_embedding_model_path,
 };
 use tauri::menu::Menu;
 #[cfg(target_os = "macos")]

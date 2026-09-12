@@ -808,13 +808,9 @@ fn save_position_for_document(
     )
     .map_err(|error| internal_error(error.to_string()))?;
     let accepted = conn.changes() == 1;
-    let position = read_position_for_publication(
-        conn,
-        &publication_id,
-        &request.document_id,
-        &source_hash,
-    )?
-    .ok_or_else(|| internal_error("reading position disappeared after save"))?;
+    let position =
+        read_position_for_publication(conn, &publication_id, &request.document_id, &source_hash)?
+            .ok_or_else(|| internal_error("reading position disappeared after save"))?;
     Ok(PublicationSavePositionV2 { position, accepted })
 }
 
@@ -1130,11 +1126,13 @@ mod tests {
         assert_eq!(current.locator, block.locator);
         assert_eq!(current.progression, Some(0.25));
 
-        assert!(serde_json::from_value::<PublicationGetPositionRequestV2>(json!({
-            "documentId": "doc-epub",
-            "filePath": "/tmp/untrusted.epub"
-        }))
-        .is_err());
+        assert!(
+            serde_json::from_value::<PublicationGetPositionRequestV2>(json!({
+                "documentId": "doc-epub",
+                "filePath": "/tmp/untrusted.epub"
+            }))
+            .is_err()
+        );
         let invalid = save_position_for_document(
             &conn,
             PublicationSavePositionRequestV2 {

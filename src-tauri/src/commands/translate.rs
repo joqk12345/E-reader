@@ -34,14 +34,15 @@ fn split_translation_chunks(text: &str, max_chars: usize) -> Vec<String> {
     let mut current = String::new();
     let mut current_chars = 0usize;
 
-    let push_current = |chunks: &mut Vec<String>, current: &mut String, current_chars: &mut usize| {
-        let trimmed = current.trim();
-        if !trimmed.is_empty() {
-            chunks.push(trimmed.to_string());
-        }
-        current.clear();
-        *current_chars = 0;
-    };
+    let push_current =
+        |chunks: &mut Vec<String>, current: &mut String, current_chars: &mut usize| {
+            let trimmed = current.trim();
+            if !trimmed.is_empty() {
+                chunks.push(trimmed.to_string());
+            }
+            current.clear();
+            *current_chars = 0;
+        };
 
     for segment in normalized.split_inclusive('\n') {
         let segment_chars = segment.chars().count();
@@ -175,7 +176,13 @@ async fn translate_with_chunk_fallback(
         return request_translation(config, trimmed, target_lang_name).await;
     }
 
-    translate_chunk_recursive(config, trimmed, target_lang_name, TRANSLATE_CHUNK_SOFT_LIMIT).await
+    translate_chunk_recursive(
+        config,
+        trimmed,
+        target_lang_name,
+        TRANSLATE_CHUNK_SOFT_LIMIT,
+    )
+    .await
 }
 
 async fn translate_chunk_recursive(
@@ -296,10 +303,14 @@ pub async fn translate(
         "en" => "English",
         _ => &target_lang,
     };
-    let translation = match request_translation(&config, &text_to_translate, target_lang_name).await {
+    let translation = match request_translation(&config, &text_to_translate, target_lang_name).await
+    {
         Ok(result) => result,
         Err(err) => {
-            tracing::warn!("Single-shot translation failed, retrying with chunk fallback: {}", err);
+            tracing::warn!(
+                "Single-shot translation failed, retrying with chunk fallback: {}",
+                err
+            );
             translate_with_chunk_fallback(&config, &text_to_translate, target_lang_name).await?
         }
     };
