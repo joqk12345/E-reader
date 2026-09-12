@@ -66,6 +66,7 @@ fn create_consistent_backup(
                 )));
             }
         }
+        #[cfg(not(windows))]
         std::fs::OpenOptions::new()
             .read(true)
             .open(&temporary_path)?
