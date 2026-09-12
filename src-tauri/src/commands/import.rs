@@ -1,6 +1,6 @@
 use crate::database;
 use crate::error::{ReaderError, Result};
-use crate::parsers::{EpubParser, MarkdownParser, ParsedChapters, PdfParser};
+use crate::parsers::{EpubParser, MarkdownParser, ParsedChapters};
 use base64::prelude::*;
 use regex::Regex;
 use reqwest::Url;
@@ -20,13 +20,6 @@ pub struct ImportProgress {
 #[tauri::command]
 pub async fn import_epub(app_handle: AppHandle, file_path: String) -> Result<String> {
     let mut parser = EpubParser::new(&file_path)?;
-    let (metadata, chapters) = parser.parse_all()?;
-    import_document_internal(app_handle, metadata, chapters).await
-}
-
-#[tauri::command]
-pub async fn import_pdf(app_handle: AppHandle, file_path: String) -> Result<String> {
-    let parser = PdfParser::new(&file_path)?;
     let (metadata, chapters) = parser.parse_all()?;
     import_document_internal(app_handle, metadata, chapters).await
 }

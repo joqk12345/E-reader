@@ -27,7 +27,7 @@ pub use embedding::{
 pub use import::{
     delete_document, fetch_url_html, get_document, get_document_previews, get_document_sections,
     get_document_source_url, get_section_paragraphs, import_epub, import_markdown,
-    import_markdown_content, import_pdf, import_url, list_documents,
+    import_markdown_content, import_url, list_documents,
 };
 pub use index::index_document;
 pub use mcp::{get_mcp_status, install_cli_shell_command, mcp_request, set_mcp_reader_enabled};

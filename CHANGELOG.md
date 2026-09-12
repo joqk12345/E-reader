@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.3] - Unreleased
+
+- 产品聚焦 EPUB 与 Markdown，移除新的 PDF 导入、解析和阅读流程。
+- 历史 PDF 数据行继续保留，可安全删除；打开时显示不支持状态且不会进入阅读器适配器。
+- 移除 Rust PDF parser、Tauri `import_pdf` command、PDF 依赖及 PDF 专用 Reader UI。
+
 ## [0.5.2] - 2026-09-11
 
 - **Quiet Reader 视觉方向**：默认正文优先，顶部工具和 AI 工作区按需展开。

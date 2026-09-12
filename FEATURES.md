@@ -6,7 +6,7 @@
 
 #### 📚 文档管理
 - [x] EPUB 文件导入
-- [x] PDF 文件导入
+- [ ] PDF 文件导入（0.5.3 起不再支持新导入）
 - [x] 文档列表展示（缩略图 + 元数据）
 - [x] 文档删除
 - [x] 文档元数据提取（标题、作者、语言）
@@ -18,7 +18,7 @@
 - [x] 双语阅读模式（原文 + 译文并排显示）
 - [x] 阅读位置管理（TOC 双击定位）
 - [x] 可调整面板大小
-- [x] PDF 和 EPUB 支持
+- [x] EPUB 支持；历史 PDF 记录保留兼容显示
 
 #### 🔍 语义搜索
 - [x] AI 驱动的语义搜索（非关键词匹配）
@@ -93,7 +93,7 @@ Rust + Tauri 2.0
 ├── 异步: Tokio
 ├── HTTP: Reqwest
 ├── EPUB 解析: epub rust library
-├── PDF 解析: pdf rust library
+├── EPUB 解析: Rust EPUB parser
 └── 配置: JSON (serde_json)
 ```
 
@@ -180,11 +180,11 @@ LM Studio (本地推理)
 ```
 用户选择文件
     ↓
-Library.tsx (invoke import_epub/import_pdf)
+Library.tsx (invoke import_epub/import_markdown)
     ↓
 Tauri Command (src-tauri/src/commands/import.rs)
     ↓
-Parser (epub.rs / pdf.rs)
+Parser (epub.rs)
     ├─→ 提取元数据
     ├─→ 解析目录结构
     └─→ 提取段落内容
@@ -287,7 +287,7 @@ translate command
 | 命令 | 功能 | 前端调用 | 后端实现 |
 |-----|------|---------|---------|
 | `import_epub` | 导入 EPUB | `Library.tsx` | `commands/import.rs` |
-| `import_pdf` | 导入 PDF | `Library.tsx` | `commands/import.rs` |
+| `import_pdf` | 已移除；历史 PDF 仅保留数据库兼容记录 | — | — |
 | `list_documents` | 列出文档 | `Library.tsx` | `commands/mod.rs` |
 | `get_document` | 获取文档 | `Library.tsx` | `commands/mod.rs` |
 | `delete_document` | 删除文档 | `Library.tsx` | `commands/mod.rs` |
@@ -399,7 +399,7 @@ translate command
 3. **功能增强**
    - 书签和标注
    - 阅读进度保存
-   - 导出为 Markdown/PDF
+   - 导出为 Markdown
 
 #### 中优先级
 4. **国际化**
@@ -460,7 +460,7 @@ translate command
 ## 🧪 测试建议
 
 ### 单元测试
-- [ ] Parser 测试（EPUB/PDF）
+- [ ] Parser 测试（EPUB）
 - [ ] 数据库操作测试
 - [ ] LLM 客户端测试
 - [ ] 搜索算法测试

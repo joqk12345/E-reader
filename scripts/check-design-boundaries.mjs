@@ -73,7 +73,7 @@ expect(app.includes('useAppTheme()'), 'App shell is missing app theme subscripti
 expect(settings.includes('title="App theme"'), 'Settings is missing app theme control');
 expect(tokens.includes("[data-app-theme='dark']"), 'Application tokens are missing dark theme values');
 
-for (const importKind of ['importEpub', 'importPdf', 'importMarkdown']) {
+for (const importKind of ['importEpub', 'importMarkdown']) {
   expect(libraryImport.includes(importKind), `Library import boundary is missing ${importKind}`);
 }
 for (const readerSetting of ['layoutMode', 'bilingualViewMode', 'markdownRenderMode']) {

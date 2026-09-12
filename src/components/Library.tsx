@@ -101,9 +101,9 @@ const findTagByNameOrAlias = (tags: TagRecord[], raw: string) => {
 export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const DEFAULT_CATEGORY_VISIBLE_COUNT = 8;
   const DEFAULT_EXPANDED_CATEGORY_COUNT = 2;
-  const { documents, loadDocuments, importEpub, importPdf, importMarkdown, deleteDocument, selectDocument } = useStore();
+  const { documents, loadDocuments, importEpub, importMarkdown, deleteDocument, selectDocument } = useStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'pdf' | 'markdown'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'markdown'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -162,7 +162,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     setImportUrlDraft,
     handleImportFile,
     handleImportUrlBeta,
-  } = useLibraryImport({ loadDocuments, importEpub, importPdf, importMarkdown, selectDocument });
+  } = useLibraryImport({ loadDocuments, importEpub, importMarkdown, selectDocument });
 
   useEffect(() => {
     loadDocuments();
@@ -857,7 +857,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         <div data-testid="import-dialog" role="dialog" aria-label="Import document" className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
           <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-4 shadow-xl">
             <h3 className="text-size-body font-semibold text-heading">Import</h3>
-            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB, PDF, or Markdown file.</p>
+            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB or Markdown file.</p>
 
             <div className="mt-3 space-y-2">
               <LibraryButton
@@ -1711,7 +1711,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     {([
                       ['all', 'All'],
                       ['epub', 'EPUB'],
-                      ['pdf', 'PDF'],
                       ['markdown', 'Markdown'],
                     ] as const).map(([value, label]) => (
                       <LibraryButton
@@ -1845,7 +1844,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <p className="text-size-title">No documents yet</p>
-            <p className="text-size-subheading mt-2">Import an EPUB, PDF, or Markdown file to get started</p>
+            <p className="text-size-subheading mt-2">Import an EPUB or Markdown file to get started</p>
           </div>
         ) : displayedDocuments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">

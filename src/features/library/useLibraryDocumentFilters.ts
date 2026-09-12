@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import type { Document as ReaderDocument, DocumentTagAssignment } from '../../types';
 
 type DocumentInsight = { category: string };
-type TypeFilter = 'all' | 'epub' | 'pdf' | 'markdown';
+type TypeFilter = 'all' | 'epub' | 'markdown';
 type SortBy = 'recent' | 'title' | 'type';
 
 export const FAVORITES_CATEGORY = 'Favorites';
@@ -108,7 +108,6 @@ export function useLibraryDocumentFilters({
     return [
       { key: 'all' as const, label: 'All', count: documents.length },
       { key: 'epub' as const, label: 'EPUB', count: count('epub') },
-      { key: 'pdf' as const, label: 'PDF', count: count('pdf') },
       { key: 'markdown' as const, label: 'Markdown', count: count('markdown') },
     ];
   }, [documents]);

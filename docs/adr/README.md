@@ -7,6 +7,7 @@
 | [ADR-003](003-publication-locator-and-reanchoring.md) | Accepted V2 contract | Use a versioned Locator with EPUB CFI plus selector, quote, and progression fallbacks |
 | [ADR-004](004-publication-content-security-policy.md) | Accepted V2 contract | Render a derived sanitized publication view under restrictive CSP and scoped capabilities |
 | [ADR-005](005-quiet-reader-visual-direction.md) | Accepted design direction | Make reading the primary surface; reveal tools contextually and keep AI assistance subordinate to the text |
+| [ADR-006](006-product-slimming-epub-markdown.md) | Accepted product scope | Remove PDF Feature and focus Reader on EPUB and Markdown while preserving historical PDF records safely |
 
 ADR-001 through ADR-004 close the initial Phase 0 engine/resource/locator/content-policy decisions. Their production evidence and implementation conditions remain binding.
 

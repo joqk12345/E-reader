@@ -1,6 +1,6 @@
 [package]
 name = "reader"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 
 [lib]
@@ -30,7 +30,6 @@ percent-encoding = "2.3"
 xml-rs = "1.0"
 kuchikiki = "0.8.8-speedreader"
 cssparser = "0.29"
-pdf = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.8", features = ["v4", "serde"] }

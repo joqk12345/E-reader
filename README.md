@@ -23,7 +23,7 @@
 
 Reader 0.5.0 consolidates the core reading and AI workflow into a stronger local-first desktop experience:
 
-- **One library, three formats**: import and organize EPUB, PDF, and Markdown documents.
+- **One library, two formats**: import and organize EPUB and Markdown documents.
 - **Focused reading**: table of contents navigation, paragraph-level search, reading themes, typography controls, two-column layout, bilingual view, and persistent reading position.
 - **AI-assisted understanding**: summarization, translation, context chat, deep analysis, dictionary lookup, sentence analysis, glossary, notes, and text-to-speech.
 - **Knowledge-oriented library tools**: semantic search, hybrid lexical re-ranking, tags, aliases, related documents, batch tagging, and tag suggestions.
@@ -104,10 +104,10 @@ Reader 0.5.0 consolidates the core reading and AI workflow into a stronger local
   - server-side timeout (30s) to avoid endless `Translating...` state.
 
 ### 📖 Core Reading Experience
-- **Library Management**: Import and organize EPUB, PDF, and Markdown documents
+- **Library Management**: Import and organize EPUB and Markdown documents
 - **Advanced Reader**: Table of Contents navigation, section/paragraph-based reading
 - **Semantic Search**: AI-powered search across all indexed paragraphs
-- **PDF Support**: Full PDF parsing and reading capabilities
+- **Historical PDF compatibility**: Legacy PDF records remain visible for safe deletion but cannot enter reader flows
 - **Markdown Support**: Import and read full Markdown documents with proper formatting
 - **Text-to-Speech (TTS)**: Audiobook functionality with multiple voice options
 
@@ -215,19 +215,18 @@ The built application will be in `src-tauri/target/release/bundle/`.
 ### Importing Documents
 
 1. Click the **Import** button in the library
-2. Select EPUB, PDF, or Markdown files from your computer
+2. Select EPUB or Markdown files from your computer
 3. Documents are automatically indexed for semantic search
 
 **Supported Formats:**
 - **EPUB**: Standard e-book format
-- **PDF**: Portable Document Format
 - **Markdown**: Lightweight markup language (`.md`, `.markdown`)
 
 ### Library Home
 
 - Top-level home tabs: `Library` and `Semantic Search`
 - View switch: `Grid` / `List` / `Compact`
-- Basic filter: file type (`All/EPUB/PDF/Markdown`) + keyword + sorting (`Recent/Title/Type`)
+- Basic filter: file type (`All/EPUB/Markdown`) + keyword + sorting (`Recent/Title/Type`)
 - Auto organization:
   - documents are auto-tagged and auto-categorized from title + content preview
   - use `Category` filter for quick narrowing
@@ -404,7 +403,7 @@ You can switch between LM Studio and OpenAI anytime in Settings without losing d
 - `bullet`: Key points as a list
 
 **Usage Steps**:
-1. Open an EPUB/PDF in the reader
+1. Open an EPUB or Markdown document in the reader
 2. (Optional) Select a specific section or paragraph
 3. Open the `Summary` panel
 4. Choose your preferred style and scope
@@ -518,7 +517,7 @@ reader/
 │   ├── src/
 │   │   ├── commands/      # Tauri commands
 │   │   ├── database/      # SQLite database & embeddings
-│   │   ├── parsers/       # EPUB/PDF parsers
+│   │   ├── parsers/       # EPUB parser
 │   │   ├── search/        # Semantic search
 │   │   └── mcp/           # MCP server implementation
 │   └── ...
@@ -595,7 +594,7 @@ Reader 项目仍保留 Claude Code 兼容配置：
 - `chrome-devtools`: Chrome DevTools 集成
 
 `reader` server 配置风格参考 VMark MCP Setup：客户端只需安装一个本地 `command`。
-`reader` 为业务层工具（SQLite 文档数据操作，支持 Markdown/PDF/EPUB），`tauri` 为开发/调试层工具（Tauri IPC）。
+`reader` 为业务层工具（SQLite 文档数据操作，支持 Markdown/EPUB），`tauri` 为开发/调试层工具（Tauri IPC）。
 
 **Reader MCP command:**
 ```bash
@@ -612,21 +611,21 @@ Reader 项目仍保留 Claude Code 兼容配置：
 - `reader.get_markdown_outline` (from sections table)
 - `reader.search_markdown` (paragraph full-text search in SQLite)
 - `reader.semantic_search_documents` (cross-document semantic retrieval from embeddings table)
-- `reader.import_document` (import local Markdown/PDF/EPUB file into Reader SQLite)
+- `reader.import_document` (import local Markdown/EPUB file into Reader SQLite)
 - `reader.summarize_context` (summary for paragraph/section/document)
 - `reader.translate_text` (text translation by Reader AI config)
 - `reader.deep_analyze_context` (structured deep analysis)
 - `reader.chat_with_context` (contextual QA for paragraph/section/document)
 
-`reader.list_documents` 参数可用 `file_types` 过滤，如 `["pdf"]` 或 `["epub"]`。
-`reader.import_document` 现支持 Markdown/PDF/EPUB 导入（PDF 依赖 `pdftotext`，EPUB 依赖 `unzip`）。
+`reader.list_documents` 参数可用 `file_types` 过滤，如 `["epub"]` 或 `["markdown"]`。
+`reader.import_document` 现支持 Markdown/EPUB 导入（EPUB 依赖 `unzip`）。
 `reader.semantic_search_documents` 支持全库语义检索，默认跨文档返回 `top_k=10`，可用 `scan_limit` 和 `batch_size` 控制大库候选扫描规模。
 
 **Direct CLI (usable via terminal):**
 ```bash
 # 导入三种文件
 reader-cli import ./docs/a.md
-reader-cli import ./docs/b.pdf
+reader-cli import ./docs/book.epub
 reader-cli import ./docs/c.epub
 
 # 工具栏常用能力

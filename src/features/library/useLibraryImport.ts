@@ -5,7 +5,6 @@ import { invoke } from '@tauri-apps/api/core';
 type LibraryImportDependencies = {
   loadDocuments: () => Promise<unknown>;
   importEpub: (path: string) => Promise<unknown>;
-  importPdf: (path: string) => Promise<string>;
   importMarkdown: (path: string) => Promise<unknown>;
   selectDocument: (id: string) => void;
 };
@@ -33,7 +32,6 @@ const normalizeUrl = (input: string) => {
 export function useLibraryImport({
   loadDocuments,
   importEpub,
-  importPdf,
   importMarkdown,
   selectDocument,
 }: LibraryImportDependencies) {
@@ -48,17 +46,13 @@ export function useLibraryImport({
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: 'Documents', extensions: ['epub', 'pdf', 'md'] }],
+        filters: [{ name: 'Documents', extensions: ['epub', 'md'] }],
       });
 
       if (selected && typeof selected === 'string') {
         const ext = selected.split('.').pop()?.toLowerCase();
         if (ext === 'epub') {
           await importEpub(selected);
-          importedSuccessfully = true;
-        } else if (ext === 'pdf') {
-          const docId = await importPdf(selected);
-          selectDocument(docId);
           importedSuccessfully = true;
         } else if (ext === 'md') {
           await importMarkdown(selected);
@@ -72,7 +66,7 @@ export function useLibraryImport({
       setIsImportingFile(false);
       if (importedSuccessfully) setShowImportDialog(false);
     }
-  }, [importEpub, importMarkdown, importPdf, selectDocument]);
+  }, [importEpub, importMarkdown]);
 
   const handleImportUrlBeta = useCallback(async () => {
     const url = normalizeUrl(importUrlDraft);

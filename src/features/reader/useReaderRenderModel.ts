@@ -1,16 +1,12 @@
 import { useMemo } from 'react';
 import type { Paragraph } from '../../types';
 
-type DocumentType = 'epub' | 'pdf' | 'markdown';
+type DocumentType = 'epub' | 'markdown';
 type MarkdownParagraphMeta = { heading: string | null; inMediaLinks: boolean };
 type MarkdownFilterOptions = {
   dropLeadingBeforeFirstH1?: boolean;
   dropLeadingSummarySection?: boolean;
   hideMediaLinksSection?: boolean;
-};
-type PdfTableGrouping = {
-  paragraphs: Paragraph[];
-  memberIdsByLeaderId: Map<string, string[]>;
 };
 type RemoteArticleImage = { src: string; alt: string };
 
@@ -24,9 +20,7 @@ export function useReaderRenderModel({
   buildMarkdownParagraphMeta,
   filterVisibleMarkdownParagraphs,
   injectSupplementalReferencesParagraph,
-  filterVisiblePdfParagraphs,
   filterLeadingSummaryParagraphs,
-  groupPdfTableParagraphs,
   isReaderImagePlaceholderLine,
   normalizeMarkdownForReader,
 }: {
@@ -39,9 +33,7 @@ export function useReaderRenderModel({
   buildMarkdownParagraphMeta: (paragraphs: Paragraph[]) => Record<string, MarkdownParagraphMeta>;
   filterVisibleMarkdownParagraphs: (paragraphs: Paragraph[], meta: Record<string, MarkdownParagraphMeta>, options: MarkdownFilterOptions) => Paragraph[];
   injectSupplementalReferencesParagraph: (paragraphs: Paragraph[], references: string[]) => Paragraph[];
-  filterVisiblePdfParagraphs: (paragraphs: Paragraph[]) => Paragraph[];
   filterLeadingSummaryParagraphs: (paragraphs: Paragraph[]) => Paragraph[];
-  groupPdfTableParagraphs: (paragraphs: Paragraph[]) => PdfTableGrouping;
   isReaderImagePlaceholderLine: (line: string) => boolean;
   normalizeMarkdownForReader: (text: string, images: RemoteArticleImage[], cursor?: { current: number }, hasInlineImagePlaceholders?: boolean) => string;
 }) {
@@ -64,16 +56,10 @@ export function useReaderRenderModel({
         supplementalReferences,
       );
     }
-    if (currentDocumentType === 'pdf') return filterVisiblePdfParagraphs(filterLeadingSummaryParagraphs(paragraphs));
     return filterLeadingSummaryParagraphs(paragraphs);
-  }, [currentDocumentType, filterLeadingSummaryParagraphs, filterVisibleMarkdownParagraphs, injectSupplementalReferencesParagraph, markdownFilterOptions, markdownParagraphMeta, paragraphs, supplementalReferences, filterVisiblePdfParagraphs]);
+  }, [currentDocumentType, filterLeadingSummaryParagraphs, filterVisibleMarkdownParagraphs, injectSupplementalReferencesParagraph, markdownFilterOptions, markdownParagraphMeta, paragraphs, supplementalReferences]);
 
-  const { paragraphs: renderParagraphs, memberIdsByLeaderId: pdfTableMemberIdsByLeader } = useMemo(
-    () => currentDocumentType === 'pdf'
-      ? groupPdfTableParagraphs(visibleParagraphs)
-      : { paragraphs: visibleParagraphs, memberIdsByLeaderId: new Map<string, string[]>() },
-    [currentDocumentType, groupPdfTableParagraphs, visibleParagraphs],
-  );
+  const renderParagraphs = visibleParagraphs;
 
   const normalizedMarkdownTexts = useMemo(() => {
     const cursor = { current: 0 };
@@ -94,5 +80,5 @@ export function useReaderRenderModel({
     return normalized;
   }, [currentDocumentType, isMultimediaMode, isReaderImagePlaceholderLine, normalizeMarkdownForReader, remoteArticleImages, visibleParagraphs]);
 
-  return { markdownParagraphMeta, visibleParagraphs, renderParagraphs, pdfTableMemberIdsByLeader, normalizedMarkdownTexts };
+  return { markdownParagraphMeta, visibleParagraphs, renderParagraphs, normalizedMarkdownTexts };
 }
