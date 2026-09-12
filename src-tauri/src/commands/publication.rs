@@ -1147,6 +1147,7 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(invalid.code, "publication.locator_invalid");
+        drop(conn);
         fs::remove_dir_all(root).unwrap();
     }
 
