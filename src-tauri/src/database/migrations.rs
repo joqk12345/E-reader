@@ -70,10 +70,16 @@ fn create_consistent_backup(
             .read(true)
             .open(&temporary_path)?
             .sync_all()?;
-        // The temp file and destination share a directory. hard_link is an atomic
-        // no-clobber publish; unlike rename on Unix, it cannot replace an existing backup.
-        std::fs::hard_link(&temporary_path, backup_path)?;
-        std::fs::remove_file(&temporary_path)?;
+        // The temp file and destination share a directory. Unix uses hard_link for
+        // atomic no-clobber publication; Windows does not reliably permit hard-linking
+        // SQLite files on the hosted test runner, so rename is used there instead.
+        #[cfg(windows)]
+        std::fs::rename(&temporary_path, backup_path)?;
+        #[cfg(not(windows))]
+        {
+            std::fs::hard_link(&temporary_path, backup_path)?;
+            std::fs::remove_file(&temporary_path)?;
+        }
         Ok(())
     })();
 
