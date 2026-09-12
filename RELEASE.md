@@ -155,8 +155,10 @@ If the Apple secrets are still missing:
 
 If you need to rerun an existing tag manually before the Apple secrets are available, run `.github/workflows/release.yml` from the Actions tab with:
 
-- `tag`: the existing release tag, for example `v0.4.19`
+- `version`: the existing release version without `v`, for example `0.4.19`
 - `allow_unsigned_macos`: `true`
+
+The workflow derives the `v<version>` tag and performs a mandatory version/tag/ref alignment precheck before any platform build starts.
 
 That manual path keeps Linux and Windows unchanged, builds macOS DMGs without Apple signing/notarization, and uploads them with an `-unsigned.dmg` suffix so they are not confused with public notarized builds.
 
