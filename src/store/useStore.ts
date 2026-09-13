@@ -73,7 +73,6 @@ interface ReaderState {
   loadDocuments: () => Promise<void>;
   selectDocument: (id: string) => void;
   importEpub: (filePath: string) => Promise<string>;
-  importMarkdown: (filePath: string) => Promise<string>;
   deleteDocument: (id: string) => Promise<void>;
 
   // Reader actions
@@ -190,20 +189,6 @@ export const useStore = create<ReaderState>((set, get) => ({
       return docId;
     } catch (error) {
       console.error('Failed to import EPUB:', error);
-      set({ isLoading: false });
-      throw error;
-    }
-  },
-
-  importMarkdown: async (filePath: string) => {
-    set({ isLoading: true });
-    try {
-      const docId = await invoke<string>('import_markdown', { filePath });
-      await get().loadDocuments();
-      set({ isLoading: false });
-      return docId;
-    } catch (error) {
-      console.error('Failed to import Markdown:', error);
       set({ isLoading: false });
       throw error;
     }

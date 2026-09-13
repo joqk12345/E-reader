@@ -173,6 +173,15 @@ export const getPublicationBlocksV2 = async (
  * The backend deliberately exposes pages; keeping the pagination contract here
  * gives all reader consumers one validated content source.
  */
+export const ensurePublicationImportedV2 = async (
+  documentId: string,
+  invoke: PublicationBlocksInvoke = (command, args) => tauriInvoke(command, args)
+): Promise<void> => {
+  await invoke('publication_import_existing_v2', {
+    request: { documentId },
+  });
+};
+
 export const loadPublicationBlocksV2 = async (
   documentId: string,
   options: { limit?: number } = {},

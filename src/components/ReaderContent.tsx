@@ -1375,7 +1375,7 @@ export function ReaderContent() {
 
   const renderTranslationCard = (content: ReactNode) => (
     <div
-      className={`rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
+      className={`reader-reading-translation rounded-md border-l-[3px] px-3 py-2 ${showSource ? 'ml-4' : ''}`}
       style={{ backgroundColor: translationCardBg, borderColor: translationCardBorder }}
     >
       <div className="flex items-start gap-2">
@@ -2116,7 +2116,7 @@ export function ReaderContent() {
         style={isTwoColumnLayout ? { maxWidth: '100%' } : { maxWidth: `${viewSettings.contentWidth}em` }}
       >
           <article
-            className={isTwoColumnLayout ? 'max-w-none' : 'prose max-w-none'}
+            className={`reader-reading-content ${isTwoColumnLayout ? 'max-w-none' : 'prose max-w-none'}`}
             style={
               isTwoColumnLayout
                 ? { columnCount: 2, columnGap: '3rem', columnFill: 'auto', width: '100%' }
@@ -2177,12 +2177,12 @@ export function ReaderContent() {
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
-                            h1: ({ children }) => <h1 className="mt-6 mb-3 text-size-hero font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
-                            h2: ({ children }) => <h2 className="mt-5 mb-3 text-size-hero-sm font-bold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
-                            h3: ({ children }) => <h3 className="mt-4 mb-2 text-size-heading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
-                            h4: ({ children }) => <h4 className="mt-4 mb-2 text-size-title font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
-                            h5: ({ children }) => <h5 className="mt-3 mb-2 text-size-body font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
-                            h6: ({ children }) => <h6 className="mt-3 mb-2 text-size-subheading font-semibold" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
+                            h1: ({ children }) => <h1 className="reader-content-heading reader-content-heading-1" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h1-${paragraph.id}`)}</h1>,
+                            h2: ({ children }) => <h2 className="reader-content-heading reader-content-heading-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h2-${paragraph.id}`)}</h2>,
+                            h3: ({ children }) => <h3 className="reader-content-heading reader-content-heading-3" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h3-${paragraph.id}`)}</h3>,
+                            h4: ({ children }) => <h4 className="reader-content-heading reader-content-heading-4" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h4-${paragraph.id}`)}</h4>,
+                            h5: ({ children }) => <h5 className="reader-content-heading reader-content-heading-5" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h5-${paragraph.id}`)}</h5>,
+                            h6: ({ children }) => <h6 className="reader-content-heading reader-content-heading-6" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `h6-${paragraph.id}`)}</h6>,
                             p: ({ children }) => <p className="my-2" style={{ color: currentTheme.foreground }}>{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `p-${paragraph.id}`)}</p>,
                             ul: ({ children }) => <ul className="my-2 list-disc pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ul-${paragraph.id}`)}</ul>,
                             ol: ({ children }) => <ol className="my-2 list-decimal pl-6">{renderMarkdownChildren(children, shouldHighlightText ? searchHighlightQuery : '', paragraphAnnotations, `ol-${paragraph.id}`)}</ol>,
@@ -2242,8 +2242,8 @@ export function ReaderContent() {
                                         backgroundColor: currentTheme.secondary,
                                         color: currentTheme.foreground,
                                         borderColor: currentTheme.border,
-                                        fontFamily: 'Georgia, Times, serif',
-                                        lineHeight: 1.8,
+                                        fontFamily: 'var(--font-family-reading-heading)',
+                                        lineHeight: 'var(--line-height-reading-display)',
                                       }}
                                       dangerouslySetInnerHTML={{ __html: displayMathHtml }}
                                     />
@@ -2258,8 +2258,8 @@ export function ReaderContent() {
                                         backgroundColor: currentTheme.secondary,
                                         color: currentTheme.foreground,
                                         borderColor: currentTheme.border,
-                                        fontFamily: 'Georgia, Times, serif',
-                                        lineHeight: 1.8,
+                                        fontFamily: 'var(--font-family-reading-heading)',
+                                        lineHeight: 'var(--line-height-reading-display)',
                                       }}
                                     >
                                       {rawCode}
@@ -2488,7 +2488,7 @@ export function ReaderContent() {
           data-selection-popover="true"
           role="dialog"
           aria-label="Selection actions"
-          className="fixed z-50 -translate-x-1/2 rounded-xl border border-control-border bg-surface p-2.5 shadow-floating overflow-y-auto"
+          className="reader-selection-popover fixed -translate-x-1/2"
           style={{
             left: `${selectionPopoverLeft}px`,
             top: `${Math.max(12, selectionAnchor.y + selectionPopoverOffset.y)}px`,
@@ -2497,12 +2497,12 @@ export function ReaderContent() {
               selectionPopoverSize.height > 0
                 ? `${Math.min(selectionPopoverSize.height, Math.floor(selectionPopoverViewportHeight * 0.72))}px`
                 : undefined,
-            maxHeight: '72vh',
+            maxHeight: 'var(--selection-popover-max-height)',
           }}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
         >
-          <div className="mb-2 flex items-center gap-1 rounded-2xl border border-control-border bg-gradient-to-r from-surface-subtle to-surface-hover px-2 py-1.5 shadow-sm backdrop-blur">
+          <div className="reader-selection-actionbar">
             <PanelButton
               className="rounded-md px-1.5 py-0.5 text-size-meta text-muted hover:bg-surface-subtle"
               title="Drag to move panel"
@@ -2539,7 +2539,7 @@ export function ReaderContent() {
                 }}
               >
                 {action === 'ask' && !isSelectionReorderMode && isQuestionInputExpanded ? (
-                  <div className="shrink-0 flex h-10 w-80 items-center gap-2 rounded-full border border-control-border bg-surface px-3">
+                  <div className="reader-selection-question shrink-0">
                     <Input
                       autoFocus
                       value={selectionQuestion}

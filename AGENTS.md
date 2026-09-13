@@ -7,6 +7,7 @@ Before changing Reader V2 behavior, read:
 1. `docs/plans/2026-08-19-reader-v2-refactor-plan.md`
 2. `.pi/skills/reader-tdd/SKILL.md`
 3. The rules relevant to the touched layer under `.claude/rules/`
+4. Before changing UI or Design System behavior, `docs/design/robin-williams-design-principles.md`
 
 ## Pi-native TDD
 
@@ -34,6 +35,11 @@ Useful Pi commands: `/tdd-plan`, `/tdd-design`, `/tdd-implement`, `/tdd-review`,
 
 ## Design system and token policy
 
+- Apply Robin Williams's Contrast, Repetition, Alignment, and Proximity principles and the typography rules in `docs/design/robin-williams-design-principles.md` to every new or modified UI surface.
+- Either keep visual roles consistent or make their contrast unmistakable; do not introduce accidental near-duplicate type styles, controls, headings, or information layers.
+- Use proximity and alignment before adding containers, borders, or shadows. Empty toolbars, duplicate headers, duplicate search fields, and decorative structure without task value are defects.
+- Keep typography roles explicit and stable: page identity, section heading, document title, body, metadata, label, and control text must not compete at equal weight.
+- UI review must cover CRAP hierarchy, keyboard and ARIA behavior, long text, empty states, target viewport sizes, zoom, and native Tauri evidence where applicable.
 - UI design values are 100% tokenized for every new or modified surface: color, typography, spacing, radius, border width, shadow, control height, and letter spacing must come from `src/styles/tokens.css`.
 - Consume tokens through semantic utility classes or component styles. Do not add raw colors, arbitrary Tailwind values, one-off shadows, or magic numbers directly in application components.
 - When a needed value does not exist, add a named light/dark-aware token first, then consume it. Keep reading-theme tokens separate from application-shell tokens.

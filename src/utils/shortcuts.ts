@@ -15,8 +15,8 @@ export type Keymap = {
 };
 
 export const defaultKeymap: Keymap = {
-  next_page: ['PageDown', 'Space', 'J'],
-  prev_page: ['PageUp', 'Shift+Space', 'K'],
+  next_page: ['PageDown', 'Space', 'ArrowRight', 'J'],
+  prev_page: ['PageUp', 'Shift+Space', 'ArrowLeft', 'K'],
   open_settings: ['Cmd+,', 'Ctrl+,'],
   toggle_window_maximize: ['Cmd+Shift+M', 'Ctrl+Shift+M'],
   toggle_header_tools: ['Cmd+Shift+T', 'Ctrl+Shift+T'],
@@ -85,16 +85,19 @@ export const matchesAnyShortcut = (event: KeyboardEvent, shortcuts: string[]): b
   return shortcuts.some((shortcut) => matchesShortcut(event, shortcut));
 };
 
+const normalizePageShortcuts = (
+  configured: string[] | undefined,
+  defaults: string[],
+  required: string
+): string[] => {
+  const shortcuts = configured && configured.length > 0 ? configured : defaults;
+  return shortcuts.includes(required) ? shortcuts : [...shortcuts, required];
+};
+
 export const normalizeKeymap = (keymap?: Partial<Keymap> | null): Keymap => {
   return {
-    next_page:
-      keymap?.next_page && keymap.next_page.length > 0
-        ? keymap.next_page
-        : defaultKeymap.next_page,
-    prev_page:
-      keymap?.prev_page && keymap.prev_page.length > 0
-        ? keymap.prev_page
-        : defaultKeymap.prev_page,
+    next_page: normalizePageShortcuts(keymap?.next_page, defaultKeymap.next_page, 'ArrowRight'),
+    prev_page: normalizePageShortcuts(keymap?.prev_page, defaultKeymap.prev_page, 'ArrowLeft'),
     open_settings:
       keymap?.open_settings && keymap.open_settings.length > 0
         ? keymap.open_settings

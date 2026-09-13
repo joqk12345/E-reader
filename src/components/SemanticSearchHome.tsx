@@ -1,52 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { PanelButton } from './ui/Button';
+import React from 'react';
 import { SearchPanel } from './SearchPanel';
 
 type SemanticSearchHomeProps = {
   statusBar?: React.ReactNode;
 };
 
-const SEARCH_HISTORY_KEY = 'reader.searchHistory';
-
 export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBar }) => {
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
-
-  useEffect(() => {
-    const loadHistory = () => {
-      if (typeof window === 'undefined') return;
-      try {
-        const raw = window.localStorage.getItem(SEARCH_HISTORY_KEY);
-        if (!raw) {
-          setSearchHistory([]);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setSearchHistory(parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0));
-        }
-      } catch (error) {
-        console.warn('Failed to load semantic search history:', error);
-      }
-    };
-
-    loadHistory();
-    window.addEventListener('reader:search-history-updated', loadHistory as EventListener);
-    return () => window.removeEventListener('reader:search-history-updated', loadHistory as EventListener);
-  }, []);
-
-  const runHistoryQuery = (query: string) => {
-    window.dispatchEvent(new CustomEvent('reader:run-search', { detail: { query } }));
-  };
-
-  const clearHistory = () => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.removeItem(SEARCH_HISTORY_KEY);
-    setSearchHistory([]);
-    window.dispatchEvent(new CustomEvent('reader:search-history-updated'));
-  };
-
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-subtle">
+    <div data-testid="semantic-search-page" className="flex h-full min-h-0 flex-col bg-surface-subtle">
       <div className="border-b border-border bg-surface px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-subtle text-secondary shadow-sm">
@@ -63,50 +24,9 @@ export const SemanticSearchHome: React.FC<SemanticSearchHomeProps> = ({ statusBa
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 p-6">
-        <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col rounded-2xl border border-border bg-surface shadow-sm">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div>
-                <div className="text-size-subheading font-semibold text-heading">Recent Queries</div>
-                <div className="text-size-caption text-muted">Click to search again.</div>
-              </div>
-              {searchHistory.length > 0 && (
-                <PanelButton
-                  type="button"
-                  onClick={clearHistory}
-                  className="text-size-caption text-muted hover:text-secondary"
-                >
-                  Clear
-                </PanelButton>
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-3">
-              {searchHistory.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-surface-subtle px-4 py-6 text-size-subheading text-muted">
-                  No recent searches yet.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {searchHistory.map((item) => (
-                    <PanelButton
-                      key={item}
-                      type="button"
-                      onClick={() => runHistoryQuery(item)}
-                      className="block w-full rounded-xl border border-border bg-surface-subtle px-3 py-2 text-left text-size-subheading text-secondary transition-colors hover:border-focus-border hover:bg-action-subtle hover:text-action-text"
-                    >
-                      {item}
-                    </PanelButton>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="min-h-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-            <SearchPanel />
-          </div>
+      <div className="flex-1 min-h-0 px-4 pb-4">
+        <div className="h-full min-h-0 overflow-hidden rounded-panel border border-border bg-surface shadow-sm">
+          <SearchPanel />
         </div>
       </div>
 

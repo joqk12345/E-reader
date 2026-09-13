@@ -3,14 +3,12 @@ import { useCallback, useRef, useState } from 'react';
 export function useReaderPanelLayout() {
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [tocWidth, setTocWidth] = useState(256);
-  const [headerToolsCollapsed, setHeaderToolsCollapsed] = useState(true);
   // Keep the reading viewport primary on a fresh reader session. The tool workspace
   // remains available through its compact rail without competing with the TOC.
   const [toolCollapsed, setToolCollapsed] = useState(true);
   const [toolWidth, setToolWidth] = useState(320);
   const [readingMode, setReadingMode] = useState(false);
   const readingModeSnapshotRef = useRef<{
-    headerToolsCollapsed: boolean;
     tocCollapsed: boolean;
     toolCollapsed: boolean;
   } | null>(null);
@@ -19,15 +17,13 @@ export function useReaderPanelLayout() {
     (enabled: boolean) => {
       if (enabled) {
         if (!readingModeSnapshotRef.current) {
-          readingModeSnapshotRef.current = { headerToolsCollapsed, tocCollapsed, toolCollapsed };
+          readingModeSnapshotRef.current = { tocCollapsed, toolCollapsed };
         }
-        setHeaderToolsCollapsed(true);
         setTocCollapsed(true);
         setToolCollapsed(true);
       } else {
         const snapshot = readingModeSnapshotRef.current;
         if (snapshot) {
-          setHeaderToolsCollapsed(snapshot.headerToolsCollapsed);
           setTocCollapsed(snapshot.tocCollapsed);
           setToolCollapsed(snapshot.toolCollapsed);
           readingModeSnapshotRef.current = null;
@@ -36,7 +32,7 @@ export function useReaderPanelLayout() {
       setReadingMode(enabled);
       window.dispatchEvent(new CustomEvent('reader:reading-mode-changed', { detail: { enabled } }));
     },
-    [headerToolsCollapsed, tocCollapsed, toolCollapsed],
+    [tocCollapsed, toolCollapsed],
   );
 
   const toggleReadingMode = useCallback(() => {
@@ -48,8 +44,6 @@ export function useReaderPanelLayout() {
     setTocCollapsed,
     tocWidth,
     setTocWidth,
-    headerToolsCollapsed,
-    setHeaderToolsCollapsed,
     toolCollapsed,
     setToolCollapsed,
     toolWidth,

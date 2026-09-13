@@ -17,7 +17,7 @@ vi.mock('./TagsPanel', () => ({ TagsPanel: () => null }));
 import { ToolPanel } from './ToolPanel';
 
 describe('ToolPanel', () => {
-  it('keeps every tool discoverable in an accessible non-grid tab rail', () => {
+  it('keeps only the three primary reading tasks at the first level while preserving every tool', () => {
     const markup = renderToStaticMarkup(
       <ToolPanel
         collapsed={false}
@@ -30,9 +30,9 @@ describe('ToolPanel', () => {
     );
 
     expect(markup).toContain('aria-label="Reader tools"');
-    expect(markup).not.toContain('grid-cols-3');
-    for (const label of ['Search', 'Understand', 'Notes', 'Translate', 'Dict', 'Audio']) {
-      expect(markup).toContain(`title="${label}"`);
-    }
+    expect(markup).toContain('data-testid="reader-tool-group-primary"');
+    expect(markup).toMatch(/reader-tool-group-primary[\s\S]*title="Search"[\s\S]*title="Understand"[\s\S]*title="Chat"/);
+    expect(markup).toMatch(/reader-tool-group-advanced hidden[\s\S]*title="Summary"[\s\S]*title="Audio"/);
+    expect(markup).not.toContain('reader-tool-icon');
   });
 });

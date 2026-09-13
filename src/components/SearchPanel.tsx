@@ -123,6 +123,7 @@ export const SearchPanel: React.FC = () => {
     resultsLabel: isZh ? '结果数:' : 'Results:',
     searchHistory: isZh ? '最近搜索' : 'Recent Searches',
     clearHistory: isZh ? '清空历史' : 'Clear History',
+    openOriginal: isZh ? '打开原文' : 'Open original',
   };
   const {
     documents,
@@ -640,10 +641,10 @@ export const SearchPanel: React.FC = () => {
 
         <div className="space-y-3">
           {results.map((result, idx) => (
-            <div
+            <article
               key={result.paragraph_id}
-              className="p-3 bg-surface border border-border rounded-lg hover:shadow-md hover:border-focus-border transition-shadow cursor-pointer"
-              onClick={() => void handleResultClick(result)}
+              data-testid="semantic-search-result"
+              className="p-3 bg-surface border border-border rounded-lg hover:shadow-md hover:border-focus-border transition-shadow"
             >
               <div className="flex items-start justify-between mb-2">
                 <span className="text-size-caption text-muted font-mono">
@@ -656,7 +657,14 @@ export const SearchPanel: React.FC = () => {
               <p className="text-size-subheading text-foreground leading-relaxed">
                 {result.snippet}
               </p>
-            </div>
+              <PanelButton
+                type="button"
+                onClick={() => void handleResultClick(result)}
+                className="mt-3 text-size-caption text-action hover:text-action-text"
+              >
+                {t.openOriginal}
+              </PanelButton>
+            </article>
           ))}
         </div>
       </div>

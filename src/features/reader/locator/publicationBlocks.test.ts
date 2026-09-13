@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   getPublicationBlocksV2,
   loadPublicationBlocksV2,
+  ensurePublicationImportedV2,
   type PublicationBlocksInvoke,
 } from './publicationBlocks';
 
@@ -168,5 +169,18 @@ describe('loadPublicationBlocksV2', () => {
       .mockResolvedValue({ ...first, blocks: [], hasMore: true, total: 3 }))).rejects.toThrow(
       'did not make progress'
     );
+  });
+});
+
+
+describe("ensurePublicationImportedV2", () => {
+  it("imports an existing EPUB by document identity before reading V2 blocks", async () => {
+    const invoke = vi.fn().mockResolvedValue({ schemaVersion: 1, reused: false });
+
+    await ensurePublicationImportedV2("doc-1", invoke);
+
+    expect(invoke).toHaveBeenCalledWith("publication_import_existing_v2", {
+      request: { documentId: "doc-1" },
+    });
   });
 });

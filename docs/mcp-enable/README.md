@@ -23,14 +23,12 @@ It starts the custom Reader business MCP server:
 
 - `reader.list_documents`
 - `reader.open_document`
-- `reader.get_markdown_outline`
-- `reader.search_markdown`
 - `reader.semantic_search_documents`
 - `reader.import_document`
 
 All tools read from Reader SQLite (`reader.db`) rather than scanning the current project folder.
-`reader.list_documents` defaults to `markdown/pdf/epub`; use `file_types` to filter.
-`reader.import_document` supports markdown/pdf/epub import via MCP.
+`reader.list_documents` exposes EPUB documents (and preserves legacy records); use `file_types` to filter.
+`reader.import_document` supports EPUB import via MCP.
 `reader.semantic_search_documents` supports semantic retrieval across the embedding index (`query`, `top_k`, `scan_limit`, `batch_size`).
 
 ## 4) Client install hints

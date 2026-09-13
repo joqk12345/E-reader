@@ -105,6 +105,27 @@ pub fn create_tables(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    // Repair the early V2 publication schema used by existing local databases.
+    // Those databases already report user_version=1 but predate archive_size.
+    let publication_exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'publications')",
+        [],
+        |row| row.get(0),
+    )?;
+    if publication_exists {
+        let has_archive_size: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info('publications') WHERE name = 'archive_size')",
+            [],
+            |row| row.get(0),
+        )?;
+        if !has_archive_size {
+            conn.execute(
+                "ALTER TABLE publications ADD COLUMN archive_size INTEGER NOT NULL DEFAULT 0 CHECK (archive_size >= 0)",
+                [],
+            )?;
+        }
+    }
+
     // Deduplicate historical duplicates before enforcing unique paragraph_id
     conn.execute(
         "DELETE FROM embeddings

@@ -13,7 +13,7 @@ describe('useReaderPanelLayout', () => {
     const layout = useReaderPanelLayout();
 
     expect(layout.tocCollapsed).toBe(false);
-    expect(layout.headerToolsCollapsed).toBe(true);
+    expect(layout).not.toHaveProperty('headerToolsCollapsed');
     expect(layout.toolCollapsed).toBe(true);
     expect([layout.tocCollapsed, layout.toolCollapsed]).not.toEqual([false, false]);
   });

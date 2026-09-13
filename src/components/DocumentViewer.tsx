@@ -10,7 +10,9 @@ type DocumentViewerProps = {
 };
 
 export function DocumentViewer({ documentType, document, onBack, children }: DocumentViewerProps) {
-  if (documentType !== 'pdf') return <>{children}</>;
+  if (documentType !== 'pdf' && documentType !== 'markdown') return <>{children}</>;
+
+  const formatName = documentType === 'pdf' ? 'PDF' : 'Markdown';
 
   return (
     <div
@@ -18,7 +20,7 @@ export function DocumentViewer({ documentType, document, onBack, children }: Doc
       className="flex h-full min-h-0 items-center justify-center bg-surface-subtle px-6 text-center"
     >
       <section className="max-w-md rounded-panel border border-border bg-surface p-6 shadow-panel">
-        <div className="text-size-title font-semibold text-heading">PDF is no longer supported</div>
+        <div className="text-size-title font-semibold text-heading">{formatName} is no longer supported</div>
         <p className="mt-2 text-size-subheading text-secondary">
           This document format is no longer supported.
         </p>

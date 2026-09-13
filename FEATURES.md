@@ -180,7 +180,7 @@ LM Studio (本地推理)
 ```
 用户选择文件
     ↓
-Library.tsx (invoke import_epub/import_markdown)
+Library.tsx (invoke import_epub)
     ↓
 Tauri Command (src-tauri/src/commands/import.rs)
     ↓
@@ -399,7 +399,7 @@ translate command
 3. **功能增强**
    - 书签和标注
    - 阅读进度保存
-   - 导出为 Markdown
+   - 导出为纯文本
 
 #### 中优先级
 4. **国际化**

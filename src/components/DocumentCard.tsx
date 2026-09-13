@@ -39,7 +39,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
-  const actionPillSizeClassName = 'inline-flex h-8 w-12 items-center justify-center rounded-full transition-colors';
+  const actionPillSizeClassName = 'document-card-action';
   const favoriteButtonClassName = `${actionPillSizeClassName} ${
     isFavorite ? 'bg-surface-subtle text-warning hover:bg-surface-hover' : 'bg-surface-subtle text-muted hover:bg-surface-hover'
   }`;
@@ -51,7 +51,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
       <div
         data-testid="document-card"
         data-document-id={document.id}
-        className="bg-surface rounded border border-border hover:border-focus-border transition-colors cursor-pointer px-2 py-1"
+        className="document-card document-card-compact"
         onClick={onClick}
       >
         <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
       <div
         data-testid="document-card"
         data-document-id={document.id}
-        className="bg-surface rounded-md border border-border hover:border-focus-border hover:shadow-sm transition-all cursor-pointer px-2.5 py-1.5"
+        className="document-card document-card-list"
         onClick={onClick}
       >
         <div className="flex items-start gap-2">
@@ -160,7 +160,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     <div
       data-testid="document-card"
       data-document-id={document.id}
-      className="bg-surface rounded-md shadow-sm hover:shadow-md transition-shadow cursor-pointer p-2.5"
+      className="document-card document-card-grid"
       onClick={onClick}
     >
       <div className="flex items-start justify-between">

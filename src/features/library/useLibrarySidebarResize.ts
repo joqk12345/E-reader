@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-const MIN_SIDEBAR_WIDTH = 210;
-const MAX_SIDEBAR_WIDTH = 360;
+const MIN_SIDEBAR_WIDTH = 196;
+const MAX_SIDEBAR_WIDTH = 320;
 
-export function useLibrarySidebarResize(initialWidth = 248) {
+export function useLibrarySidebarResize(initialWidth = 224) {
   const [sidebarWidth, setSidebarWidth] = useState(initialWidth);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
 

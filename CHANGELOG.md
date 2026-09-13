@@ -2,10 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
-## [0.5.3] - Unreleased
+## [0.5.4] - 2026-09-13
 
-- 产品聚焦 EPUB 与 Markdown，移除新的 PDF 导入、解析和阅读流程。
-- 历史 PDF 数据行继续保留，可安全删除；打开时显示不支持状态且不会进入阅读器适配器。
+- foliate-js 成为 EPUB 默认渲染引擎，保留 legacy 回退开关。
+- EPUB 阅读器支持可收缩目录、阅读主题、字号、行高、正文宽度和响应式单栏布局。
+- 选区支持 Understand、Translate、Chat、Note、Mark 和 Audio 操作；Audio 可直接播放选区并同步正文高亮。
+- 修复 EPUB 双重编码换行实体导致的 `&#13;` 原样显示。
+- 产品聚焦 EPUB，移除 Markdown 文档导入和阅读流程；历史 Markdown 记录保留并可安全删除。
+- 移除新的 PDF 导入、解析和阅读流程；历史 PDF 数据行继续保留，可安全删除且不会进入阅读器适配器。
 - 移除 Rust PDF parser、Tauri `import_pdf` command、PDF 依赖及 PDF 专用 Reader UI。
 
 ## [0.5.2] - 2026-09-11

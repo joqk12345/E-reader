@@ -25,15 +25,21 @@ describe('DocumentViewer', () => {
     expect(markup).not.toContain('data-testid="reader-content"');
   });
 
-  it('passes EPUB and Markdown content to the normal reader path', () => {
-    for (const documentType of ['epub', 'markdown']) {
-      const markup = renderToStaticMarkup(
-        <DocumentViewer documentType={documentType} document={null} onBack={vi.fn()}>
-          <div data-testid="reader-content">reader</div>
-        </DocumentViewer>
-      );
-      expect(markup).toContain('data-testid="reader-content"');
-      expect(markup).not.toContain('data-testid="unsupported-document"');
-    }
+  it('keeps EPUB readable and blocks historical Markdown records', () => {
+    const epubMarkup = renderToStaticMarkup(
+      <DocumentViewer documentType="epub" document={null} onBack={vi.fn()}>
+        <div data-testid="reader-content">reader</div>
+      </DocumentViewer>
+    );
+    expect(epubMarkup).toContain('data-testid="reader-content"');
+    expect(epubMarkup).not.toContain('data-testid="unsupported-document"');
+
+    const markdownMarkup = renderToStaticMarkup(
+      <DocumentViewer documentType="markdown" document={null} onBack={vi.fn()}>
+        <div data-testid="reader-content">reader</div>
+      </DocumentViewer>
+    );
+    expect(markdownMarkup).toContain('Markdown is no longer supported');
+    expect(markdownMarkup).not.toContain('data-testid="reader-content"');
   });
 });

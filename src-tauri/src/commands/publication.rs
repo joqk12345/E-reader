@@ -278,10 +278,27 @@ fn map_import_error(error: PublicationImportError) -> PublicationCommandErrorV2 
     }
 }
 
+fn publication_import_v2_enabled_for(
+    compile_engine: Option<&str>,
+    runtime_engine: Option<&str>,
+    force_v2: Option<&str>,
+) -> bool {
+    if compile_engine == Some("legacy") || runtime_engine == Some("legacy") {
+        return false;
+    }
+    compile_engine != Some("legacy")
+        && (compile_engine == Some("foliate")
+            || runtime_engine == Some("foliate")
+            || force_v2 == Some("1")
+            || (compile_engine.is_none() && runtime_engine.is_none()))
+}
+
 fn publication_import_v2_enabled() -> bool {
-    option_env!("VITE_EPUB_ENGINE") == Some("foliate")
-        || std::env::var("READER_PUBLICATION_ENGINE_V2").is_ok_and(|value| value == "1")
-        || std::env::var("VITE_EPUB_ENGINE").is_ok_and(|value| value == "foliate")
+    publication_import_v2_enabled_for(
+        option_env!("VITE_EPUB_ENGINE"),
+        std::env::var("VITE_EPUB_ENGINE").ok().as_deref(),
+        std::env::var("READER_PUBLICATION_ENGINE_V2").ok().as_deref(),
+    )
 }
 
 fn import_existing_for_document(
@@ -961,6 +978,15 @@ mod tests {
             params![id, file_path, file_type],
         )
         .unwrap();
+    }
+
+    #[test]
+    fn publication_engine_defaults_to_foliate_and_only_legacy_disables_it() {
+        assert!(publication_import_v2_enabled_for(None, None, None));
+        assert!(publication_import_v2_enabled_for(Some("foliate"), None, None));
+        assert!(publication_import_v2_enabled_for(None, Some("foliate"), None));
+        assert!(!publication_import_v2_enabled_for(None, Some("legacy"), None));
+        assert!(!publication_import_v2_enabled_for(Some("legacy"), None, None));
     }
 
     #[test]

@@ -71,6 +71,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   onWidthChange,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('search');
+  const [showMoreTools, setShowMoreTools] = useState(false);
   const [chatRequest, setChatRequest] = useState<{ id: number; question: string } | null>(null);
   const [noteRequest, setNoteRequest] = useState<{
     id: number;
@@ -100,20 +101,22 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   } | null>(null);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'search', label: 'Search', icon: '🔍' },
-    { key: 'summary', label: 'Summary', icon: '📝' },
-    { key: 'understand', label: 'Understand', icon: '💡' },
-    { key: 'glossary', label: 'Glossary', icon: '🏷️' },
-    { key: 'tags', label: 'Tags', icon: '#️⃣' },
-    { key: 'dict', label: 'Dict', icon: '📘' },
-    { key: 'translate', label: 'Translate', icon: '🌐' },
-    { key: 'deep', label: 'Deep', icon: '🧠' },
-    { key: 'chat', label: 'Chat', icon: '💬' },
-    { key: 'notes', label: 'Notes', icon: '📒' },
-    { key: 'annotations', label: 'Marks', icon: '🖍️' },
-    { key: 'audiobook', label: 'Audio', icon: '🎧' },
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'search', label: 'Search' },
+    { key: 'understand', label: 'Understand' },
+    { key: 'chat', label: 'Chat' },
+    { key: 'summary', label: 'Summary' },
+    { key: 'dict', label: 'Dict' },
+    { key: 'translate', label: 'Translate' },
+    { key: 'deep', label: 'Deep' },
+    { key: 'glossary', label: 'Glossary' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'notes', label: 'Notes' },
+    { key: 'annotations', label: 'Marks' },
+    { key: 'audiobook', label: 'Audio' },
   ];
+  const primaryTabs = tabs.filter((tab) => ['search', 'understand', 'chat'].includes(tab.key));
+  const advancedTabs = tabs.filter((tab) => !['search', 'understand', 'chat'].includes(tab.key));
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -162,6 +165,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       const selectedText = customEvent.detail?.selectedText?.trim();
       if (!selectedText) return;
       setActiveTab('notes');
+      setShowMoreTools(true);
       setNoteRequest({
         id: Date.now(),
         docId: customEvent.detail?.docId,
@@ -179,6 +183,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       const selectedText = customEvent.detail?.selectedText?.trim();
       if (!selectedText) return;
       setActiveTab('translate');
+      setShowMoreTools(true);
       setTranslateRequest({
         id: Date.now(),
         selectedText,
@@ -225,8 +230,17 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       }
     };
 
+    const onOpenAudiobook = () => {
+      setActiveTab('audiobook');
+      setShowMoreTools(true);
+      if (collapsed) {
+        onToggleCollapse();
+      }
+    };
+
     const onOpenAnnotations = () => {
       setActiveTab('annotations');
+      setShowMoreTools(true);
       if (collapsed) {
         onToggleCollapse();
       }
@@ -239,6 +253,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       const sentence = customEvent.detail?.sentence?.trim() || selectedText;
       const mode = customEvent.detail?.mode === 'sentence' ? 'sentence' : 'dict';
       setActiveTab('dict');
+      setShowMoreTools(true);
       setDictRequest({
         id: Date.now(),
         mode,
@@ -272,6 +287,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
 
     const onOpenGlossary = (_event: Event) => {
       setActiveTab('glossary');
+      setShowMoreTools(true);
       if (collapsed) {
         onToggleCollapse();
       }
@@ -284,6 +300,7 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     window.addEventListener('reader:open-chat', onOpenChat as EventListener);
     window.addEventListener('reader:open-search', onOpenSearch as EventListener);
     window.addEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
+    window.addEventListener('reader:open-audiobook', onOpenAudiobook as EventListener);
     window.addEventListener('reader:open-dict', onOpenDict as EventListener);
     window.addEventListener('reader:open-understand', onOpenUnderstand as EventListener);
     window.addEventListener('reader:open-glossary', onOpenGlossary as EventListener);
@@ -295,22 +312,41 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
       window.removeEventListener('reader:open-chat', onOpenChat as EventListener);
       window.removeEventListener('reader:open-search', onOpenSearch as EventListener);
       window.removeEventListener('reader:open-annotations', onOpenAnnotations as EventListener);
+      window.removeEventListener('reader:open-audiobook', onOpenAudiobook as EventListener);
       window.removeEventListener('reader:open-dict', onOpenDict as EventListener);
       window.removeEventListener('reader:open-understand', onOpenUnderstand as EventListener);
       window.removeEventListener('reader:open-glossary', onOpenGlossary as EventListener);
     };
   }, [collapsed, onToggleCollapse]);
 
+  const renderTabs = (groupTabs: typeof tabs) => groupTabs.map((tab) => (
+    <PanelButton
+      key={tab.key}
+      onClick={() => setActiveTab(tab.key)}
+      role="tab"
+      aria-selected={activeTab === tab.key}
+      title={tab.label}
+      className={`reader-tool-tab ${
+        activeTab === tab.key
+          ? 'bg-action-subtle text-action-text reader-tab-active'
+          : 'text-navigation hover:bg-surface-subtle'
+      }`}
+    >
+      <span className="min-w-0 truncate">{tab.label}</span>
+    </PanelButton>
+  ));
+
   return (
     <aside
+      id="reader-tool-panel"
       className="relative h-full min-h-0 flex flex-col bg-surface border-l border-border flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
       {collapsed ? (
-        <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
+        <div className="reader-panel-header justify-center p-2">
           <PanelButton
             onClick={onToggleCollapse}
-            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
+            className="reader-panel-action text-navigation hover:bg-surface-subtle"
             title="Expand tools"
             aria-label="Expand tools"
           >
@@ -329,11 +365,11 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
           </PanelButton>
         </div>
       ) : (
-        <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+        <div className="reader-panel-header py-2.5">
           <span className="text-size-subheading font-semibold text-foreground">Tools</span>
           <PanelButton
             onClick={onToggleCollapse}
-            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
+            className="reader-panel-action ml-2 text-navigation hover:bg-surface-subtle"
             title="Collapse tools"
             aria-label="Collapse tools"
           >
@@ -353,47 +389,32 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
         </div>
       )}
 
-      {collapsed ? (
-        <div className="flex-1 min-h-0 py-2 space-y-1 overflow-y-auto">
-          {tabs.map((tab) => (
-            <PanelButton
-              key={tab.key}
-              onClick={() => {
-                setActiveTab(tab.key);
-                onToggleCollapse();
-              }}
-              title={tab.label}
-              className={`mx-auto w-8 h-8 rounded-md flex items-center justify-center text-size-subheading ${
-                activeTab === tab.key
-                  ? 'bg-action-subtle text-action-text'
-                  : 'text-navigation hover:bg-surface-subtle'
-              }`}
-            >
-              <span>{tab.icon}</span>
-            </PanelButton>
-          ))}
-        </div>
-      ) : (
+      {!collapsed && (
         <>
           {/* Tabs */}
-          <div role="tablist" aria-label="Reader tools" className="flex flex-col gap-px border-b border-border bg-border">
-            {tabs.map((tab) => (
-              <PanelButton
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                role="tab"
-                aria-selected={activeTab === tab.key}
-                title={tab.label}
-                className={`flex min-w-0 items-center justify-start gap-2 bg-surface px-3 py-2 text-size-subheading font-medium transition-colors focus:z-10 ${
-                  activeTab === tab.key
-                    ? 'bg-action-subtle text-action-text reader-tab-active'
-                    : 'text-navigation hover:bg-surface-subtle'
-                }`}
-              >
-                <span className="shrink-0" aria-hidden="true">{tab.icon}</span>
-                <span className="min-w-0 truncate">{tab.label}</span>
-              </PanelButton>
-            ))}
+          <div role="tablist" aria-label="Reader tools" className="reader-tool-tablist">
+            <section data-testid="reader-tool-group-primary" className="reader-tool-group reader-tool-group-primary">
+              <div className="reader-tool-group-tabs">{renderTabs(primaryTabs)}</div>
+            </section>
+            <PanelButton
+              type="button"
+              data-testid="reader-more-tools-button"
+              aria-expanded={showMoreTools}
+              aria-controls="reader-advanced-tools"
+              onClick={() => {
+                if (showMoreTools && !primaryTabs.some((tab) => tab.key === activeTab)) {
+                  setActiveTab('search');
+                }
+                setShowMoreTools((previous) => !previous);
+              }}
+              className="reader-more-tools-button text-navigation hover:bg-surface-subtle"
+            >
+              <span>More tools</span>
+              <span aria-hidden="true">{showMoreTools ? '−' : '+'}</span>
+            </PanelButton>
+            <section id="reader-advanced-tools" className={`reader-tool-group reader-tool-group-advanced ${showMoreTools ? '' : 'hidden'}`}>
+              <div className="reader-tool-group-tabs">{renderTabs(advancedTabs)}</div>
+            </section>
           </div>
           {/* Content */}
           <div className={activeTab === 'audiobook' ? 'hidden' : 'flex-1 min-h-0 overflow-y-auto'}>

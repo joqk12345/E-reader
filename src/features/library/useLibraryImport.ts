@@ -2,10 +2,16 @@ import { useCallback, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 
+export const SUPPORTED_IMPORT_EXTENSIONS = ['epub'] as const;
+
+export const isSupportedImportExtension = (filePath: string): boolean =>
+  SUPPORTED_IMPORT_EXTENSIONS.includes(
+    filePath.split('.').pop()?.toLowerCase() as (typeof SUPPORTED_IMPORT_EXTENSIONS)[number]
+  );
+
 type LibraryImportDependencies = {
   loadDocuments: () => Promise<unknown>;
   importEpub: (path: string) => Promise<unknown>;
-  importMarkdown: (path: string) => Promise<unknown>;
   selectDocument: (id: string) => void;
 };
 
@@ -32,7 +38,6 @@ const normalizeUrl = (input: string) => {
 export function useLibraryImport({
   loadDocuments,
   importEpub,
-  importMarkdown,
   selectDocument,
 }: LibraryImportDependencies) {
   const [isImportingFile, setIsImportingFile] = useState(false);
@@ -46,7 +51,7 @@ export function useLibraryImport({
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: 'Documents', extensions: ['epub', 'md'] }],
+        filters: [{ name: 'EPUB books', extensions: [...SUPPORTED_IMPORT_EXTENSIONS] }],
       });
 
       if (selected && typeof selected === 'string') {
@@ -54,8 +59,8 @@ export function useLibraryImport({
         if (ext === 'epub') {
           await importEpub(selected);
           importedSuccessfully = true;
-        } else if (ext === 'md') {
-          await importMarkdown(selected);
+        } else if (isSupportedImportExtension(selected)) {
+          await importEpub(selected);
           importedSuccessfully = true;
         }
       }
@@ -66,7 +71,7 @@ export function useLibraryImport({
       setIsImportingFile(false);
       if (importedSuccessfully) setShowImportDialog(false);
     }
-  }, [importEpub, importMarkdown]);
+  }, [importEpub]);
 
   const handleImportUrlBeta = useCallback(async () => {
     const url = normalizeUrl(importUrlDraft);

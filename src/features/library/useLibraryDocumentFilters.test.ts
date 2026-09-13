@@ -15,7 +15,7 @@ const documents: Document[] = [
 ];
 
 describe('useLibraryDocumentFilters', () => {
-  it('offers only EPUB and Markdown as importable type summaries while retaining legacy PDF records', () => {
+  it('offers only EPUB as an importable type summary while retaining legacy records', () => {
     const result = useLibraryDocumentFilters({
       documents,
       typeFilter: 'all',
@@ -30,7 +30,7 @@ describe('useLibraryDocumentFilters', () => {
       documentInsights: {},
     });
 
-    expect(result.typeSummaries.map((item) => item.key)).toEqual(['all', 'epub', 'markdown']);
+    expect(result.typeSummaries.map((item) => item.key)).toEqual(['all', 'epub']);
     expect(result.displayedDocuments.map((item) => item.id)).toEqual(['epub-1', 'markdown-1', 'legacy-pdf']);
   });
 });

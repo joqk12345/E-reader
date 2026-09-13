@@ -84,7 +84,7 @@ export const DeepAnalysisPanel: React.FC = () => {
           </div>
         )}
         {result && (
-          <article className="reader-ai-card border border-border bg-surface">
+          <article className="reader-ai-card">
             <div className="mb-4 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div className="min-w-0">
                 <div className="reader-kicker text-size-meta font-medium uppercase text-muted">

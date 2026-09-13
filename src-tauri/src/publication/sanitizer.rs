@@ -221,6 +221,21 @@ pub(crate) fn without_xml_declaration(source: &str) -> &str {
     }
 }
 
+fn decode_double_encoded_linebreak_entities(source: &str) -> Cow<'_, str> {
+    if !source.contains("&amp;#13;")
+        && !source.contains("&amp;#xD;")
+        && !source.contains("&amp;#xd;")
+    {
+        return Cow::Borrowed(source);
+    }
+    Cow::Owned(
+        source
+            .replace("&amp;#13;", "&#13;")
+            .replace("&amp;#xD;", "&#13;")
+            .replace("&amp;#xd;", "&#13;"),
+    )
+}
+
 pub fn sanitize_xhtml(
     bytes: &[u8],
     resource_href: &str,
@@ -239,12 +254,13 @@ pub fn sanitize_xhtml(
     }
     let source = std::str::from_utf8(bytes).map_err(|_| SanitizationError::InvalidEncoding)?;
     let source = without_xml_declaration(source);
+    let source = decode_double_encoded_linebreak_entities(source);
     let source = if source
         .trim_start()
         .get(..9)
         .is_some_and(|prefix| prefix.eq_ignore_ascii_case("<!doctype"))
     {
-        Cow::Borrowed(source)
+        source
     } else {
         Cow::Owned(format!("<!doctype html>{source}"))
     };
@@ -623,6 +639,24 @@ mod tests {
         assert!(!output.contains("download"));
         assert!(diagnostic_count(&result, "publication.unsafe_url_removed") >= 2);
         assert!(diagnostic_count(&result, "publication.remote_resource_blocked") >= 2);
+    }
+
+    #[test]
+    fn decodes_double_encoded_carriage_return_entities_in_epub_text() {
+        let result = sanitize_xhtml(
+            "<html><body><p>南渡北归 &amp;#13; 简介&amp;#13;</p></body></html>".as_bytes(),
+            "EPUB/text/chapter.xhtml",
+            &resources(),
+            CONTENT_POLICY_VERSION,
+            SanitizationLimits::default(),
+        )
+        .unwrap();
+        let output = output_text(&result);
+
+        assert!(!output.contains("&amp;#13;"));
+        assert!(!output.contains("&#13;"));
+        assert!(output.contains("南渡北归"));
+        assert!(output.contains("简介"));
     }
 
     #[test]

@@ -327,7 +327,7 @@ export const SummaryPanel: React.FC = () => {
 
         {summary && (
           <div className="prose prose-sm max-w-none">
-            <article className="reader-ai-card border border-border bg-surface">
+            <article className="reader-ai-card">
               <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div className="min-w-0">
                   <div className="reader-kicker text-size-meta font-medium uppercase text-muted">Summary</div>

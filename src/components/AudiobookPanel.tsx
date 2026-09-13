@@ -31,6 +31,7 @@ type AudiobookControlEventDetail = {
 type AudiobookStartEventDetail = {
   sentenceKey?: string;
   paragraphId?: string;
+  selectedText?: string;
 };
 
 type AudiobookStateEventDetail = {
@@ -59,6 +60,7 @@ export const AudiobookPanel: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentSentence, setCurrentSentence] = useState('');
+  const [selectionText, setSelectionText] = useState('');
   const [currentProvider, setCurrentProvider] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -278,8 +280,14 @@ export const AudiobookPanel: React.FC = () => {
     });
   };
 
-  const startPlayback = async (startFromKey?: string) => {
-    if (playingRef.current || sentences.length === 0) return;
+  const startPlayback = async (startFromKey?: string, overrideSelectionText?: string) => {
+    const activeSelectionText = overrideSelectionText?.trim() || selectionText.trim();
+    const queue = sentences.length > 0
+      ? sentences
+      : activeSelectionText
+        ? [{ key: 'selection', sourceText: activeSelectionText }]
+        : [];
+    if (playingRef.current || queue.length === 0) return;
     const startIndex = startFromKey ? sentenceIndexByKey.get(startFromKey) ?? 0 : 0;
     const sessionId = playbackSessionRef.current + 1;
     playbackSessionRef.current = sessionId;
@@ -292,9 +300,9 @@ export const AudiobookPanel: React.FC = () => {
     setError(null);
 
     try {
-      for (let i = startIndex; i < sentences.length; i += 1) {
+      for (let i = startIndex; i < queue.length; i += 1) {
         if (stopRequestedRef.current || playbackSessionRef.current !== sessionId) break;
-        const sentenceItem = sentences[i];
+        const sentenceItem = queue[i];
         const sourceSentence = sentenceItem.sourceText;
         setCurrentSentence(sourceSentence);
         setCurrentReadingSentenceKey(sentenceItem.key);
@@ -413,6 +421,12 @@ export const AudiobookPanel: React.FC = () => {
     const onStartFrom = (event: Event) => {
       const customEvent = event as CustomEvent<AudiobookStartEventDetail>;
       if (!customEvent.detail) return;
+      const selectedText = customEvent.detail.selectedText?.trim();
+      if (selectedText) {
+        setSelectionText(selectedText);
+        window.setTimeout(() => void startPlayback(undefined, selectedText), 0);
+        return;
+      }
       const sentenceKey =
         customEvent.detail.sentenceKey ||
         (customEvent.detail.paragraphId
@@ -428,7 +442,7 @@ export const AudiobookPanel: React.FC = () => {
       window.removeEventListener('reader:audiobook-control', onControl as EventListener);
       window.removeEventListener('reader:audiobook-start', onStartFrom as EventListener);
     };
-  }, [sentences, startPlayback, togglePause, sentenceIndexByKey]);
+  }, [sentences, selectionText, startPlayback, togglePause, sentenceIndexByKey]);
 
   return (
     <div className="flex flex-col h-full p-4 overflow-y-auto">
@@ -493,7 +507,7 @@ export const AudiobookPanel: React.FC = () => {
       <div className="mt-4 flex gap-2">
         <PanelButton
           onClick={() => void startPlayback()}
-          disabled={isPlaying || sentences.length === 0}
+          disabled={isPlaying || (sentences.length === 0 && !selectionText.trim())}
           className="px-3 py-2 text-size-subheading text-on-action bg-action rounded-md hover:bg-action-text disabled:bg-muted"
         >
           Play

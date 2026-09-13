@@ -40,6 +40,10 @@ import {
 
 type LibraryProps = {
   statusBar?: React.ReactNode;
+  shellMenu: 'display' | 'more' | null;
+  shellMenuPosition: { top: number; right: number };
+  importRequestId: number;
+  onCloseShellMenu: () => void;
 };
 
 type DocumentPreview = {
@@ -98,17 +102,25 @@ const findTagByNameOrAlias = (tags: TagRecord[], raw: string) => {
   );
 };
 
-export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
+export const Library: React.FC<LibraryProps> = ({
+  statusBar,
+  shellMenu,
+  shellMenuPosition,
+  importRequestId,
+  onCloseShellMenu,
+}) => {
   const DEFAULT_CATEGORY_VISIBLE_COUNT = 8;
   const DEFAULT_EXPANDED_CATEGORY_COUNT = 2;
-  const { documents, loadDocuments, importEpub, importMarkdown, deleteDocument, selectDocument } = useStore();
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'epub' | 'markdown'>('all');
+  const { documents, loadDocuments, importEpub, deleteDocument, selectDocument } = useStore();
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('list');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'epub'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'type'>('recent');
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [groupByCategory, setGroupByCategory] = useState(true);
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [groupByCategory, setGroupByCategory] = useState(false);
+  const closeDisplayMenu = () => onCloseShellMenu();
+  const closeMoreMenu = () => onCloseShellMenu();
   const [isAutoClassifying, setIsAutoClassifying] = useState(false);
   const [documentInsights, setDocumentInsights] = useState<Record<string, DocumentInsight>>({});
   const [favoriteDocumentIds, setFavoriteDocumentIds] = useState<Record<string, boolean>>({});
@@ -152,6 +164,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   const [showCleanupUnusedConfirm, setShowCleanupUnusedConfirm] = useState(false);
   const [tagManagerFeedback, setTagManagerFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const displayMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const previousImportRequestIdRef = useRef(importRequestId);
 
   const {
     isImportingFile,
@@ -162,7 +176,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     setImportUrlDraft,
     handleImportFile,
     handleImportUrlBeta,
-  } = useLibraryImport({ loadDocuments, importEpub, importMarkdown, selectDocument });
+  } = useLibraryImport({ loadDocuments, importEpub, selectDocument });
 
   useEffect(() => {
     loadDocuments();
@@ -320,10 +334,6 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     }
   };
 
-  const handleUnifiedImport = () => {
-    setShowImportDialog(true);
-  };
-
   const documentTagMap = useMemo(() => {
     return allDocumentTags.reduce<Record<string, DocumentTagAssignment[]>>((acc, item) => {
       if (!acc[item.doc_id]) {
@@ -361,6 +371,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
     favoriteDocumentIds,
     documentInsights,
   });
+
+  const continueDocument = useMemo(
+    () => [...documents]
+      .filter((document) => document.file_type === 'epub')
+      .sort((left, right) => right.updated_at - left.updated_at)[0],
+    [documents]
+  );
 
   const toggleCategoryCollapsed = (category: string) => {
     setCollapsedCategories((prev) => ({ ...prev, [category]: !(prev[category] ?? false) }));
@@ -739,17 +756,41 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
   };
 
   useEffect(() => {
-    if (!showDisplayMenu) return;
+    if (importRequestId === previousImportRequestIdRef.current) return;
+    previousImportRequestIdRef.current = importRequestId;
+    setShowImportDialog(true);
+  }, [importRequestId, setShowImportDialog]);
+
+  useEffect(() => {
+    if (!shellMenu) return;
+    const menu = shellMenu === 'display' ? displayMenuRef.current : moreMenuRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      menu?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    });
     const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
+      const target = event.target as Element | null;
       if (!target) return;
-      if (!displayMenuRef.current?.contains(target)) {
-        setShowDisplayMenu(false);
-      }
+      if (target.closest('#app-library-display-options-button, #app-library-more-actions-button')) return;
+      if (displayMenuRef.current?.contains(target) || moreMenuRef.current?.contains(target)) return;
+      onCloseShellMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      const triggerId = shellMenu === 'display'
+        ? 'app-library-display-options-button'
+        : 'app-library-more-actions-button';
+      onCloseShellMenu();
+      window.requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
     };
     window.addEventListener('pointerdown', onPointerDown);
-    return () => window.removeEventListener('pointerdown', onPointerDown);
-  }, [showDisplayMenu]);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onCloseShellMenu, shellMenu]);
 
   return (
     <>
@@ -857,7 +898,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         <div data-testid="import-dialog" role="dialog" aria-label="Import document" className="fixed inset-0 z-40 bg-foreground/35 flex items-center justify-center">
           <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-4 shadow-xl">
             <h3 className="text-size-body font-semibold text-heading">Import</h3>
-            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB or Markdown file.</p>
+            <p className="mt-1 text-size-caption text-muted">Choose a local EPUB file.</p>
 
             <div className="mt-3 space-y-2">
               <LibraryButton
@@ -920,7 +961,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
       {showBatchDialog && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/35 p-4">
-          <div className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
+          <div className="library-modal w-full max-w-4xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-size-title font-semibold text-heading">Batch Tags</h3>
@@ -1353,7 +1394,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
 
       {showTagManager && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/35 p-4">
-          <div className="max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-xl">
+          <div className="library-modal w-full max-w-5xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-size-title font-semibold text-heading">Tag Library</h3>
@@ -1470,9 +1511,17 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
       <div data-testid="library-page" className={`h-full flex bg-surface-subtle ${isResizingSidebar ? 'select-none' : ''}`}>
         <aside
           data-testid="library-format-filters"
-          className="relative shrink-0 border-r border-border bg-surface px-4 py-5"
+          className="library-format-sidebar relative shrink-0 border-r border-border bg-surface"
           style={{ width: `${sidebarWidth}px` }}
         >
+          <Input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search your collection..."
+            data-testid="library-sidebar-search"
+            aria-label="Search your collection"
+            className="library-search-input mb-4 text-foreground placeholder:text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-action/15"
+          />
           <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Formats</h2>
           <div className="space-y-1">
             {typeSummaries.map((item) => {
@@ -1485,7 +1534,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                   data-testid={`format-filter-${item.key}`}
                   aria-label={`Filter by ${item.label}`}
                   aria-pressed={active}
-                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-size-subheading transition-colors ${
+                  className={`library-filter-button ${
                     active ? 'bg-heading text-on-action' : 'text-navigation hover:bg-surface-hover'
                   }`}
                 >
@@ -1496,13 +1545,13 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
             })}
           </div>
 
-          <div className="mt-5 border-t border-border pt-4">
-            <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Category</h2>
+          <div data-testid="library-browse-filters" data-surface="filter-section" className="library-filter-section">
+            <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Browse</h2>
             <div className="space-y-1">
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(FAVORITES_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                className={`library-filter-button ${
                   categoryFilter === FAVORITES_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
@@ -1512,7 +1561,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter(RECENTS_CATEGORY)}
-                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                className={`library-filter-button ${
                   categoryFilter === RECENTS_CATEGORY ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
@@ -1523,28 +1572,46 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setCategoryFilter('all')}
-                className={`w-full rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                className={`library-filter-button ${
                   categoryFilter === 'all' ? 'bg-action-subtle text-action-text' : 'text-navigation hover:bg-surface-hover'
                 }`}
               >
                 All
               </LibraryButton>
-              {quickCategories.map((category) => (
-                <LibraryButton
-                  key={category}
-                  type="button"
-                  onClick={() => setCategoryFilter(category)}
-                  className={`w-full truncate rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
-                    categoryFilter === category ? 'bg-action-subtle text-action-text' : 'text-secondary hover:bg-surface-hover'
-                  }`}
-                >
-                  {category}
-                </LibraryButton>
-              ))}
+
             </div>
           </div>
 
-          <div className="mt-4 border-t border-border pt-3">
+          <LibraryButton
+            type="button"
+            data-testid="library-more-filters-button"
+            aria-expanded={showMoreFilters}
+            onClick={() => setShowMoreFilters((previous) => !previous)}
+            className="library-more-filters-button mt-3 border border-control-border text-secondary hover:bg-surface-subtle"
+          >
+            <span>More filters</span>
+            <span aria-hidden="true">{showMoreFilters ? '−' : '+'}</span>
+          </LibraryButton>
+
+          <div data-testid="library-category-filters" data-surface="filter-section" className={`library-filter-section ${showMoreFilters ? '' : 'hidden'}`}>
+              <h2 className="mb-2 text-size-meta font-semibold uppercase tracking-[0.14em] text-muted">Categories</h2>
+              <div className="space-y-1">
+                {quickCategories.map((category) => (
+                  <LibraryButton
+                    key={category}
+                    type="button"
+                    onClick={() => setCategoryFilter(category)}
+                    className={`library-filter-button truncate ${
+                      categoryFilter === category ? 'bg-action-subtle text-action-text' : 'text-secondary hover:bg-surface-hover'
+                    }`}
+                  >
+                    {category}
+                  </LibraryButton>
+                ))}
+              </div>
+          </div>
+
+          <div data-testid="library-tag-filters" data-surface="filter-section" className={`library-filter-section ${showMoreFilters ? '' : 'hidden'}`}>
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-size-meta font-semibold uppercase tracking-wide text-muted">Tags</h2>
               <span className="text-size-micro text-faint">{tagFacets.length}</span>
@@ -1582,7 +1649,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       key={facet.tag_id}
                       type="button"
                       onClick={() => toggleSelectedTagId(facet.tag_id)}
-                      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-size-subheading transition-colors ${
+                      className={`library-filter-button ${
                         active ? 'bg-action-subtle text-action-text' : 'bg-surface text-secondary hover:bg-surface-hover'
                       }`}
                     >
@@ -1600,7 +1667,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               <LibraryButton
                 type="button"
                 onClick={() => setSelectedTagIds([])}
-                className="mt-2 w-full rounded-md border border-control-border px-2.5 py-1.5 text-size-caption text-secondary hover:bg-surface-subtle"
+                className="library-filter-button mt-2 justify-center border border-control-border text-size-caption text-secondary hover:bg-surface-subtle"
               >
                 Clear Tag Filter
               </LibraryButton>
@@ -1622,24 +1689,8 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-border bg-surface/80 px-6 py-4">
-            <div className="flex items-center gap-4">
-              <div className="mr-2 shrink-0 leading-tight">
-                <div className="font-serif text-size-heading font-medium tracking-tight text-heading">Library</div>
-                <div className="mt-1 text-size-micro font-medium uppercase tracking-[0.14em] text-muted">Your collection</div>
-              </div>
-
-              <div className="min-w-0 max-w-2xl flex-1">
-                <Input
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search your collection..."
-                  data-testid="library-search-input"
-                  aria-label="Search your collection"
-                  className="h-9 w-full rounded-xl border border-control-border bg-surface px-3 text-size-control text-foreground placeholder:text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-action/15"
-                />
-              </div>
-
+          <div className="contents">
+            <div className="contents">
               {isAutoClassifying && (
                 <span className="shrink-0 text-size-meta text-muted">Indexing...</span>
               )}
@@ -1648,24 +1699,17 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 <span className="shrink-0 text-size-meta text-muted">Tags syncing...</span>
               )}
 
-              <div ref={displayMenuRef} className="relative shrink-0">
-                <LibraryButton
-                  type="button"
-                  onClick={() => setShowDisplayMenu((prev) => !prev)}
-                  data-testid="display-options-button"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-control-border bg-surface text-secondary hover:bg-surface-subtle"
-                  aria-label="Display options"
-                  title="Display options"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
-                    <circle cx="5" cy="12" r="1.6" />
-                    <circle cx="12" cy="12" r="1.6" />
-                    <circle cx="19" cy="12" r="1.6" />
-                  </svg>
-                </LibraryButton>
-
-                {showDisplayMenu && (
-                  <div className="absolute right-0 top-9 z-30 w-72 rounded-xl border border-border bg-surface p-2 shadow-xl">
+              <div className="contents">
+                {shellMenu === 'display' && (
+                  <div
+                    ref={displayMenuRef}
+                    id="library-display-options-menu"
+                    data-testid="library-display-options-menu"
+                    role="menu"
+                    aria-label="Display options"
+                    className="library-menu fixed z-30 mt-2 w-72 overflow-y-auto"
+                    style={{ top: shellMenuPosition.top, right: shellMenuPosition.right, maxHeight: `calc(100vh - ${shellMenuPosition.top}px - var(--space-card))` }}
+                  >
                     {([
                       ['grid', 'Grid'],
                       ['list', 'List'],
@@ -1674,9 +1718,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       <LibraryButton
                         key={value}
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setViewMode(value);
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1695,9 +1740,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       <LibraryButton
                         key={value}
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setSortBy(value);
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1711,14 +1757,14 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     {([
                       ['all', 'All'],
                       ['epub', 'EPUB'],
-                      ['markdown', 'Markdown'],
                     ] as const).map(([value, label]) => (
                       <LibraryButton
                         key={value}
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setTypeFilter(value);
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1732,9 +1778,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     <div className="max-h-44 overflow-y-auto">
                       <LibraryButton
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setCategoryFilter(FAVORITES_CATEGORY);
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1743,9 +1790,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       </LibraryButton>
                       <LibraryButton
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setCategoryFilter(RECENTS_CATEGORY);
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1755,9 +1803,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                       <div className="my-1 h-px bg-surface-hover" />
                       <LibraryButton
                         type="button"
+                        role="menuitem"
                         onClick={() => {
                           setCategoryFilter('all');
-                          setShowDisplayMenu(false);
+                          closeDisplayMenu();
                         }}
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                       >
@@ -1768,9 +1817,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                         <LibraryButton
                           key={category}
                           type="button"
+                          role="menuitem"
                           onClick={() => {
                             setCategoryFilter(category);
-                            setShowDisplayMenu(false);
+                            closeDisplayMenu();
                           }}
                           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                         >
@@ -1783,9 +1833,10 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                     <div className="my-2 h-px bg-surface-hover" />
                     <LibraryButton
                       type="button"
+                      role="menuitem"
                       onClick={() => {
                         setGroupByCategory((prev) => !prev);
-                        setShowDisplayMenu(false);
+                        closeDisplayMenu();
                       }}
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-foreground hover:bg-surface-subtle"
                     >
@@ -1796,55 +1847,71 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
                 )}
               </div>
 
-              <LibraryButton
-                onClick={() => setShowBatchDialog(true)}
-                data-testid="batch-tags-button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
-              >
-                Batch Tags
-              </LibraryButton>
-
-              <LibraryButton
-                onClick={() => setShowTagManager(true)}
-                data-testid="tag-library-button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-control-border bg-surface px-3 text-size-caption font-medium text-secondary hover:bg-surface-subtle"
-              >
-                Tag Library
-              </LibraryButton>
-
-              <LibraryButton
-                onClick={handleUnifiedImport}
-                disabled={isImportingFile || isImportingUrl}
-                data-testid="library-import-button"
-                aria-label="Import document"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-action px-3 text-size-caption font-medium text-on-action transition-colors hover:bg-action-text disabled:bg-muted"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="h-3.5 w-3.5"
-                  aria-hidden="true"
+              {shellMenu === 'more' && (
+                <div
+                  ref={moreMenuRef}
+                  id="library-more-actions-menu"
+                  data-testid="library-more-actions-menu"
+                  role="menu"
+                  aria-label="More Library actions"
+                  className="library-menu fixed z-30 mt-2 w-48"
+                  style={{ top: shellMenuPosition.top, right: shellMenuPosition.right }}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v10m0 0 4-4m-4 4-4-4" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 19h14" />
-                </svg>
-                {isImportingFile || isImportingUrl ? 'Importing...' : 'Import'}
-              </LibraryButton>
+                  <LibraryButton
+                    role="menuitem"
+                    onClick={() => {
+                      closeMoreMenu();
+                      setShowBatchDialog(true);
+                    }}
+                    data-testid="batch-tags-button"
+                    className="flex w-full rounded-md px-2 py-1.5 text-left text-size-body font-medium text-foreground hover:bg-surface-subtle"
+                  >
+                    Batch Tags
+                  </LibraryButton>
+                  <LibraryButton
+                    role="menuitem"
+                    onClick={() => {
+                      closeMoreMenu();
+                      setShowTagManager(true);
+                    }}
+                    data-testid="tag-library-button"
+                    className="flex w-full rounded-md px-2 py-1.5 text-left text-size-body font-medium text-foreground hover:bg-surface-subtle"
+                  >
+                    Tag Library
+                  </LibraryButton>
+                </div>
+              )}
+
           </div>
         </div>
 
       {/* Documents Grid */}
-      <div data-testid="library-document-list" className="flex-1 overflow-y-auto p-6">
+      <div data-testid="library-document-list" className="flex-1 overflow-y-auto p-4">
+        {continueDocument && (
+          <section data-testid="continue-reading" className="home-continue-reading mb-5">
+            <div className="home-section-label">Continue reading</div>
+            <div className="home-continue-card">
+              <div className="min-w-0">
+                <h2 className="truncate text-size-title font-semibold text-heading">{continueDocument.title}</h2>
+                {continueDocument.author && <p className="mt-1 truncate text-size-caption text-muted">{continueDocument.author}</p>}
+              </div>
+              <LibraryButton
+                type="button"
+                onClick={() => selectDocument(continueDocument.id)}
+                className="home-continue-action shrink-0 bg-action text-size-caption font-medium text-on-action hover:bg-action-text"
+              >
+                Continue
+              </LibraryButton>
+            </div>
+          </section>
+        )}
         {documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4 text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <p className="text-size-title">No documents yet</p>
-            <p className="text-size-subheading mt-2">Import an EPUB or Markdown file to get started</p>
+            <p className="text-size-subheading mt-2">Import an EPUB file to get started</p>
           </div>
         ) : displayedDocuments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">
@@ -1861,7 +1928,7 @@ export const Library: React.FC<LibraryProps> = ({ statusBar }) => {
               const hasMoreItems = items.length > DEFAULT_CATEGORY_VISIBLE_COUNT;
 
               return (
-              <section key={category}>
+              <section key={category} data-testid="library-category-group">
                 <div className="mb-2 flex items-center justify-between">
                   <LibraryButton
                     onClick={() => toggleCategoryCollapsed(category)}

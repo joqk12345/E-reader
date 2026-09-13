@@ -34,9 +34,7 @@ export function TOCPanel({
     selectSection(sectionId);
     if (currentDocumentType === 'markdown') {
       const firstParagraph = paragraphs.find((p) => p.section_id === sectionId);
-      if (firstParagraph) {
-        setFocusedParagraphId(firstParagraph.id);
-      }
+      if (firstParagraph) setFocusedParagraphId(firstParagraph.id);
       return;
     }
     await loadParagraphs(sectionId);
@@ -70,16 +68,20 @@ export function TOCPanel({
 
   return (
     <aside
+      data-testid="reader-toc-panel"
+      aria-label="Table of contents"
       className="relative bg-surface border-r border-border flex flex-col overflow-hidden flex-shrink-0"
       style={{ width: collapsed ? 48 : width }}
     >
       {collapsed ? (
-        <div className="flex items-center justify-center border-b border-border p-2 flex-shrink-0">
+        <div className="reader-panel-header justify-center p-2">
           <PanelButton
             onClick={onToggleCollapse}
-            className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-surface-subtle text-navigation"
+            className="reader-panel-action text-navigation hover:bg-surface-subtle"
             title="Expand sidebar"
             aria-label="Expand sidebar"
+            aria-expanded={!collapsed}
+            aria-controls={!collapsed ? 'reader-toc-navigation' : undefined}
           >
             <svg
               viewBox="0 0 20 20"
@@ -96,13 +98,15 @@ export function TOCPanel({
           </PanelButton>
         </div>
       ) : (
-        <div className="flex items-center justify-between border-b border-border p-4 flex-shrink-0">
+        <div className="reader-panel-header">
           <h2 className="text-size-title font-semibold text-heading">Table of Contents</h2>
           <PanelButton
             onClick={onToggleCollapse}
-            className="ml-2 inline-flex items-center justify-center h-6 w-6 rounded hover:bg-surface-subtle text-navigation"
+            className="reader-panel-action ml-2 text-navigation hover:bg-surface-subtle"
             title="Collapse sidebar"
             aria-label="Collapse sidebar"
+            aria-expanded={!collapsed}
+            aria-controls={!collapsed ? 'reader-toc-navigation' : undefined}
           >
             <svg
               viewBox="0 0 20 20"
@@ -119,33 +123,33 @@ export function TOCPanel({
           </PanelButton>
         </div>
       )}
-      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'p-1' : 'p-2'}`}>
-        {sections.length === 0 ? (
-          <p className={`text-size-subheading text-muted text-center ${collapsed ? 'py-2' : 'py-4'}`}>
-            No sections
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {sections.map((section) => (
-              <li key={section.id}>
-                <PanelButton
-                  onClick={() => handleSectionClick(section.id)}
-                  title={section.title}
-                  className={`w-full rounded-md text-size-subheading transition-colors ${
-                    collapsed ? 'px-0 py-2 text-center' : 'px-3 py-2 text-left'
-                  } ${
-                    currentSectionId === section.id
-                      ? 'bg-action-subtle text-action-text font-medium'
-                      : 'text-secondary hover:bg-surface-subtle'
-                  }`}
-                >
-                  {collapsed ? section.title.slice(0, 1).toUpperCase() : section.title}
-                </PanelButton>
-              </li>
-            ))}
-          </ul>
-        )}
-      </nav>
+      {!collapsed && (
+        <nav id="reader-toc-navigation" className="flex-1 overflow-y-auto p-2">
+          {sections.length === 0 ? (
+            <p className="py-4 text-center text-size-subheading text-muted">
+              No sections
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {sections.map((section) => (
+                <li key={section.id}>
+                  <PanelButton
+                    onClick={() => handleSectionClick(section.id)}
+                    title={section.title}
+                    className={`w-full rounded-md px-3 py-2 text-left text-size-subheading transition-colors ${
+                      currentSectionId === section.id
+                        ? 'bg-action-subtle text-action-text font-medium'
+                        : 'text-secondary hover:bg-surface-subtle'
+                    }`}
+                  >
+                    {section.title}
+                  </PanelButton>
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+      )}
       {!collapsed && (
         <div
           className="absolute top-0 right-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-surface-hover"

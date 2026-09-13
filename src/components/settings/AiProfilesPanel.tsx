@@ -1253,15 +1253,7 @@ export const AiProfilesPanel: React.FC = () => {
     <div className="space-y-4">
       <SettingsCard>
         <div className="space-y-3 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-size-subheading font-medium text-foreground">AI & Embedding</div>
-              <div className="text-size-caption text-muted">
-                {setupMode === 'quick'
-                  ? 'Quick Setup keeps the common task routing on one screen.'
-                  : 'Advanced exposes provider, model, fallback, and slot-level controls.'}
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="inline-flex rounded-lg border border-control-border bg-surface-subtle p-0.5 text-size-subheading">
               <Button
                 type="button"
@@ -1320,12 +1312,13 @@ export const AiProfilesPanel: React.FC = () => {
         </div>
       </SettingsCard>
 
-      <SettingsCard>
-        <div className="space-y-3 py-2">
-          <div>
-            <div className="text-size-subheading font-medium text-foreground">Current Effective Setup</div>
-            <div className="text-size-caption text-muted">Only enabled agent, model, and provider combinations can run.</div>
-          </div>
+      <details data-testid="ai-effective-setup" className="rounded-xl border border-border bg-surface px-4 py-3">
+        <summary className="cursor-pointer list-none text-size-subheading font-medium text-foreground">
+          Current Effective Setup
+          <span className="ml-2 text-size-caption font-normal text-muted">View active agent, model, and provider status</span>
+        </summary>
+        <div className="mt-3 space-y-3">
+          <div className="text-size-caption text-muted">Only enabled agent, model, and provider combinations can run.</div>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {runtimeSummaries.map((summary) => {
               const isReady = summary.status === 'ready';
@@ -1361,7 +1354,7 @@ export const AiProfilesPanel: React.FC = () => {
             })}
           </div>
         </div>
-      </SettingsCard>
+      </details>
 
       {setupMode === 'quick' ? (
         <>

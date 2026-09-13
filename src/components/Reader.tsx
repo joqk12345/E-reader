@@ -53,9 +53,6 @@ export function Reader() {
   const [bilingualViewMode, setBilingualViewMode] = useState<'both' | 'source' | 'translation'>(
     () => loadReaderViewSettings(readerFontSize).bilingualViewMode
   );
-  const [markdownRenderMode, setMarkdownRenderMode] = useState<'text' | 'multimedia'>(
-    () => loadReaderViewSettings(readerFontSize).markdownRenderMode
-  );
   const [readingViewMenuOpen, setReadingViewMenuOpen] = useState(false);
   const [sourceLinkMenuOpen, setSourceLinkMenuOpen] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
@@ -66,8 +63,6 @@ export function Reader() {
     setTocCollapsed,
     tocWidth,
     setTocWidth,
-    headerToolsCollapsed,
-    setHeaderToolsCollapsed,
     toolCollapsed,
     setToolCollapsed,
     toolWidth,
@@ -107,22 +102,24 @@ export function Reader() {
     [setTocCollapsed, setToolCollapsed, tocCollapsed, tocWidth]
   );
 
+  const toggleToolPanel = useCallback(() => {
+    setToolCollapsed((previous) => {
+      const next = !previous;
+      if (!next) setTocCollapsed(true);
+      return next;
+    });
+  }, [setTocCollapsed, setToolCollapsed]);
+
   const toolPanelProps = useMemo(
     () => ({
       collapsed: toolCollapsed,
       width: toolWidth,
       minWidth: minToolWidth,
       maxWidth: maxToolWidth,
-      onToggleCollapse: () => {
-        setToolCollapsed((prev) => {
-          const next = !prev;
-          if (!next) setTocCollapsed(true);
-          return next;
-        });
-      },
+      onToggleCollapse: toggleToolPanel,
       onWidthChange: (width: number) => setToolWidth(width),
     }),
-    [setTocCollapsed, setToolCollapsed, toolCollapsed, toolWidth]
+    [toggleToolPanel, toolCollapsed, toolWidth]
   );
 
   useEffect(() => {
@@ -221,17 +218,22 @@ export function Reader() {
   useEffect(() => {
     const onNextPage = () => handleFlipPage('next');
     const onPrevPage = () => handleFlipPage('prev');
-    const onToggleHeaderTools = () => setHeaderToolsCollapsed((prev) => !prev);
+    const onToggleHeaderTools = () => {
+      setSourceLinkMenuOpen(false);
+      setReadingViewMenuOpen((previous) => !previous);
+    };
     const onToggleReadingMode = () => toggleReadingMode();
 
     window.addEventListener('reader:next-page', onNextPage as EventListener);
     window.addEventListener('reader:prev-page', onPrevPage as EventListener);
+    window.addEventListener('reader:toggle-view-menu', onToggleHeaderTools as EventListener);
     window.addEventListener('reader:toggle-header-tools', onToggleHeaderTools as EventListener);
     window.addEventListener('reader:toggle-reading-mode', onToggleReadingMode as EventListener);
 
     return () => {
       window.removeEventListener('reader:next-page', onNextPage as EventListener);
       window.removeEventListener('reader:prev-page', onPrevPage as EventListener);
+      window.removeEventListener('reader:toggle-view-menu', onToggleHeaderTools as EventListener);
       window.removeEventListener(
         'reader:toggle-header-tools',
         onToggleHeaderTools as EventListener
@@ -310,7 +312,6 @@ export function Reader() {
       const detail = event ? (event as CustomEvent<ReaderViewSettings>).detail : undefined;
       const settings = detail || loadReaderViewSettings(readerFontSize);
       setBilingualViewMode(settings.bilingualViewMode);
-      setMarkdownRenderMode(settings.markdownRenderMode);
     };
     refresh();
     window.addEventListener('reader:view-settings-updated', refresh as EventListener);
@@ -318,6 +319,11 @@ export function Reader() {
   }, [readerFontSize]);
 
   useEffect(() => {
+    if (!readingViewMenuOpen && !sourceLinkMenuOpen) return;
+    const openMenu = readingViewMenuOpen ? readingViewMenuRef.current : sourceLinkMenuRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      openMenu?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    });
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
@@ -328,9 +334,39 @@ export function Reader() {
         setSourceLinkMenuOpen(false);
       }
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as Node | null;
+      if (!target || !openMenu?.contains(target)) return;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+        const items = Array.from(openMenu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') || []);
+        if (items.length === 0) return;
+        event.preventDefault();
+        const currentIndex = items.findIndex((item) => item === document.activeElement);
+        const nextIndex = event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? items.length - 1
+            : event.key === 'ArrowDown'
+              ? (currentIndex + 1 + items.length) % items.length
+              : (currentIndex - 1 + items.length) % items.length;
+        items[nextIndex]?.focus();
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      const triggerId = readingViewMenuOpen ? 'reader-view-trigger' : 'reader-source-link-trigger';
+      setReadingViewMenuOpen(false);
+      setSourceLinkMenuOpen(false);
+      window.requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
+    };
     window.addEventListener('pointerdown', onPointerDown);
-    return () => window.removeEventListener('pointerdown', onPointerDown);
-  }, []);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [readingViewMenuOpen, sourceLinkMenuOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -367,24 +403,12 @@ export function Reader() {
     setReadingViewMenuOpen(false);
   };
 
-  const setMarkdownRenderModeFromHeader = (mode: 'text' | 'multimedia') => {
-    window.dispatchEvent(
-      new CustomEvent('reader:set-markdown-render-mode', {
-        detail: { mode },
-      })
-    );
-    setMarkdownRenderMode(mode);
-    setReadingViewMenuOpen(false);
-  };
-
   const headerPaddingClass = readingMode
     ? 'h-8 px-2 py-0'
     : windowMaximized
-      ? 'px-6 py-0'
-      : headerToolsCollapsed
-        ? 'px-6 py-2'
-        : 'px-6 py-4';
-  const showCompactHeader = readingMode || headerToolsCollapsed;
+      ? 'px-4 py-0'
+      : 'px-4 py-1.5';
+  const showCompactHeader = readingMode;
 
   const openSourceUrlInBrowser = () => {
     const normalized = sourceUrl?.trim();
@@ -457,57 +481,39 @@ export function Reader() {
               <ReaderButton
                 onClick={goBack}
                 data-testid="reader-back-button"
-                className="px-4 py-2 text-size-subheading font-medium text-secondary bg-surface border border-control-border rounded-md hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-control-border bg-surface text-secondary hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-focus"
+                title="Back to Library"
+                aria-label="Back to Library"
               >
-                ← Back to Library
-              </ReaderButton>
-              <ReaderButton
-                onClick={() => void cycleTranslationMode()}
-                className={`px-4 py-2 text-size-subheading font-medium rounded-md transition-colors ${
-                  translationMode !== 'off'
-                    ? 'bg-action text-on-action hover:bg-action-text'
-                    : 'bg-surface-subtle text-secondary hover:bg-surface-hover'
-                }`}
-              >
-                {translationMode === 'off'
-                  ? '🌐 Translation: Off'
-                  : translationMode === 'en-zh'
-                    ? '🌐 Translation: EN→ZH'
-                    : '🌐 Translation: ZH→EN'}
+                ←
               </ReaderButton>
               <div className="relative" ref={readingViewMenuRef}>
                 <ReaderButton
-                  onClick={() => setReadingViewMenuOpen((prev) => !prev)}
+                  id="reader-view-trigger"
+                  onClick={() => {
+                    setSourceLinkMenuOpen(false);
+                    setReadingViewMenuOpen((prev) => !prev);
+                  }}
                   className="px-3 py-2 text-size-subheading font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
+                  aria-expanded={readingViewMenuOpen}
+                  aria-controls="reader-view-menu"
+                  aria-haspopup="menu"
                 >
-                  Reading View ▾
+                  View
                 </ReaderButton>
                 {readingViewMenuOpen && (
-                  <div className="absolute left-0 top-11 z-40 min-w-[220px] rounded-lg border border-border bg-surface p-1.5 shadow-lg">
+                  <div id="reader-view-menu" role="menu" aria-label="Reader view" className="reader-chrome-menu absolute left-0 top-11 z-40">
                     <ReaderButton
-                      onClick={() => setMarkdownRenderModeFromHeader('text')}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
-                        markdownRenderMode === 'text'
-                          ? 'bg-action-subtle text-action-text'
-                          : 'text-secondary hover:bg-surface-subtle'
-                      }`}
+                      role="menuitem"
+                      onClick={() => void cycleTranslationMode()}
+                      className="reader-chrome-menu-item text-secondary hover:bg-surface-subtle"
                     >
-                      <span>Text Parse</span>
-                      <span>{markdownRenderMode === 'text' ? '✓' : ''}</span>
-                    </ReaderButton>
-                    <ReaderButton
-                      onClick={() => setMarkdownRenderModeFromHeader('multimedia')}
-                      className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
-                        markdownRenderMode === 'multimedia'
-                          ? 'bg-action-subtle text-action-text'
-                          : 'text-secondary hover:bg-surface-subtle'
-                      }`}
-                    >
-                      <span>Multimedia Parse</span>
-                      <span>{markdownRenderMode === 'multimedia' ? '✓' : ''}</span>
+                      <span>Translation</span>
+                      <span>{translationMode === 'off' ? 'Off' : translationMode === 'en-zh' ? 'EN→ZH' : 'ZH→EN'}</span>
                     </ReaderButton>
                     <div className="my-1 h-px bg-surface-hover" />
                     <ReaderButton
+                      role="menuitem"
                       onClick={() => setBilingualModeFromHeader('source')}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading ${
                         bilingualViewMode === 'source'
@@ -519,6 +525,7 @@ export function Reader() {
                       <span>{bilingualViewMode === 'source' ? '✓' : ''}</span>
                     </ReaderButton>
                     <ReaderButton
+                      role="menuitem"
                       onClick={() => setBilingualModeFromHeader('translation')}
                       disabled={translationMode === 'off'}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -531,6 +538,7 @@ export function Reader() {
                       <span>{bilingualViewMode === 'translation' ? '✓' : ''}</span>
                     </ReaderButton>
                     <ReaderButton
+                      role="menuitem"
                       onClick={() => setBilingualModeFromHeader('both')}
                       disabled={translationMode === 'off'}
                       className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-size-subheading disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -543,7 +551,12 @@ export function Reader() {
                       <span>{bilingualViewMode === 'both' ? '✓' : ''}</span>
                     </ReaderButton>
                     <div className="my-1 h-px bg-surface-hover" />
+                    <div className="px-2.5 py-1.5 text-size-meta text-muted">
+                      Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount} · Page {contentStats.currentPage}/{contentStats.totalPages}
+                    </div>
+                    <div className="my-1 h-px bg-surface-hover" />
                     <ReaderButton
+                      role="menuitem"
                       onClick={() => {
                         window.dispatchEvent(new CustomEvent('reader:open-annotations'));
                         setReadingViewMenuOpen(false);
@@ -554,6 +567,7 @@ export function Reader() {
                       <span>→</span>
                     </ReaderButton>
                     <ReaderButton
+                      role="menuitem"
                       onClick={() => {
                         openChatPanel();
                         setReadingViewMenuOpen(false);
@@ -571,19 +585,23 @@ export function Reader() {
         </div>
 
         {!readingMode && (
-          <h1 className="pointer-events-none absolute left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 text-size-heading font-semibold text-heading">
-            <img
-              src="/reader-logo.svg"
-              alt="Reader Logo"
-              className="h-5 w-5 rounded-md border border-border bg-surface p-0.5"
-            />
-            <span className="max-w-[var(--reader-title-max-width)] truncate" title={selectedDocument?.title || 'Reader'}>
-              {selectedDocument?.title || 'Reader'}
-            </span>
+          <h1 className="pointer-events-none absolute left-1/2 max-w-[var(--reader-title-max-width)] -translate-x-1/2 truncate text-size-heading font-medium text-heading" title={selectedDocument?.title || 'Reader'}>
+            {selectedDocument?.title || 'Reader'}
           </h1>
         )}
 
         <div className="z-10 flex min-w-0 flex-1 items-center justify-end gap-2">
+          {!readingMode && (
+            <ReaderButton
+              type="button"
+              onClick={toggleToolPanel}
+              aria-expanded={!toolCollapsed}
+              aria-controls="reader-tool-panel"
+              className="px-3 py-1.5 text-size-subheading font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
+            >
+              Tools
+            </ReaderButton>
+          )}
           {readingMode && selectedDocumentId && (
             <ReaderButton
               onClick={openChatPanel}
@@ -597,16 +615,24 @@ export function Reader() {
           {!readingMode && showSourceLinkActions && (
             <div className="relative" ref={sourceLinkMenuRef}>
               <ReaderButton
-                onClick={() => setSourceLinkMenuOpen((prev) => !prev)}
+                id="reader-source-link-trigger"
+                onClick={() => {
+                  setReadingViewMenuOpen(false);
+                  setSourceLinkMenuOpen((prev) => !prev);
+                }}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-surface-hover text-foreground hover:bg-control-border"
                 title="Imported link actions"
                 aria-label="Imported link actions"
+                aria-expanded={sourceLinkMenuOpen}
+                aria-controls="reader-source-link-menu"
+                aria-haspopup="menu"
               >
                 ⤴
               </ReaderButton>
               {sourceLinkMenuOpen && (
-                <div className="absolute right-0 top-11 z-40 min-w-[220px] rounded-2xl border border-control-border bg-surface-subtle p-1.5 shadow-lg">
+                <div id="reader-source-link-menu" role="menu" aria-label="Imported link actions" className="reader-chrome-menu absolute right-0 top-11 z-40 bg-surface-subtle">
                   <ReaderButton
+                    role="menuitem"
                     onClick={() => {
                       void copySourceUrl();
                       setSourceLinkMenuOpen(false);
@@ -616,6 +642,7 @@ export function Reader() {
                     Copy Link
                   </ReaderButton>
                   <ReaderButton
+                    role="menuitem"
                     onClick={() => {
                       openSourceUrlInBrowser();
                       setSourceLinkMenuOpen(false);
@@ -637,29 +664,13 @@ export function Reader() {
             >
               ✕
             </ReaderButton>
-          ) : (
-            <ReaderButton
-              onClick={() => setHeaderToolsCollapsed((prev) => !prev)}
-              className="px-3 py-1.5 text-size-subheading font-medium text-secondary bg-surface-subtle rounded-md hover:bg-surface-hover"
-              title={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
-              aria-label={headerToolsCollapsed ? 'Expand header tools' : 'Collapse header tools'}
-            >
-              {headerToolsCollapsed ? 'More' : 'Less'}
-            </ReaderButton>
-          )}
+          ) : null}
         </div>
       </header>
       <div className="flex-1 flex overflow-hidden">
         <TOCPanel {...tocPanelProps} />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <ReaderContent />
-          {!readingMode && (
-            <div className="h-7 border-t border-border bg-surface px-3 text-size-meta text-navigation flex items-center justify-end overflow-x-auto whitespace-nowrap">
-              <span>
-                Word Stats: Source {contentStats.sourceWords} · Translation {contentStats.translatedWords} · Paragraphs {contentStats.paragraphCount} · Page {contentStats.currentPage}/{contentStats.totalPages}
-              </span>
-            </div>
-          )}
         </div>
         <ToolPanel {...toolPanelProps} />
       </div>

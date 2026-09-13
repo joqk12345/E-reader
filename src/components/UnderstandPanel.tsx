@@ -729,7 +729,7 @@ export const UnderstandPanel: React.FC<UnderstandPanelProps> = ({ request }) => 
 
         {(result || termInsight) && (
           <div className="space-y-3">
-            <article className="reader-ai-card relative border border-border bg-surface">
+            <article className="reader-ai-card relative">
               <div className="absolute right-2 top-2 flex items-center gap-2">
                 <PanelButton
                   onClick={handleAddToNotes}

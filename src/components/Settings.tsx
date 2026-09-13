@@ -1352,7 +1352,14 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, initialSection = 'r
           </main>
 
           <footer className="flex items-center justify-between border-t border-border bg-surface/90 px-8 py-3">
-            <SecondaryActionButton icon={<span>↻</span>} label="Reload" onClick={() => void loadConfig()} />
+            <div className="flex min-w-0 items-center gap-3">
+              <SecondaryActionButton icon={<span>↻</span>} label="Reload" onClick={() => void loadConfig()} />
+              {activeSection === 'ai' && (
+                <span data-testid="ai-save-scope-note" className="text-size-meta text-muted">
+                  AI profiles save individually; Save Settings applies to other settings.
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-3">
               <Button

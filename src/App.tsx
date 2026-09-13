@@ -20,10 +20,10 @@ import {
   type UpdateTarget,
 } from './services/updater';
 import { matchesAnyShortcut } from './utils/shortcuts';
-import { Tabs } from './components/ui/Tabs';
 import { Button } from './components/ui/Button';
 import type { SettingsSection } from './components/settings/settingsTypes';
 import { useAppTheme } from './features/app/useAppTheme';
+import { ensurePublicationImportedV2 } from './features/reader/locator/publicationBlocks';
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 28;
@@ -51,8 +51,10 @@ type EmbeddingStatus = {
 };
 
 type HomeView = 'library' | 'semantic-search';
+type LibraryShellMenu = 'display' | 'more' | null;
 
-const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE === 'foliate';
+// Foliate is the default EPUB boundary; set VITE_EPUB_ENGINE=legacy only for emergency rollback.
+const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE !== 'legacy';
 const FoliateEpubSpikeReader = lazy(async () => {
   const module = await import('./features/reader/foliate/FoliateEpubSpikeReader');
   return { default: module.FoliateEpubSpikeReader };
@@ -92,8 +94,12 @@ function App() {
     keymap,
   } = useStore();
   const [showSettings, setShowSettings] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('reading');
   const [homeView, setHomeView] = useState<HomeView>('library');
+  const [libraryShellMenu, setLibraryShellMenu] = useState<LibraryShellMenu>(null);
+  const [libraryShellMenuPosition, setLibraryShellMenuPosition] = useState({ top: 0, right: 0 });
+  const [libraryImportRequestId, setLibraryImportRequestId] = useState(0);
   const autoIndexingKeysRef = useRef<Set<string>>(new Set());
   const [runtimeConfig, setRuntimeConfig] = useState<Config | null>(null);
   const [embeddingStatus, setEmbeddingStatus] = useState<EmbeddingStatus | null>(null);
@@ -103,14 +109,36 @@ function App() {
     setSettingsSection(section);
     setShowSettings(true);
   }, []);
+  const closeLibraryShellMenu = useCallback(() => setLibraryShellMenu(null), []);
 
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
 
   useEffect(() => {
+    window.addEventListener('resize', closeLibraryShellMenu);
+    return () => window.removeEventListener('resize', closeLibraryShellMenu);
+  }, [closeLibraryShellMenu]);
+
+  useEffect(() => {
+    setLibraryShellMenu(null);
+  }, [homeView, showSettings, selectedDocumentId]);
+
+  useEffect(() => {
     if (!selectedDocumentId || currentDocumentType !== 'epub') return;
-    void loadPublicationBlocks(selectedDocumentId);
+    let cancelled = false;
+    const preparePublication = async () => {
+      try {
+        await ensurePublicationImportedV2(selectedDocumentId);
+        if (!cancelled) await loadPublicationBlocks(selectedDocumentId);
+      } catch (error) {
+        if (!cancelled) console.error('Failed to prepare EPUB publication:', error);
+      }
+    };
+    void preparePublication();
+    return () => {
+      cancelled = true;
+    };
   }, [currentDocumentType, loadPublicationBlocks, selectedDocumentId]);
 
   useEffect(() => {
@@ -303,7 +331,7 @@ function App() {
       }
       if (selectedDocumentId && matchesAnyShortcut(event, keymap.toggle_header_tools)) {
         event.preventDefault();
-        window.dispatchEvent(new CustomEvent('reader:toggle-header-tools'));
+        window.dispatchEvent(new CustomEvent('reader:toggle-view-menu'));
       }
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });
@@ -397,22 +425,99 @@ function App() {
             </DocumentViewer>
           ) : (
             <div className="flex h-full min-h-0 flex-col">
-              <header className="reader-home-header flex shrink-0 items-center justify-between border-b border-border bg-surface px-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-action text-size-subheading font-semibold text-on-action shadow-sm">R</div>
-                  <div className="leading-none">
-                    <div className="font-serif text-size-title font-medium tracking-tight text-heading">Reader</div>
-                    <div className="mt-1 text-size-micro font-medium uppercase tracking-[0.16em] text-muted">Your reading desk</div>
+              <header className="reader-home-header relative flex shrink-0 items-center justify-between border-b border-border bg-surface px-4">
+                <div className="home-brand-mark" aria-label="Reader">R</div>
+                {homeView === 'library' ? (
+                  <div data-testid="app-library-identity" className="ml-3 flex items-baseline gap-2">
+                    <h1 data-testid="workspace-page-title" className="font-serif text-size-heading font-medium tracking-tight text-heading">Library</h1>
+                    <span className="text-size-meta text-muted">{documents.length} documents</span>
                   </div>
-                </div>
+                ) : (
+                  <h1 data-testid="workspace-page-title" className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-serif text-size-heading font-medium tracking-tight text-heading">
+                    Semantic Search
+                  </h1>
+                )}
 
-                <nav aria-label="Workspace">
-                  <Tabs
-                    items={[{ value: 'library', label: 'Library' }, { value: 'semantic-search', label: 'Semantic Search' }]}
-                    value={homeView}
-                    onChange={setHomeView}
-                  />
-                </nav>
+                <div className="relative ml-auto flex items-center gap-2">
+                  {homeView === 'library' && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        id="app-library-display-options-button"
+                        data-testid="app-library-display-options-button"
+                        aria-label="Display options"
+                        aria-controls="library-display-options-menu"
+                        aria-expanded={libraryShellMenu === 'display'}
+                        onClick={(event) => {
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setLibraryShellMenuPosition({ top: rect.bottom, right: window.innerWidth - rect.right });
+                          setLibraryShellMenu((current) => current === 'display' ? null : 'display');
+                        }}
+                      >
+                        ⋯
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        id="app-library-more-actions-button"
+                        data-testid="app-library-more-actions-button"
+                        aria-label="More Library actions"
+                        aria-controls="library-more-actions-menu"
+                        aria-expanded={libraryShellMenu === 'more'}
+                        onClick={(event) => {
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setLibraryShellMenuPosition({ top: rect.bottom, right: window.innerWidth - rect.right });
+                          setLibraryShellMenu((current) => current === 'more' ? null : 'more');
+                        }}
+                      >
+                        More
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        data-testid="app-library-import-button"
+                        onClick={() => setLibraryImportRequestId((current) => current + 1)}
+                      >
+                        Import
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    data-testid="workspace-select"
+                    aria-label="Workspace"
+                    aria-expanded={showWorkspaceMenu}
+                    onClick={() => setShowWorkspaceMenu((previous) => !previous)}
+                    className="home-workspace-button hover:border-focus-border hover:text-action-text"
+                  >
+                    {homeView === 'library' ? 'Library' : 'Semantic Search'}
+                    <span aria-hidden="true">⌄</span>
+                  </Button>
+                  {showWorkspaceMenu && (
+                    <div role="menu" aria-label="Workspace" className="absolute right-0 top-10 z-30 min-w-40 rounded-lg border border-border bg-surface p-1 shadow-panel">
+                      {(['library', 'semantic-search'] as const).map((view) => (
+                        <Button
+                          key={view}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setHomeView(view);
+                            setShowWorkspaceMenu(false);
+                          }}
+                          className={`w-full rounded-md px-2 py-1.5 text-left text-size-caption ${homeView === view ? 'bg-action-subtle text-action-text' : 'text-secondary hover:bg-surface-subtle'}`}
+                        >
+                          {view === 'library' ? 'Library' : 'Semantic Search'}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <Button
                   variant="secondary"
@@ -420,7 +525,7 @@ function App() {
                   onClick={() => openSettings('reading')}
                   data-testid="preferences-button"
                   aria-label="Open Preferences"
-                  className="h-8 rounded-full px-3 text-size-control hover:border-focus-border hover:text-action-text"
+                  className="home-preferences hover:border-focus-border hover:text-action-text"
                 >
                   <span aria-hidden="true">⚙</span>
                   Preferences
@@ -429,7 +534,13 @@ function App() {
 
               <div data-testid="workspace-content" className="flex-1 min-h-0">
                 {homeView === 'library' ? (
-                  <Library statusBar={runtimeStatusBar} />
+                  <Library
+                    statusBar={runtimeStatusBar}
+                    shellMenu={libraryShellMenu}
+                    shellMenuPosition={libraryShellMenuPosition}
+                    importRequestId={libraryImportRequestId}
+                    onCloseShellMenu={closeLibraryShellMenu}
+                  />
                 ) : (
                   <SemanticSearchHome statusBar={runtimeStatusBar} />
                 )}
