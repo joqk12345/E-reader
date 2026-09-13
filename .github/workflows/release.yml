@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || startsWith(github.ref_name, 'v') && github.ref_name || '' }}
+  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
   RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/v{0}', inputs.version) || github.ref }}
   ALLOW_UNSIGNED_MACOS: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.allow_unsigned_macos) }}
@@ -43,8 +43,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${RELEASE_VERSION}"
           TAG="${RELEASE_TAG}"
+          VERSION="${RELEASE_VERSION:-}"
+          if [[ -z "${VERSION}" && "${TAG}" == v* ]]; then
+            VERSION="${TAG#v}"
+          fi
           if [[ -z "${VERSION}" || -z "${TAG}" ]]; then
             echo "A release version is required. Use a vX.Y.Z tag or provide the version input." >&2
             exit 1
