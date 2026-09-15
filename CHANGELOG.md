@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.5] - 2026-09-15
+
+- 将 legacy EPUB 阅读器恢复为安装包默认；foliate-js 仅在 `VITE_EPUB_ENGINE=foliate` 下显式启用，避免部分机器打开 EPUB 时停留在 loading。
+- 将 V2 publication import 同步改为显式启用，保持实验引擎与正式发行包隔离。
+
 ## [0.5.4] - 2026-09-13
 
 - foliate-js 成为 EPUB 默认渲染引擎，保留 legacy 回退开关。

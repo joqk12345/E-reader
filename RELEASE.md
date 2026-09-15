@@ -90,8 +90,8 @@ npm run check:boundaries
 npm run test:ui
 ./scripts/check-version.sh 0.5.0
 
-# Build for your current platform
-npm run tauri build
+# Build for your current platform with the new foliate-js EPUB reader
+VITE_EPUB_ENGINE=foliate npm run tauri build
 
 # Test the generated application
 # macOS:

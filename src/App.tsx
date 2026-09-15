@@ -53,8 +53,8 @@ type EmbeddingStatus = {
 type HomeView = 'library' | 'semantic-search';
 type LibraryShellMenu = 'display' | 'more' | null;
 
-// Foliate is the default EPUB boundary; set VITE_EPUB_ENGINE=legacy only for emergency rollback.
-const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE !== 'legacy';
+// Foliate remains an opt-in spike; keep the legacy reader as the safe packaged default.
+const FOLIATE_EPUB_SPIKE_ENABLED = import.meta.env.VITE_EPUB_ENGINE === 'foliate';
 const FoliateEpubSpikeReader = lazy(async () => {
   const module = await import('./features/reader/foliate/FoliateEpubSpikeReader');
   return { default: module.FoliateEpubSpikeReader };
@@ -125,7 +125,7 @@ function App() {
   }, [homeView, showSettings, selectedDocumentId]);
 
   useEffect(() => {
-    if (!selectedDocumentId || currentDocumentType !== 'epub') return;
+    if (!FOLIATE_EPUB_SPIKE_ENABLED || !selectedDocumentId || currentDocumentType !== 'epub') return;
     let cancelled = false;
     const preparePublication = async () => {
       try {

@@ -173,6 +173,7 @@ const expectVisible = async (locator, label) => {
 const main = async () => {
   const server = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(PORT)], {
     cwd: ROOT,
+    env: { ...process.env, VITE_EPUB_ENGINE: 'foliate' },
     stdio: 'ignore',
   });
   let browser;

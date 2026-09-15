@@ -283,14 +283,9 @@ fn publication_import_v2_enabled_for(
     runtime_engine: Option<&str>,
     force_v2: Option<&str>,
 ) -> bool {
-    if compile_engine == Some("legacy") || runtime_engine == Some("legacy") {
-        return false;
-    }
-    compile_engine != Some("legacy")
-        && (compile_engine == Some("foliate")
-            || runtime_engine == Some("foliate")
-            || force_v2 == Some("1")
-            || (compile_engine.is_none() && runtime_engine.is_none()))
+    compile_engine == Some("foliate")
+        || runtime_engine == Some("foliate")
+        || force_v2 == Some("1")
 }
 
 fn publication_import_v2_enabled() -> bool {
@@ -981,8 +976,8 @@ mod tests {
     }
 
     #[test]
-    fn publication_engine_defaults_to_foliate_and_only_legacy_disables_it() {
-        assert!(publication_import_v2_enabled_for(None, None, None));
+    fn publication_engine_is_opt_in_and_legacy_is_the_default() {
+        assert!(!publication_import_v2_enabled_for(None, None, None));
         assert!(publication_import_v2_enabled_for(Some("foliate"), None, None));
         assert!(publication_import_v2_enabled_for(None, Some("foliate"), None));
         assert!(!publication_import_v2_enabled_for(None, Some("legacy"), None));
